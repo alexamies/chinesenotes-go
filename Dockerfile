@@ -6,5 +6,4 @@ COPY . .
 RUN go build
 RUN apt-get update
 RUN apt-get install -y ca-certificates
-RUN mkdir -p data
 CMD ["./chinesenotes-go"]

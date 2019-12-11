@@ -10,7 +10,10 @@ project
 ```shell
 CNOTES_HOME=../chinesenotes.com
 mkdir data
+cp $CNOTES_HOME/config.yaml .
 cp $CNOTES_HOME/data/words.txt data/.
+cp $CNOTES_HOME/data/translation_memory_literary.txt data/.
+cp $CNOTES_HOME/data/translation_memory_modern.txt data/.
 ```
 
 That is all that is needed for basic word lookup. A database and corpus can
@@ -29,7 +32,6 @@ docker build -t cn-app-image .
 Run it locally with minimal features (C-E dictionary lookp only) enabled
 ```
 docker run -it --rm -p 8080:8080 --name cn-app \
-  --mount type=bind,source="$(pwd)",target=/cnotes \
   cn-app-image
 ```
 

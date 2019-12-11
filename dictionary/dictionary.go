@@ -1,6 +1,19 @@
-/* 
-Functions to load Chinese-English dictionary from database
-*/
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+
+//
+// Functions to load Chinese-English dictionary from database
+//
 package dictionary
 
 import (
@@ -9,13 +22,12 @@ import (
 	"encoding/csv"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/alexamies/chinesenotes-go/applog"
+	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/webconfig"
 	"os"
 	"strconv"
 	"time"
 )
-
-const DICT_FILE string = "data/words.txt"
 
 var (
 	database *sql.DB
@@ -214,7 +226,7 @@ func loadDictFile() (map[string]Word, error) {
 	applog.Info("loadDictFile, enter")
 	start := time.Now()
 	wdict := map[string]Word{}
-	wsFilenames := []string{DICT_FILE}
+	wsFilenames := config.LUFileNames()
 	cnReaderHome := webconfig.GetCnReaderHome()
 	for _, wsfilename := range wsFilenames {
 		fName := cnReaderHome + "/" + wsfilename
