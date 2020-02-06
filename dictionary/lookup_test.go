@@ -18,12 +18,13 @@ import (
 	"log"
 	"testing"
 	"os"
+	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
 
 // Query expecting empty list
 func TestAddWordSense2Map(t *testing.T) {
-	wmap := map[string]Word{}
-	ws := WordSense{
+	wmap := map[string]dicttypes.Word{}
+	ws := dicttypes.WordSense{
 		Id: 1,
 		HeadwordId: 1,
 		Simplified: "我",

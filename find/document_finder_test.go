@@ -16,7 +16,7 @@ package find
 
 import (
 	"fmt"
-	"github.com/alexamies/chinesenotes-go/dictionary"
+	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/fulltext"
 	"testing"
 )
@@ -66,8 +66,8 @@ func TestCombineByWeight(t *testing.T) {
 }
 
 func TestFindDocuments1(t *testing.T) {
-	dict := map[string]dictionary.Word{}
-	parser := DictQueryParser{dict}
+	dict := map[string]dicttypes.Word{}
+	parser := MakeQueryParser(dict)
 	qr, err := FindDocuments(parser, "Assembly", false)
 	if err != nil {
 		t.Error("TestFindDocuments1: got error, ", err)
@@ -78,8 +78,8 @@ func TestFindDocuments1(t *testing.T) {
 }
 
 func TestFindDocuments2(t *testing.T) {
-	dict := map[string]dictionary.Word{}
-	parser := DictQueryParser{dict}
+	dict := map[string]dicttypes.Word{}
+	parser := MakeQueryParser(dict)
 	_, err := FindDocuments(parser, "", false)
 	if err == nil {
 		t.Error("TestFindDocuments2: expected error for empty string")
@@ -87,8 +87,8 @@ func TestFindDocuments2(t *testing.T) {
 }
 
 func TestFindDocuments3(t *testing.T) {
-	dict := map[string]dictionary.Word{}
-	parser := DictQueryParser{dict}
+	dict := map[string]dicttypes.Word{}
+	parser := MakeQueryParser(dict)
 	qr, err := FindDocuments(parser, "hello", false)
 	if err != nil {
 		fmt.Printf("TestFindDocuments3: got error, %v", err)
@@ -205,8 +205,8 @@ func TestFindBodyBigram6(t *testing.T) {
 }
 
 func TestFindDocumentsInCol0(t *testing.T) {
-	dict := map[string]dictionary.Word{}
-	parser := DictQueryParser{dict}
+	dict := map[string]dicttypes.Word{}
+	parser := MakeQueryParser(dict)
 	_, err := FindDocumentsInCol(parser, "", "wenxuan.html")
 	if err == nil {
 		t.Error("TestFindDocumentsInCol2: expected error for empty string")
@@ -214,8 +214,8 @@ func TestFindDocumentsInCol0(t *testing.T) {
 }
 
 func TestFindDocumentsInCol1(t *testing.T) {
-	dict := map[string]dictionary.Word{}
-	parser := DictQueryParser{dict}
+	dict := map[string]dicttypes.Word{}
+	parser := MakeQueryParser(dict)
 	qr, err := FindDocumentsInCol(parser, "箴", "wenxuan.html")
 	if err != nil {
 		t.Error("TestFindDocumentsInCol1: got error, ", err)
@@ -226,8 +226,8 @@ func TestFindDocumentsInCol1(t *testing.T) {
 }
 
 func TestFindDocumentsInCol2(t *testing.T) {
-	dict := map[string]dictionary.Word{}
-	parser := DictQueryParser{dict}
+	dict := map[string]dicttypes.Word{}
+	parser := MakeQueryParser(dict)
 	qr, err := FindDocumentsInCol(parser, "箴也", "wenxuan.html")
 	if err != nil {
 		t.Error("TestFindDocumentsInCol2: got error, ", err)
@@ -238,8 +238,8 @@ func TestFindDocumentsInCol2(t *testing.T) {
 }
 
 func TestFindDocumentsInCol3(t *testing.T) {
-	dict := map[string]dictionary.Word{}
-	parser := DictQueryParser{dict}
+	dict := map[string]dicttypes.Word{}
+	parser := MakeQueryParser(dict)
 	qr, err := FindDocumentsInCol(parser, "箴也所", "wenxuan.html")
 	if err != nil {
 		t.Error("TestFindDocumentsInCol3: got error, ", err)
@@ -250,8 +250,8 @@ func TestFindDocumentsInCol3(t *testing.T) {
 }
 
 func TestFindDocumentsInCol4(t *testing.T) {
-	dict := map[string]dictionary.Word{}
-	parser := DictQueryParser{dict}
+	dict := map[string]dicttypes.Word{}
+	parser := MakeQueryParser(dict)
 	qr, err := FindDocumentsInCol(parser, "箴也所以", "wenxuan.html")
 	if err != nil {
 		t.Error("TestFindDocumentsInCol4: got error, ", err)
@@ -262,8 +262,8 @@ func TestFindDocumentsInCol4(t *testing.T) {
 }
 
 func TestFindDocumentsInCol5(t *testing.T) {
-	dict := map[string]dictionary.Word{}
-	parser := DictQueryParser{dict} // 箴也所以攻疾防患
+	dict := map[string]dicttypes.Word{}
+	parser := MakeQueryParser(dict) // 箴也所以攻疾防患
 	qr, err := FindDocumentsInCol(parser, "箴也所以攻", "wenxuan.html")
 	if err != nil {
 		t.Error("TestFindDocumentsInCol5: got error, ", err)
@@ -274,8 +274,8 @@ func TestFindDocumentsInCol5(t *testing.T) {
 }
 
 func TestFindDocumentsInCol6(t *testing.T) {
-	dict := map[string]dictionary.Word{}
-	parser := DictQueryParser{dict}
+	dict := map[string]dicttypes.Word{}
+	parser := MakeQueryParser(dict)
 	qr, err := FindDocumentsInCol(parser, "箴也所以攻疾", "wenxuan.html")
 	if err != nil {
 		t.Error("TestFindDocumentsInCol6: got error, ", err)

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/alexamies/chinesenotes-go/applog"
 	"github.com/alexamies/chinesenotes-go/dictionary"
+	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/find"
 	"github.com/alexamies/chinesenotes-go/identity"
 	"github.com/alexamies/chinesenotes-go/mail"
@@ -22,7 +23,7 @@ import (
 
 var (
 	parser find.QueryParser
-	wdict map[string]dictionary.Word
+	wdict map[string]dicttypes.Word
 )
 
 func init() {
@@ -32,7 +33,7 @@ func init() {
 	if err != nil {
 		applog.Error("main.init() unable to load dictionary: ", err)
 	}
-	parser = find.DictQueryParser{wdict}
+	parser = find.MakeQueryParser(wdict)
 }
 
 // Starting point for the Administration Portal

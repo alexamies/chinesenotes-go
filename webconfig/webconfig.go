@@ -88,7 +88,7 @@ func GetCnWebHome() string {
 	cnWebHome := os.Getenv("CNWEB_HOME")
 	if cnWebHome == "" {
 		applog.Info("config.readConfig: CNWEB_HOME is not defined")
-		cnWebHome = "."
+		cnWebHome = ".."
 	}
 	return cnWebHome
 }

@@ -82,13 +82,14 @@ func readConfig() map[string]string {
 	fileName := projectHome + "/config.yaml"
 	configFile, err := os.Open(fileName)
 	if err != nil {
-		projectHome = "../../../.."
+		projectHome = ".."
 		log.Printf("config.readConfig: setting projectHome to: '%s'\n",
 			projectHome)
 		fileName = projectHome + "/config.yaml"
 		configFile, err = os.Open(fileName)
 		if err != nil {
-			log.Fatal("config.init fatal error: config.yaml not found")
+			log.Print("config.init fatal error: config.yaml not found")
+			return map[string]string{}
 		}
 	}
 	defer configFile.Close()
@@ -101,7 +102,8 @@ func readConfig() map[string]string {
 			err = nil
 			eof = true
 		} else if err != nil {
-			log.Fatal("config.readConfig: error reading config file", err)
+			log.Print("config.readConfig: error reading config file ", err)
+			return map[string]string{}
 		}
 		// Ignore comments
 		if strings.HasPrefix(line, "#") {

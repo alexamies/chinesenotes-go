@@ -12,7 +12,7 @@
 
 
 //
-// Functions to load Chinese-English dictionary from database
+// Chinese-English dictionary database functions
 //
 package dictionary
 
@@ -23,6 +23,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/alexamies/chinesenotes-go/applog"
 	"github.com/alexamies/chinesenotes-go/config"
+	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/webconfig"
 	"os"
 	"strconv"
@@ -37,19 +38,6 @@ var (
 // Initialize the package
 func init() {
 	initDictionary()
-}
-
-// A top level word structure that may include multiple word senses
-type Word struct {
-	Simplified, Traditional, Pinyin string
-	HeadwordId int
-	Senses []WordSense
-}
-
-// Defines a single sense of a Chinese word
-type WordSense struct {
-	Id, HeadwordId int
-	Simplified, Traditional, Pinyin, English, Notes string
 }
 
 // Initialize the package
@@ -89,7 +77,7 @@ LIMIT 20`)
 }
 
 // Returns the word senses with English approximate or Pinyin exact match
-func FindWordsByEnglish(query string) ([]WordSense, error) {
+func FindWordsByEnglish(query string) ([]dicttypes.WordSense, error) {
 	applog.Info("findWordsByEnglish, query = ", query)
 	if findEnglishStmt == nil {
 		applog.Error("FindWordsByEnglish, findEnglishStmt == nil")
@@ -97,7 +85,7 @@ func FindWordsByEnglish(query string) ([]WordSense, error) {
 		initDictionary()
 		if findEnglishStmt == nil {
 			applog.Error("FindWordsByEnglish, still findEnglishStmt == nil")
-		  return []WordSense{}, nil
+		  return []dicttypes.WordSense{}, nil
 		}
 	}
 	ctx := context.Background()
@@ -110,12 +98,12 @@ func FindWordsByEnglish(query string) ([]WordSense, error) {
 		results, err = findEnglishStmt.QueryContext(ctx, query, query)
 		if err != nil {
 			applog.Error("FindWordsByEnglish, Give up after retry: ", query, err)
-			return []WordSense{}, err
+			return []dicttypes.WordSense{}, err
 		}
 	}
-	senses := []WordSense{}
+	senses := []dicttypes.WordSense{}
 	for results.Next() {
-		ws := WordSense{}
+		ws := dicttypes.WordSense{}
 		var hw sql.NullInt64
 		var trad, pinyin, english, notes sql.NullString
 		results.Scan(&ws.Simplified, &trad, &pinyin, &english, &notes, &hw)
@@ -143,9 +131,9 @@ func FindWordsByEnglish(query string) ([]WordSense, error) {
 }
 
 // Loads all words from the database
-func LoadDict() (map[string]Word, error) {
+func LoadDict() (map[string]dicttypes.Word, error) {
 	start := time.Now()
-	wdict := map[string]Word{}
+	wdict := map[string]dicttypes.Word{}
 	conString := webconfig.DBConfig()
 	database, err := sql.Open("mysql", conString)
   if err != nil {
@@ -165,7 +153,7 @@ func LoadDict() (map[string]Word, error) {
         return loadDictFile()
 	}
 	for results.Next() {
-		ws := WordSense{}
+		ws := dicttypes.WordSense{}
 		var wsId, hw sql.NullInt64
 		var trad, notes, pinyin, english sql.NullString
 		results.Scan(&wsId, &ws.Simplified, &trad, &pinyin, &english, &notes,
@@ -193,12 +181,12 @@ func LoadDict() (map[string]Word, error) {
 			word.Senses = append(word.Senses, ws)
 			wdict[word.Simplified] = word
 		} else {
-			word = Word{}
+			word = dicttypes.Word{}
 			word.Simplified = ws.Simplified
 			word.Traditional = ws.Traditional
 			word.Pinyin = ws.Pinyin
 			word.HeadwordId = ws.HeadwordId
-			word.Senses = []WordSense{ws}
+			word.Senses = []dicttypes.WordSense{ws}
 			wdict[word.Simplified] = word
 		}
 		if trad.Valid {
@@ -207,12 +195,12 @@ func LoadDict() (map[string]Word, error) {
 				word1.Senses = append(word1.Senses, ws)
 				wdict[word1.Traditional] = word1
 			} else {
-				word1 = Word{}
+				word1 = dicttypes.Word{}
 				word1.Simplified = ws.Simplified
 				word1.Traditional = ws.Traditional
 				word1.Pinyin = ws.Pinyin
 				word1.HeadwordId = ws.HeadwordId
-				word1.Senses = []WordSense{ws}
+				word1.Senses = []dicttypes.WordSense{ws}
 				wdict[word1.Traditional] = word1
 			}
 		}
@@ -222,10 +210,10 @@ func LoadDict() (map[string]Word, error) {
 }
 
 // Loads all words from a static file included in the Docker image
-func loadDictFile() (map[string]Word, error) {
+func loadDictFile() (map[string]dicttypes.Word, error) {
 	applog.Info("loadDictFile, enter")
 	start := time.Now()
-	wdict := map[string]Word{}
+	wdict := map[string]dicttypes.Word{}
 	wsFilenames := config.LUFileNames()
 	cnReaderHome := webconfig.GetCnReaderHome()
 	for _, wsfilename := range wsFilenames {
@@ -279,7 +267,7 @@ func loadDictFile() (map[string]Word, error) {
 					id, simp, trad, pinyin, english, grammar)
 				applog.Error("loadDictFile wrong number of columns ", id, err)
 			}
-			ws := WordSense{}
+			ws := dicttypes.WordSense{}
 			ws.Id = hwId
 			ws.Simplified =simp
 			ws.HeadwordId = hwId
@@ -292,12 +280,12 @@ func loadDictFile() (map[string]Word, error) {
 				word.Senses = append(word.Senses, ws)
 				wdict[word.Simplified] = word
 			} else {
-				word = Word{}
+				word = dicttypes.Word{}
 				word.Simplified = ws.Simplified
 				word.Traditional = ws.Traditional
 				word.Pinyin = ws.Pinyin
 				word.HeadwordId = ws.HeadwordId
-				word.Senses = []WordSense{ws}
+				word.Senses = []dicttypes.WordSense{ws}
 				wdict[word.Simplified] = word
 			}
 			if trad != "\\N" {
@@ -306,12 +294,12 @@ func loadDictFile() (map[string]Word, error) {
 					word1.Senses = append(word1.Senses, ws)
 					wdict[word1.Traditional] = word1
 				} else {
-					word1 = Word{}
+					word1 = dicttypes.Word{}
 					word1.Simplified = ws.Simplified
 					word1.Traditional = ws.Traditional
 					word1.Pinyin = ws.Pinyin
 					word1.HeadwordId = ws.HeadwordId
-					word1.Senses = []WordSense{ws}
+					word1.Senses = []dicttypes.WordSense{ws}
 					wdict[word1.Traditional] = word1
 				}
 			}

@@ -22,6 +22,7 @@ import (
 	"errors"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/alexamies/chinesenotes-go/applog"
+	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
 
 var (
@@ -31,23 +32,23 @@ var (
 
 // Encapsulates term lookup recults
 type Results struct {
-	Words []Word
+	Words []dicttypes.Word
 }
 
 // Used for grouping word senses by similar headwords in result sets
-func addWordSense2Map(wmap map[string]Word, ws WordSense) {
+func addWordSense2Map(wmap map[string]dicttypes.Word, ws dicttypes.WordSense) {
 	//applog.Info("dictionary.addWordSense2Map() ", ws.Simplified, ws.Traditional)
 	word, ok := wmap[ws.Simplified]
 	if ok {
 		word.Senses = append(word.Senses, ws)
 		wmap[word.Simplified] = word
 	} else {
-		word = Word{}
+		word = dicttypes.Word{}
 		word.Simplified = ws.Simplified
 		word.Traditional = ws.Traditional
 		word.Pinyin = ws.Pinyin
 		word.HeadwordId = ws.HeadwordId
-		word.Senses = []WordSense{ws}
+		word.Senses = []dicttypes.WordSense{ws}
 		wmap[word.Simplified] = word
 	}
 }
@@ -82,7 +83,7 @@ func LookupSubstr(query, topic_en, subtopic_en string) (*Results, error) {
 		initDictionary()
 		if findSubstrStmt == nil {
 			applog.Error("LookupSubstr, still findSubstr == nil")
-		  return &Results{[]Word{}}, errors.New("Unable to look up term")
+		  return &Results{[]dicttypes.Word{}}, errors.New("Unable to look up term")
 		}
 	}
 	ctx := context.Background()
@@ -96,12 +97,12 @@ func LookupSubstr(query, topic_en, subtopic_en string) (*Results, error) {
 		results, err = findSubstrStmt.QueryContext(ctx, likeTerm, likeTerm, topic_en)
 		if err != nil {
 			applog.Error("LookupSubstr, Give up after retry: ", query, err)
-			return &Results{[]Word{}}, err
+			return &Results{[]dicttypes.Word{}}, err
 		}
 	}
-	wmap := map[string]Word{}
+	wmap := map[string]dicttypes.Word{}
 	for results.Next() {
-		ws := WordSense{}
+		ws := dicttypes.WordSense{}
 		var hw sql.NullInt64
 		var trad, pinyin, english, notes sql.NullString
 		results.Scan(&ws.Simplified, &trad, &pinyin, &english, &notes, &hw)
@@ -128,8 +129,8 @@ func LookupSubstr(query, topic_en, subtopic_en string) (*Results, error) {
 	return &Results{words}, nil
 }
 
-func wordMap2Array(wmap map[string]Word) []Word {
-	words := []Word{}
+func wordMap2Array(wmap map[string]dicttypes.Word) []dicttypes.Word {
+	words := []dicttypes.Word{}
 	for _, w := range wmap {
 		words = append(words, w)
 	}

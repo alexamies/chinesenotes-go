@@ -17,11 +17,9 @@
 package find
 
 import (
-	"github.com/alexamies/chinesenotes-go/dictionary"
-	"log"
-	"strings"
+	"github.com/alexamies/chinesenotes-go/dicttypes"
+	"github.com/alexamies/chinesenotes-go/tokenizer"
 	"unicode"
-	"unicode/utf8"
 )
 
 // Parses input queries into a slice of text segments
@@ -29,7 +27,7 @@ type QueryParser interface {
 	ParseQuery(query string) []TextSegment
 }
 
-type DictQueryParser struct{WDict map[string]dictionary.Word}
+type DictQueryParser struct{Tokenizer tokenizer.DictTokenizer}
 
 // A text segment contains the QueryText searched for and possibly a matching
 // dictionary entry. There will only be matching dictionary entries for 
@@ -38,8 +36,14 @@ type DictQueryParser struct{WDict map[string]dictionary.Word}
 // included in the Senses field.
 type TextSegment struct{
 	QueryText string
-	DictEntry dictionary.Word
-	Senses []dictionary.WordSense
+	DictEntry dicttypes.Word
+	Senses []dicttypes.WordSense
+}
+
+// Creates a QueryParser
+func MakeQueryParser(dict map[string]dicttypes.Word) QueryParser {
+	tokenizer := tokenizer.DictTokenizer{dict}
+	return DictQueryParser{tokenizer}
 }
 
 // The method for parsing the query text in this function is based on dictionary
@@ -101,24 +105,11 @@ func is_cjk(r rune) bool {
 
 // Segments Chinese text based on dictionary entries
 func (parser DictQueryParser) parse_chinese(text string) []TextSegment {
+	tokens := parser.Tokenizer.Tokenize(text)
 	terms := []TextSegment{}
-	characters := strings.Split(text, "")
-	for i := 0; i < len(characters); i++ {
-		for j := len(characters); j > 0; j-- {
-			w := strings.Join(characters[i:j], "")
-			if entry, ok := parser.WDict[w]; ok {
-				seg := TextSegment{w, entry, []dictionary.WordSense{}}
-				terms = append(terms, seg)
-				i = j - 1
-				j = 0
-			} else if utf8.RuneCountInString(w) == 1 {
-				log.Printf("parse_chinese: found unknown character %s\n", w)
-				seg := TextSegment{}
-				seg.QueryText = w
-				terms = append(terms, seg)
-				break
-			}
-		}
+	for _, token := range tokens {
+		seg := TextSegment{token.Token, token.DictEntry, token.Senses}
+		terms = append(terms, seg)
 	}
 	return terms
 }

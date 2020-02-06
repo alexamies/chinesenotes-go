@@ -24,6 +24,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/alexamies/chinesenotes-go/applog"
 	"github.com/alexamies/chinesenotes-go/dictionary"
+	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/fulltext"
 	"github.com/alexamies/chinesenotes-go/webconfig"
 	"sort"
@@ -671,9 +672,9 @@ func FindDocumentsInCol(parser QueryParser, query,
 
 // Returns the headword words in the query (only a single word based on Chinese
 // query)
-func findWords(query string) ([]dictionary.Word, error) {
+func findWords(query string) ([]dicttypes.Word, error) {
 	if findWordStmt == nil {
-		return []dictionary.Word{}, nil
+		return []dicttypes.Word{}, nil
 	}
 	ctx := context.Background()
 	results, err := findWordStmt.QueryContext(ctx, query, query)
@@ -685,12 +686,12 @@ func findWords(query string) ([]dictionary.Word, error) {
 		results, err = findWordStmt.QueryContext(ctx, query, query)
 		if err != nil {
 			applog.Error("findWords, Give up after retry: ", query, err)
-			return []dictionary.Word{}, err
+			return []dicttypes.Word{}, err
 		}
 	}
-	words := []dictionary.Word{}
+	words := []dicttypes.Word{}
 	for results.Next() {
-		word := dictionary.Word{}
+		word := dicttypes.Word{}
 		var hw sql.NullInt64
 		var trad sql.NullString
 		results.Scan(&word.Simplified, &trad, &word.Pinyin, &hw)
