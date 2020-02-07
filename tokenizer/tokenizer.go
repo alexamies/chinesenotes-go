@@ -42,8 +42,20 @@ type TextToken struct{
 
 // Tokenizes a Chinese text string into words and other terms in the dictionary.
 // If the terms are not found in the dictionary then individual characters will
-// be returned.
+// be returned. Compares left to right and right to left greedy methods, taking
+// the one with the least tokens.
 func (tokenizer DictTokenizer) Tokenize(fragment string) []TextToken {
+	tokens1 := tokenizer.greedyLtoR(fragment)
+	tokens2 := tokenizer.greedyRtoL(fragment)
+	if len(tokens1) < len(tokens2) {
+		return tokens1
+	}
+	return tokens2
+}
+
+// Tokenizes text with a greedy knapsack-like algorithm, scanning left to
+// right.
+func (tokenizer DictTokenizer) greedyLtoR(fragment string) []TextToken {
 	tokens := []TextToken{}
 	if len(fragment) == 0 {
 		return tokens
@@ -52,13 +64,14 @@ func (tokenizer DictTokenizer) Tokenize(fragment string) []TextToken {
 	for i := 0; i < len(characters); i++ {
 		for j := len(characters); j > 0; j-- {
 			w := strings.Join(characters[i:j], "")
+			//log.Printf("greedyLtoR: w = %s\n", w)
 			if entry, ok := tokenizer.WDict[w]; ok {
 				token := TextToken{w, entry, []dicttypes.WordSense{}}
 				tokens = append(tokens, token)
 				i = j - 1
 				j = 0
 			} else if utf8.RuneCountInString(w) == 1 {
-				log.Printf("Tokenize: found unknown character %s\n", w)
+				log.Printf("greedyLtoR: found unknown character %s\n", w)
 				token := TextToken{}
 				token.Token = w
 				tokens = append(tokens, token)
@@ -66,6 +79,37 @@ func (tokenizer DictTokenizer) Tokenize(fragment string) []TextToken {
 			}
 		}
 	}
+	return tokens
+}
 
+// Tokenizes text with a greedy knapsack-like algorithm, scanning right to
+// left.
+func (tokenizer DictTokenizer) greedyRtoL(fragment string) []TextToken {
+	tokens := []TextToken{}
+	if len(fragment) == 0 {
+		return tokens
+	}
+	characters := strings.Split(fragment, "")
+	for i := len(characters); i > 0; i-- {
+		for j := 0; j < len(characters); j++ {
+			if i < j {
+				break
+			}
+			w := strings.Join(characters[j:i], "")
+			//log.Printf("greedyRtoL: i, j, w = %d, %d, %s\n", i, j, w)
+			if entry, ok := tokenizer.WDict[w]; ok {
+				token := TextToken{w, entry, []dicttypes.WordSense{}}
+				tokens = append([]TextToken{token}, tokens...)
+				i = j
+				j = -1
+			} else if utf8.RuneCountInString(w) == 1 {
+				//log.Printf("greedyRtoL: found unknown character %s\n", w)
+				token := TextToken{}
+				token.Token = w
+				tokens = append([]TextToken{token}, tokens...)
+				break
+			}
+		}
+	}
 	return tokens
 }
