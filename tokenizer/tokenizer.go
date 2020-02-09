@@ -27,7 +27,7 @@ import (
 
 // Tokenizes Chinese text
 type Tokenizer interface {
-	Tokenize(fragment string) []string
+	Tokenize(fragment string) []TextToken
 }
 
 // Tokenizes Chinese text using a dictionary

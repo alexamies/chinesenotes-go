@@ -17,7 +17,7 @@ package mail
 import (
 	"log"
 	"testing"
-	"cnweb/identity"
+	"github.com/alexamies/chinesenotes-go/identity"
 )
 
 // Test package initialization, which requires a database connection
