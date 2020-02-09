@@ -47,10 +47,10 @@ type TextToken struct{
 func (tokenizer DictTokenizer) Tokenize(fragment string) []TextToken {
 	tokens1 := tokenizer.greedyLtoR(fragment)
 	tokens2 := tokenizer.greedyRtoL(fragment)
-	if len(tokens1) < len(tokens2) {
-		return tokens1
+	if len(tokens2) < len(tokens1) {
+		return tokens2
 	}
-	return tokens2
+	return tokens1
 }
 
 // Tokenizes text with a greedy knapsack-like algorithm, scanning left to
