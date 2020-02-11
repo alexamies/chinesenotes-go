@@ -45,6 +45,7 @@ type TextToken struct{
 // be returned. Compares left to right and right to left greedy methods, taking
 // the one with the least tokens.
 func (tokenizer DictTokenizer) Tokenize(fragment string) []TextToken {
+	//log.Printf("Tokenize: fragment = '%s'\n", fragment)
 	tokens1 := tokenizer.greedyLtoR(fragment)
 	tokens2 := tokenizer.greedyRtoL(fragment)
 	if len(tokens2) < len(tokens1) {
@@ -92,7 +93,7 @@ func (tokenizer DictTokenizer) greedyRtoL(fragment string) []TextToken {
 	characters := strings.Split(fragment, "")
 	for i := len(characters); i > 0; i-- {
 		for j := 0; j < len(characters); j++ {
-			if i < j {
+			if i <= j {
 				break
 			}
 			w := strings.Join(characters[j:i], "")

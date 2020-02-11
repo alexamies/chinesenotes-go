@@ -71,8 +71,45 @@ func TestTokenize1(t *testing.T) {
 	}
 }
 
+// Simple two word test
+func TestTokenize2a(t *testing.T) {
+	dict := map[string]dicttypes.Word{}
+	s1 := "长阿含经"
+	t1 := "長阿含經"
+	w1 := dicttypes.Word{}
+	w1.Simplified = s1
+	w1.Traditional = t1
+	w1.Pinyin = "Cháng Āhán Jīng"
+	w1.HeadwordId = 29679
+	dict[s1] = w1
+	dict[t1] = w1
+	s2 := "序"
+	t2 := "\\N"
+	w2 := dicttypes.Word{}
+	w2.Simplified = s2
+	w2.Traditional = t2
+	w2.Pinyin = "xù "
+	w2.HeadwordId = 6213
+	dict[s2] = w2
+	dict[t2] = w2
+	tokenizer := DictTokenizer{dict}
+	chunk := "長阿含經序"
+	tokens := tokenizer.Tokenize(chunk)
+	expect := 2
+	if len(tokens) != expect {
+		t.Error("TestTokenize2a: expect list of two tokens, got ", tokens)
+	}
+	if tokens[0].Token != "長阿含經" {
+		t.Error("TestTokenize2a: tokens[0].Token = 長阿含經, got ", tokens[0].Token)
+	}
+	if tokens[1].Token != "序" {
+		t.Error("TestTokenize2a: tokens[1].Token = 序, got ",
+			tokens[1].Token)
+	}
+}
+
 // Harder test, overlapping words with R2L winning
-func TestTokenize2(t *testing.T) {
+func TestTokenize2b(t *testing.T) {
 	dict := map[string]dicttypes.Word{}
 	s1 := "恐龙"
 	t1 := "恐龍"
@@ -97,13 +134,13 @@ func TestTokenize2(t *testing.T) {
 	tokens := tokenizer.Tokenize(chunk)
 	expect := 2
 	if len(tokens) != expect {
-		t.Error("TestTokenize2: expect list of two tokens, got ", tokens)
+		t.Error("TestTokenize2b: expect list of two tokens, got ", tokens)
 	}
 	if tokens[0].Token != "恐" {
-		t.Error("TestTokenize2: tokens[0].Token = 恐, got ", tokens[0].Token)
+		t.Error("TestTokenize2b: tokens[0].Token = 恐, got ", tokens[0].Token)
 	}
 	if tokens[1].Token != "龍頭蛇尾" {
-		t.Error("TestTokenize2: tokens[1].Token = 龍頭蛇尾, got ",
+		t.Error("TestTokenize2b: tokens[1].Token = 龍頭蛇尾, got ",
 			tokens[1].Token)
 	}
 }
