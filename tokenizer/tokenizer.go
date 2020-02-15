@@ -92,17 +92,14 @@ func (tokenizer DictTokenizer) greedyRtoL(fragment string) []TextToken {
 	}
 	characters := strings.Split(fragment, "")
 	for i := len(characters); i > 0; i-- {
-		for j := 0; j < len(characters); j++ {
-			if i <= j {
-				break
-			}
+		for j := 0; j < i; j++ {
 			w := strings.Join(characters[j:i], "")
 			//log.Printf("greedyRtoL: i, j, w = %d, %d, %s\n", i, j, w)
 			if entry, ok := tokenizer.WDict[w]; ok {
 				token := TextToken{w, entry, []dicttypes.WordSense{}}
 				tokens = append([]TextToken{token}, tokens...)
-				i = j
-				j = -1
+				i = j + 1
+				break
 			} else if utf8.RuneCountInString(w) == 1 {
 				//log.Printf("greedyRtoL: found unknown character %s\n", w)
 				token := TextToken{}
