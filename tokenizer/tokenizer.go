@@ -31,7 +31,9 @@ type Tokenizer interface {
 }
 
 // Tokenizes Chinese text using a dictionary
-type DictTokenizer struct{WDict map[string]dicttypes.Word}
+type DictTokenizer struct{
+	WDict map[string]dicttypes.Word
+}
 
 // A text token contains the results of tokenizing a string
 type TextToken struct{

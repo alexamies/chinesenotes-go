@@ -12,19 +12,17 @@
 
 
 //
-// Chinese-English dictionary type definitions
+// Package for translation memory search
 //
-package dicttypes
 
-// A top level word structure that may include multiple word senses
-type Word struct {
-	Simplified, Traditional, Pinyin string
-	HeadwordId int
-	Senses []WordSense
-}
+package transmemory
 
-// Defines a single sense of a Chinese word
-type WordSense struct {
-	Id, HeadwordId int
-	Simplified, Traditional, Pinyin, English, Domain, Subdomain, Notes string
+
+// Searches the translation memory for approximate matches.
+// Parameters
+//   query The search query
+// Retuns
+//   A slice of approximate results
+func Search(query string) string[] {
+	return []
 }

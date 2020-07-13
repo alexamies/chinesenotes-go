@@ -132,6 +132,7 @@ func FindWordsByEnglish(query string) ([]dicttypes.WordSense, error) {
 func LoadDict() (map[string]dicttypes.Word, error) {
 	start := time.Now()
 	wdict := map[string]dicttypes.Word{}
+	avoidSub := config.AvoidSubDomains()
 	conString := webconfig.DBConfig()
 	database, err := sql.Open("mysql", conString)
   if err != nil {
@@ -140,7 +141,7 @@ func LoadDict() (map[string]dicttypes.Word, error) {
 	}
 	ctx := context.Background()
 	stmt, err := database.PrepareContext(ctx, 
-		"SELECT id, simplified, traditional, pinyin, english, notes, headword FROM words")
+		"SELECT id, simplified, traditional, pinyin, english, parent_en, notes, headword FROM words")
     if err != nil {
         applog.Error("find.load_dict Error preparing stmt: ", err)
         return loadDictFile()
@@ -153,8 +154,8 @@ func LoadDict() (map[string]dicttypes.Word, error) {
 	for results.Next() {
 		ws := dicttypes.WordSense{}
 		var wsId, hw sql.NullInt64
-		var trad, notes, pinyin, english sql.NullString
-		results.Scan(&wsId, &ws.Simplified, &trad, &pinyin, &english, &notes,
+		var trad, notes, pinyin, english, parent_en sql.NullString
+		results.Scan(&wsId, &ws.Simplified, &trad, &pinyin, &english, &parent_en, &notes,
 			&hw)
 		if wsId.Valid {
 			ws.Id = int(wsId.Int64)
@@ -170,6 +171,12 @@ func LoadDict() (map[string]dicttypes.Word, error) {
 		}
 		if english.Valid {
 			ws.English = english.String
+		}
+		// If subdomain, aka parent, should be avoided, then skip
+		if parent_en.Valid {
+			if _, ok := avoidSub[parent_en.String]; ok {
+				continue
+			}
 		}
 		if notes.Valid {
 			ws.Notes = notes.String

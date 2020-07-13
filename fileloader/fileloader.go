@@ -19,6 +19,7 @@ package fileloader
 import (
 	"encoding/csv"
 	"github.com/alexamies/chinesenotes-go/applog"
+	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"os"
 	"strconv"
@@ -28,6 +29,7 @@ import (
 func LoadDictFile(fNames []string) (map[string]dicttypes.Word, error) {
 	applog.Info("LoadDictFile, enter")
 	wdict := map[string]dicttypes.Word{}
+	avoidSub := config.AvoidSubDomains()
 	for _, fName := range fNames {
 		applog.Info("dictionary.loadDictFile: fName: ", fName)
 		wsfile, err := os.Open(fName)
@@ -56,6 +58,11 @@ func LoadDictFile(fNames []string) (map[string]dicttypes.Word, error) {
 			pinyin := row[3]
 			english := row[4]
 			grammar := row[5]
+			parent_en :=  row[11]
+			// If subdomain, aka parent, should be avoided, then skip
+			if _, ok := avoidSub[parent_en]; ok {
+				continue
+			}
 			notes := row[14]
 			if notes == "\\N" {
 				notes = ""

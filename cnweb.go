@@ -469,6 +469,21 @@ func sendJSON(w http.ResponseWriter, obj interface{}) {
 	fmt.Fprintf(w, string(resultsJson))
 }
 
+// Handler for translation memory
+func translationMemory(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	url := r.URL
+	queryString := url.Query()
+	query := queryString["query"]
+	q := ""
+	if len(query) > 0 {
+		q = query[0]
+	}
+	domains := queryString["domain"]
+	applog.Info("main.translationMemory, query, domains: ", q, domains)
+	// TO-DO: finish this
+}
+
 // Check to see if the user has a session
 func sessionHandler(w http.ResponseWriter, r *http.Request) {
 	sessionInfo := identity.InvalidSession()
@@ -524,6 +539,7 @@ func main() {
 	http.HandleFunc("/loggedin/reset_password", resetPasswordFormHandler)
 	http.HandleFunc("/loggedin/reset_password_submit", resetPasswordHandler)
 	http.HandleFunc("/loggedin/submitcpwd", changePasswordHandler)
+	http.HandleFunc("/translation_memory", translationMemory)
 	http.HandleFunc("/", displayHome)
 	portStr := ":" + strconv.Itoa(webconfig.GetPort())
 	http.ListenAndServe(portStr, nil)
