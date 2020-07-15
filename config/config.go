@@ -19,6 +19,7 @@ package config
 import (
 	"bufio"
 	"io"
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -30,7 +31,11 @@ var configVars map[string]string
 func init() {
 	projectHome = "."
 	log.Println("config.init")
-	configVars = readConfig()
+	var err error
+	configVars, err = readConfig()
+	if err != nil {
+		log.Printf("config.init: error reading config: %v", err)
+	}
 }
 
 // Subdomains to avoid whne loading the dictionary, default: empty
@@ -39,6 +44,7 @@ func AvoidSubDomains() map[string]bool {
 	if val, ok := configVars["AvoidSubDomains"]; ok {
 		values := strings.Split(",", val)
 		for _, value := range values {
+			log.Printf("config.AvoidSubDomains: value: %s", value)
 			avoidSub[value] = true
 		}
 	}
@@ -89,7 +95,7 @@ func LUFileNames() []string {
 }
 
 // Reads the configuration file with project variables
-func readConfig() map[string]string {
+func readConfig() (map[string]string, error) {
 	vars := make(map[string]string)
 	fileName := projectHome + "/config.yaml"
 	configFile, err := os.Open(fileName)
@@ -100,8 +106,8 @@ func readConfig() map[string]string {
 		fileName = projectHome + "/config.yaml"
 		configFile, err = os.Open(fileName)
 		if err != nil {
-			log.Print("config.init fatal error: config.yaml not found")
-			return map[string]string{}
+			err := fmt.Errorf("error opening config.yaml: %v",err)
+			return map[string]string{}, err
 		}
 	}
 	defer configFile.Close()
@@ -114,8 +120,8 @@ func readConfig() map[string]string {
 			err = nil
 			eof = true
 		} else if err != nil {
-			log.Print("config.readConfig: error reading config file ", err)
-			return map[string]string{}
+			err := fmt.Errorf("error reading config file ", err)
+			return map[string]string{}, err
 		}
 		// Ignore comments
 		if strings.HasPrefix(line, "#") {
@@ -128,5 +134,5 @@ func readConfig() map[string]string {
 			vars[varName] = val
 		}
 	}
-	return vars
+	return vars, nil
 }

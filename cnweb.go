@@ -4,6 +4,7 @@ Web application for finding documents in the corpus
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/alexamies/chinesenotes-go/applog"
@@ -13,6 +14,7 @@ import (
 	"github.com/alexamies/chinesenotes-go/identity"
 	"github.com/alexamies/chinesenotes-go/mail"
 	"github.com/alexamies/chinesenotes-go/media"
+	"github.com/alexamies/chinesenotes-go/transmemory"
 	"github.com/alexamies/chinesenotes-go/webconfig"
 	"html/template"
 	"net/http"
@@ -469,21 +471,6 @@ func sendJSON(w http.ResponseWriter, obj interface{}) {
 	fmt.Fprintf(w, string(resultsJson))
 }
 
-// Handler for translation memory
-func translationMemory(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	url := r.URL
-	queryString := url.Query()
-	query := queryString["query"]
-	q := ""
-	if len(query) > 0 {
-		q = query[0]
-	}
-	domains := queryString["domain"]
-	applog.Info("main.translationMemory, query, domains: ", q, domains)
-	// TO-DO: finish this
-}
-
 // Check to see if the user has a session
 func sessionHandler(w http.ResponseWriter, r *http.Request) {
 	sessionInfo := identity.InvalidSession()
@@ -517,6 +504,48 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, string(resultsJson))
 }
 
+// Handler for translation memory search request
+func translationMemory(w http.ResponseWriter, r *http.Request) {
+	url := r.URL
+	queryString := url.Query()
+	query := queryString["query"]
+	if len(query) == 0 {
+		applog.Error("main.translationMemory Search query string has no value")
+		http.Error(w, "Search query string has no value",
+			http.StatusInternalServerError)
+		return
+	}
+	q := ""
+	if len(query) > 0 {
+		q = query[0]
+	}
+	if len(q) == 0 {
+		applog.Error("main.translationMemory Search query string is empty")
+		http.Error(w, "Search query string is empty",
+			http.StatusInternalServerError)
+		return
+	}
+	domains := queryString["domain"]
+	applog.Info("main.translationMemory, query, domains: ", q, domains)
+	ctx := context.Background()
+	results, err := transmemory.Search(ctx, q, wdict)
+	if err != nil {
+		applog.Error("main.translationMemory error searching, ", err)
+		http.Error(w, "Error searching for relevant terms",
+			http.StatusInternalServerError)
+		return
+	}
+	resultsJson, err := json.Marshal(results)
+	if err != nil {
+		applog.Error("main.translationMemory error marshalling JSON, ", err)
+		http.Error(w, "Error marshalling results",
+			http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	fmt.Fprintf(w, string(resultsJson))
+}
+
 //Entry point for the web application
 func main() {
 	applog.Info("cnweb.main Starting cnweb")
@@ -525,6 +554,7 @@ func main() {
 	http.HandleFunc("/findadvanced/", findAdvanced)
 	http.HandleFunc("/findmedia", mediaDetailHandler)
 	http.HandleFunc("/findsubstring", findSubstring)
+	http.HandleFunc("/findtm", translationMemory)
 	http.HandleFunc("/healthcheck/", healthcheck)
 	http.HandleFunc("/loggedin/admin", adminHandler)
 	http.HandleFunc("/loggedin/changepassword", changePasswordFormHandler)
@@ -539,7 +569,6 @@ func main() {
 	http.HandleFunc("/loggedin/reset_password", resetPasswordFormHandler)
 	http.HandleFunc("/loggedin/reset_password_submit", resetPasswordHandler)
 	http.HandleFunc("/loggedin/submitcpwd", changePasswordHandler)
-	http.HandleFunc("/translation_memory", translationMemory)
 	http.HandleFunc("/", displayHome)
 	portStr := ":" + strconv.Itoa(webconfig.GetPort())
 	http.ListenAndServe(portStr, nil)
