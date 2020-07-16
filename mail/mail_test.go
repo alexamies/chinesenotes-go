@@ -30,7 +30,7 @@ func TestSendPasswordReset(t *testing.T) {
 		FullName: "Alex Test",
 		Role: "tester",
 	}
-	err := SendPasswordReset(userInfo)
+	err := SendPasswordReset(userInfo, "")
 	if err != nil {
 		log.Println("TestSendPasswordReset: Error, ", err)
 	}

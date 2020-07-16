@@ -120,7 +120,7 @@ func readConfig() (map[string]string, error) {
 			err = nil
 			eof = true
 		} else if err != nil {
-			err := fmt.Errorf("error reading config file ", err)
+			err := fmt.Errorf("error reading config file: %v", err)
 			return map[string]string{}, err
 		}
 		// Ignore comments

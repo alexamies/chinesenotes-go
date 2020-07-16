@@ -599,7 +599,9 @@ func findDocumentsInCol(query string, terms []TextSegment,
 // Chinese words in the dictionary. If there are no Chinese words in the query
 // then the Chinese word senses matching the English or Pinyin will be included
 // in the TextSegment.Senses field.
-func FindDocuments(parser QueryParser, query string,
+func FindDocuments(ctx context.Context,
+		dictSearcher *dictionary.Searcher,
+		parser QueryParser, query string,
 		advanced bool) (QueryResults, error) {
 	if query == "" {
 		applog.Error("FindDocuments, Empty query string")
@@ -609,7 +611,7 @@ func FindDocuments(parser QueryParser, query string,
 	if (len(terms) == 1) && (terms[0].DictEntry.HeadwordId == 0) {
 	    applog.Info("FindDocuments,Query does not contain Chinese, look for " +
 	    	"English and Pinyin matches: ", query)
-		senses, err := dictionary.FindWordsByEnglish(terms[0].QueryText)
+		senses, err := dictSearcher.FindWordsByEnglish(ctx, terms[0].QueryText)
 		if err != nil {
 			return QueryResults{}, err
 		} else {
@@ -640,7 +642,9 @@ func FindDocuments(parser QueryParser, query string,
 // Chinese words in the dictionary. If there are no Chinese words in the query
 // then the Chinese word senses matching the English or Pinyin will be included
 // in the TextSegment.Senses field.
-func FindDocumentsInCol(parser QueryParser, query,
+func FindDocumentsInCol(ctx context.Context,
+		dictSearcher *dictionary.Searcher,
+		parser QueryParser, query,
 		col_gloss_file string) (QueryResults, error) {
 	if query == "" {
 		applog.Error("FindDocumentsInCol, Empty query string")
@@ -650,7 +654,7 @@ func FindDocumentsInCol(parser QueryParser, query,
 	if (len(terms) == 1) && (terms[0].DictEntry.HeadwordId == 0) {
 	    applog.Info("FindDocumentsInCol, Query does not contain Chinese, " +
 	    	"look for English and Pinyin matches: ", query)
-		senses, err := dictionary.FindWordsByEnglish(terms[0].QueryText)
+		senses, err := dictSearcher.FindWordsByEnglish(ctx, terms[0].QueryText)
 		if err != nil {
 			return QueryResults{}, err
 		} else {

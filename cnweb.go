@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/alexamies/chinesenotes-go/applog"
@@ -24,18 +25,34 @@ import (
 )
 
 var (
+	database *sql.DB
 	parser find.QueryParser
 	wdict map[string]dicttypes.Word
+	dictSearcher *dictionary.Searcher
+	tmSearcher *transmemory.Searcher
 )
 
 func init() {
 	applog.Info("cnweb.main.init Initializing cnweb")
+	ctx := context.Background()
 	var err error
-	wdict, err = dictionary.LoadDict()
+	database, err = dictionary.InitDBCon()
+	if err != nil {
+		applog.Error("main.init() unable to connect to database: ", err)
+	}
+	dictSearcher, err = dictionary.NewSearcher(ctx, database)
+	if err != nil {
+		applog.Error("main.init() unable to create new dict searcher: ", err)
+	}
+	wdict, err = dictionary.LoadDict(ctx, database)
 	if err != nil {
 		applog.Error("main.init() unable to load dictionary: ", err)
 	}
 	parser = find.MakeQueryParser(wdict)
+	tmSearcher, err = transmemory.NewSearcher(ctx, database)
+	if err != nil {
+		applog.Error("main.init() unable to create new TM searcher: ", err)
+	}
 }
 
 // Starting point for the Administration Portal
@@ -183,10 +200,11 @@ func findDocs(response http.ResponseWriter, request *http.Request, advanced bool
 	var err error
 
 	c := queryString["collection"]
+	ctx := context.Background()
 	if (len(c) > 0) && (c[0] != "") {
-		results, err = find.FindDocumentsInCol(parser, q, c[0])
+		results, err = find.FindDocumentsInCol(ctx, dictSearcher, parser, q, c[0])
 	} else {
-		results, err = find.FindDocuments(parser, q, advanced)
+		results, err = find.FindDocuments(ctx, dictSearcher, parser, q, advanced)
 	}
 
 	if err != nil {
@@ -235,7 +253,8 @@ func findSubstring(response http.ResponseWriter, request *http.Request) {
 	if len(subtopic) > 0 {
 		st = subtopic[0]
 	}
-	results, err := dictionary.LookupSubstr(q, t, st)
+	ctx := context.Background()
+	results, err := dictSearcher.LookupSubstr(ctx, q, t, st)
 	if err != nil {
 		applog.Error("main.findSubstring Error looking up term, ", err)
 		http.Error(response, "Error looking up term",
@@ -528,7 +547,7 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 	domains := queryString["domain"]
 	applog.Info("main.translationMemory, query, domains: ", q, domains)
 	ctx := context.Background()
-	results, err := transmemory.Search(ctx, q, wdict)
+	results, err := tmSearcher.Search(ctx, q, wdict)
 	if err != nil {
 		applog.Error("main.translationMemory error searching, ", err)
 		http.Error(w, "Error searching for relevant terms",

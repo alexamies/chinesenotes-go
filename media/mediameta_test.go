@@ -27,5 +27,5 @@ func TestFindMedia(t *testing.T) {
 		t.Error("TestFindMedia: encountered error: ", err)
 		return
 	}
-	log.Printf("TestFindMedia: metadata.ObjectId", metadata.ObjectId)
+	log.Printf("TestFindMedia: metadata.ObjectId: %v", metadata.ObjectId)
 }

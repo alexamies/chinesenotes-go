@@ -15,9 +15,9 @@
 package dictionary
 
 import (
+	"context"
 	"log"
 	"testing"
-	"os"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
 
@@ -40,57 +40,65 @@ func TestAddWordSense2Map(t *testing.T) {
 }
 
 // Test trivial query with empty query, expect error
-func TestLookupSubstrEmpty(t *testing.T) {
+func TestLookupSubstr(t *testing.T) {
 	log.Printf("TestLookupSubstr: Begin unit tests\n")
-	_, err := LookupSubstr("", "", "")
-	if err == nil {
-		t.Error("TestLookupSubstrEmpty: expected error")
-	}
-}
-
-// Query expecting empty list
-func TestLookupEmptyResult(t *testing.T) {
-	results, err := LookupSubstr("我還不知道", "", "placeholder")
+	ctx := context.Background()
+	database, err := InitDBCon()
 	if err != nil {
-		dbhost := os.Getenv("DBHOST")
-		if dbhost == "" {
-			return
+		t.Fatalf("TestFindWordsByEnglish: cannot connect to database: %v", err)
+	}
+	dictSearcher, err := NewSearcher(ctx, database)
+	if err != nil {
+		t.Fatalf("TestFindWordsByEnglish: cannot create dictSearcher: %v", err)
+	}
+	type test struct {
+		name string
+		query string
+		domain string
+		expectErr bool
+		expectNum int
+  }
+  tests := []test{
+		{	name: "expect error",
+			query: "",
+			domain: "",
+			expectErr: true,
+		 	expectNum: 0,
+		 },
+		{	name: "expect empty",
+			query: "我還不知道",
+			domain: "",
+			expectErr: false,
+		 	expectNum: 0,
+		 },
+		{	name: "invalid domain",
+			query: "置",
+			domain: "invalid",
+			expectErr: false,
+		 	expectNum: 0,
+		 },
+  }
+  for _, tc := range tests {
+		results, err := dictSearcher.LookupSubstr(ctx, tc.query, "", "")
+		if tc.expectErr && err == nil {
+			t.Errorf("TestLookupSubstr: %s, expect an error, got none", tc.name)
+			continue
 		}
-		t.Error("TestLookupEmptyResult: unexpected error, ", err)
-		return
+		if tc.expectErr {
+			continue
+		}
+		if !tc.expectErr && err != nil {
+			t.Errorf("TestLookupSubstr: %s, expect no error, got: %v", tc.name, err)
+			continue
+		}
+		if results == nil {
+			t.Errorf("TestLookupSubstr: %s, results nil", tc.name)
+			continue
+		}
+		resNum := len(results.Words)
+		if tc.expectNum != resNum {
+			t.Errorf("TestLookupSubstr: %s, expected %d results, got: %v", tc.name,
+					tc.expectNum, resNum)
+		}
 	}
-	if len(results.Words) != 0 {
-		t.Error("TestLookupEmptyResult: unexpected result length, ",
-			      len(results.Words))
-	}
-}
-
-// Query expecting empty list
-func TestLookupOneResult(t *testing.T) {
-	results, err := LookupSubstr("男扮", "Idiom", "placeholder")
-	if err != nil {
-		log.Print("TestLookupOneResult: unexpected error, ", err)
-		return
-	}
-	if len(results.Words) != 1 {
-		log.Print("TestLookupOneResult: unexpected result length, ",
-			        len(results.Words))
-		return
-	}
-	log.Print("TestLookupOneResult: got expected result length of 1")
-}
-
-// Query expecting empty list
-func TestLookupNanResult(t *testing.T) {
-	results, err := LookupSubstr("男", "Idiom", "placeholder")
-	if err != nil {
-		log.Print("TestLookupNanResult: unexpected error, ", err)
-		return
-	}
-	if len(results.Words) != 1 {
-		log.Print("TestLookupNanResult: unexpected result length, ",
-			        len(results.Words))
-		return
-	}
-	log.Print("TestLookupNanResult: got expected result length of 1")
 }

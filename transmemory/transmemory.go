@@ -23,16 +23,10 @@ import (
 	"fmt"
 	"github.com/alexamies/chinesenotes-go/applog"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
-	"github.com/alexamies/chinesenotes-go/webconfig"
 )
 
 const (
 	MAX_UNIGRAM = 8
-)
-
-var (
-	database *sql.DB
-	searchUnigramStmt *sql.Stmt
 )
 
 // Encapsulates search recults
@@ -40,13 +34,85 @@ type Results struct {
 	Words []dicttypes.Word
 }
 
+// Encapsulates translation memory searcher
+type Searcher struct {
+	database *sql.DB
+	searchUnigramStmt *sql.Stmt
+}
+
 // Initialize SQL statement
-func init() {
-	ctx := context.Background()
-	err := initSQL(ctx)
+func NewSearcher(ctx context.Context, database *sql.DB) (*Searcher, error) {
+	stmt, err := initSQL(ctx, database)
 	if err != nil {
-		applog.Error("init, unable to intiialize SQL statement: ", err)
+		return nil, err
 	}
+	return &Searcher{
+		database: database,
+		searchUnigramStmt: stmt,
+	}, nil
+}
+
+func initSQL(ctx context.Context, database *sql.DB) (*sql.Stmt, error) {
+	return database.PrepareContext(ctx,
+`SELECT
+  word,
+  count(*) as count
+FROM tmindex_unigram
+WHERE 
+  ch = ? OR
+  ch = ? OR
+  ch = ? OR
+  ch = ? OR
+  ch = ? OR
+  ch = ? OR
+  ch = ? OR
+  ch = ?
+GROUP BY word
+ORDER BY count DESC LIMIT 50`)
+}
+
+// Search the trans memory for words containing the given unigrams
+func (searcher *Searcher) queryUnigram(ctx context.Context, chars []string) ([]string, error) {
+	var results *sql.Rows
+	var err error
+	results, err = searcher.searchUnigramStmt.QueryContext(ctx, chars[0], chars[1],
+			chars[2], chars[3], chars[4], chars[5], chars[6], chars[7])
+	if err != nil {
+		applog.Error("queryUnigram, Error for query: ", err)
+		return nil, err
+	}
+	var resSlice []string
+	for results.Next() {
+		var word string
+		var count int
+		err = results.Scan(&word, &count)
+		if err != nil {
+			applog.Error("queryUnigram, Error for scanning results: ", err)
+			return nil, err
+		}
+		resSlice = append(resSlice, word)
+	}
+	applog.Info("queryUnigram, num results: ", len(resSlice))
+	return resSlice, nil
+}
+
+// Searches the translation memory for approximate matches.
+// Parameters
+//   ctx Request context
+//   query The search query
+//   wdict The full dictionary
+// Retuns
+//   A slice of approximate results
+func (searcher *Searcher) Search(ctx context.Context,
+		query string,
+		wdict map[string]dicttypes.Word) (*Results, error) {
+	chars := getChars(query)
+	matches, err := searcher.queryUnigram(ctx, chars)
+	if err != nil {
+		return nil, fmt.Errorf("Search query error: %v", err)
+	}
+	words := combineResults(matches, wdict)
+	return &Results{words}, nil
 }
 
 // Combines matches with dictionary defintions to send back to client
@@ -60,96 +126,17 @@ func combineResults(matches []string, wdict map[string]dicttypes.Word) []dicttyp
 	return words
 }
 
-func initSQL(ctx context.Context) error {
-	conString := webconfig.DBConfig()
-	db, err := sql.Open("mysql", conString)
-	if err != nil {
-		return err
-	}
-	database = db
-
-	searchUnigramStmt, err = database.PrepareContext(ctx,
-`SELECT
-  word,
-  count(*) as count
-FROM tmindex_unigram
-WHERE 
-  ch = '?' OR
-  ch = '?' OR
-  ch = '?' OR
-  ch = '?' OR
-  ch = '?' OR
-  ch = '?' OR
-  ch = '?' OR
-  ch = '?'
-GROUP BY word
-ORDER BY count DESC LIMIT 50`)
-  if err != nil {
-  	applog.Error("transmemory.initStatements() searchUnigramStmt err: ", err)
-    applog.Info("transmemory.initStatements() conString: ", conString)
-    return err
-  }
-  return nil
-}
-
-// Search the trans memory for words containing the given unigrams
-func queryUnigram(ctx context.Context, chars []string) ([]string, error) {
-	applog.Info("queryUnigram, terms = ", chars)
-	if searchUnigramStmt == nil {
-		applog.Error("queryUnigram, searchUnigramStmt == nil")
-		// Re-initialize
-		err := initSQL(ctx)
-		if err != nil {
-			applog.Error("queryUnigram, unable to intiialize SQL statement: ", err)
-		  return []string{}, err
-		}
-	}
-	var results *sql.Rows
-	var err error
-	results, err = searchUnigramStmt.QueryContext(ctx, chars[0], chars[1],
-			chars[2], chars[3], chars[4], chars[5], chars[6], chars[7])
-	if err != nil {
-		applog.Error("queryUnigram, Error for query: ", chars, err)
-		return []string{}, err
-	}
-	resSlice := []string{}
-	for results.Next() {
-		var word string
-		results.Scan(&word)
-		resSlice = append(resSlice, word)
-	}
-	return resSlice, nil
-}
-
 // Get the characters in the search query, padding to MAX_UNIGRAM with the
 // last character
 func getChars(query string) []string {
+	runes := []rune(query)
 	var chars []string
 	for i := 0; i < MAX_UNIGRAM; i++ {
-		if i < len(query) {
-			chars= append(chars, string(query[i]))
+		if i < len(runes) {
+			chars= append(chars, string(runes[i]))
 			continue
 		}
-		chars= append(chars, string(query[len(query) - 1]))
+		chars= append(chars, string(runes[len(runes) - 1]))
 	}
 	return chars
-}
-
-// Searches the translation memory for approximate matches.
-// Parameters
-//   ctx Request context
-//   query The search query
-//   wdict The full dictionary
-// Retuns
-//   A slice of approximate results
-func Search(ctx context.Context,
-		query string,
-		wdict map[string]dicttypes.Word) (*Results, error) {
-	chars := getChars(query)
-	matches, err := queryUnigram(ctx, chars)
-	if err != nil {
-		return nil, fmt.Errorf("Search query error: %v", err)
-	}
-	words := combineResults(matches, wdict)
-	return &Results{words}, nil
 }

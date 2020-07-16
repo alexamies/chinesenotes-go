@@ -25,10 +25,6 @@ import (
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
 
-var (
-	findSubstrStmt *sql.Stmt
-)
-
 
 // Encapsulates term lookup recults
 type Results struct {
@@ -53,9 +49,8 @@ func addWordSense2Map(wmap map[string]dicttypes.Word, ws dicttypes.WordSense) {
 	}
 }
 
-func initSubtrQuery() error {
-	ctx := context.Background()
-	stmt, err := database.PrepareContext(ctx, 
+func initSubtrQuery(ctx context.Context, database *sql.DB) (*sql.Stmt, error) {
+	return database.PrepareContext(ctx, 
 `SELECT simplified, traditional, pinyin, english, notes, headword 
 FROM words 
 WHERE
@@ -63,41 +58,25 @@ WHERE
   AND 
   (topic_en = ? OR parent_en = ?)
 LIMIT 100`)
-    if err != nil {
-        applog.Error("dictionary.initSubtrQuery() Error preparing fwstmt: ", err)
-        return err
-    }
-    findSubstrStmt = stmt
-    return nil
 }
 
 // Lookup a term based on a substring and a topic
-func LookupSubstr(query, topic_en, subtopic_en string) (*Results, error) {
+func (searcher *Searcher) LookupSubstr(ctx context.Context,
+		query, topic_en, subtopic_en string) (*Results, error) {
 	if query == "" {
 		return nil, errors.New("Query string is empty")
 	}
 	applog.Info("LookupSubstr, query, topic = ", query, topic_en)
-	if findSubstrStmt == nil {
-		applog.Error("LookupSubstr, findSubstr == nil")
-		// Re-initialize
-		initDictionary()
-		if findSubstrStmt == nil {
-			applog.Error("LookupSubstr, still findSubstr == nil")
-		  return &Results{[]dicttypes.Word{}}, errors.New("Unable to look up term")
-		}
-	}
-	ctx := context.Background()
 	likeTerm := "%" + query + "%"
-	results, err := findSubstrStmt.QueryContext(ctx, likeTerm, likeTerm,
+	results, err := searcher.findSubstrStmt.QueryContext(ctx, likeTerm, likeTerm,
 		topic_en, subtopic_en)
 	if err != nil {
 		applog.Error("LookupSubstr, Error for query: ", query, err)
-		// Re-initialize the app
-		initDictionary()
-		results, err = findSubstrStmt.QueryContext(ctx, likeTerm, likeTerm, topic_en)
+		// Retry
+		results, err = searcher.findSubstrStmt.QueryContext(ctx, likeTerm, likeTerm, topic_en)
 		if err != nil {
 			applog.Error("LookupSubstr, Give up after retry: ", query, err)
-			return &Results{[]dicttypes.Word{}}, err
+			return nil, err
 		}
 	}
 	wmap := map[string]dicttypes.Word{}

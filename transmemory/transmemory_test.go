@@ -15,6 +15,9 @@
 package transmemory
 
 import (
+	"context"
+	"github.com/alexamies/chinesenotes-go/dictionary"
+	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"log"
 	"testing"
 )
@@ -26,9 +29,10 @@ func TestGetChars(t *testing.T) {
 		query string
 		expect []string
   }
-	hello := []string{"H", "e", "l", "l", "o"}
+	trad := []string{"結", "實"}
+	log.Printf("TestGetChars: trad: %s", "結實")
   tests := []test{
-		{query: "Hello", expect: hello},
+		{query: "結實", expect: trad},
   }
   for _, tc := range tests {
 		result := getChars(tc.query)
@@ -37,5 +41,35 @@ func TestGetChars(t *testing.T) {
 				t.Errorf("TestGetChars: expected %s, got %s", string(ch), result[i])
 			}
 		}
+	}
+}
+
+// Test getChars function
+func TestSearch(t *testing.T) {
+	ctx := context.Background()
+	database, err := dictionary.InitDBCon()
+	if err != nil {
+		t.Fatalf("TestSearch: cannot connect to database: %v", err)
+	}
+	searcher, err := NewSearcher(ctx, database)
+	if err != nil {
+		t.Fatalf("TestSearch: cannot create a searcher: %v", err)
+	}
+	query := "結實"
+	w := dicttypes.Word{
+		Simplified: "结实",
+		Traditional: "結實",
+		Pinyin: "jiēshi",
+		HeadwordId: 10778,
+		Senses: []dicttypes.WordSense{},
+	}
+	wdict := map[string]dicttypes.Word{query: w}
+	results, err := searcher.Search(ctx, query, wdict)
+	if err != nil {
+		t.Fatalf("TestSearch: error calling search: %v", err)
+	}
+	numres := len(results.Words)
+	if numres == 0 {
+		t.Errorf("TestSearch: no results: %d", numres)
 	}
 }

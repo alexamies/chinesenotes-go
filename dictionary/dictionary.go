@@ -28,72 +28,53 @@ import (
 	"time"
 )
 
-var (
+// Encapsulates dictionary searcher
+type Searcher struct {
 	database *sql.DB
 	findEnglishStmt *sql.Stmt
-)
-
-// Initialize the package
-func init() {
-	initDictionary()
+	findSubstrStmt *sql.Stmt
 }
 
-// Initialize the package
-func initDictionary() {
-	err := initDBCon()
+// Initialize SQL statements
+func NewSearcher(ctx context.Context, database *sql.DB) (*Searcher, error) {
+	stmt, err := initEnglishQuery(ctx, database)
 	if err != nil {
-	applog.Info("initDictionary, err: ", err)
-		return
+		return nil, err
 	}
-	initEnglishQuery()
-	initSubtrQuery()
+	substStmt, err := initSubtrQuery(ctx, database)
+	if err != nil {
+		return nil, err
+	}
+	return &Searcher{
+		database: database,
+		findEnglishStmt: stmt,
+		findSubstrStmt: substStmt,
+	}, nil
 }
 
-func initDBCon() error {
+func InitDBCon() (*sql.DB, error) {
 	conString := webconfig.DBConfig()
-	db, err := sql.Open("mysql", conString)
-	if err != nil {
-		return err
-	}
-	database = db
-	return nil
+	return sql.Open("mysql", conString)
 }
 
-func initEnglishQuery() error {
-	ctx := context.Background()
-	fwstmt, err := database.PrepareContext(ctx, 
+func initEnglishQuery(ctx context.Context, database *sql.DB) (*sql.Stmt, error) {
+	return database.PrepareContext(ctx, 
 `SELECT simplified, traditional, pinyin, english, notes, headword
 FROM words
 WHERE pinyin = ? OR english LIKE ?
 LIMIT 20`)
-    if err != nil {
-        applog.Error("dictionary.initEnglishQuery() Error preparing fwstmt: ", err)
-        return err
-    }
-    findEnglishStmt = fwstmt
-    return nil
 }
 
 // Returns the word senses with English approximate or Pinyin exact match
-func FindWordsByEnglish(query string) ([]dicttypes.WordSense, error) {
+func (searcher *Searcher) FindWordsByEnglish(ctx context.Context,
+		query string) ([]dicttypes.WordSense, error) {
 	applog.Info("findWordsByEnglish, query = ", query)
-	if findEnglishStmt == nil {
-		applog.Error("FindWordsByEnglish, findEnglishStmt == nil")
-		// Re-initialize
-		initDictionary()
-		if findEnglishStmt == nil {
-			applog.Error("FindWordsByEnglish, still findEnglishStmt == nil")
-		  return []dicttypes.WordSense{}, nil
-		}
-	}
-	ctx := context.Background()
 	likeEnglish := "%" + query + "%"
-	results, err := findEnglishStmt.QueryContext(ctx, query, likeEnglish)
+	results, err := searcher.findEnglishStmt.QueryContext(ctx, query, likeEnglish)
 	if err != nil {
 		applog.Error("FindWordsByEnglish, Error for query: ", query, err)
-		// Re-initialize the app
-		initDictionary()
-		results, err = findEnglishStmt.QueryContext(ctx, query, query)
+		// Retry
+		results, err = searcher.findEnglishStmt.QueryContext(ctx, query, query)
 		if err != nil {
 			applog.Error("FindWordsByEnglish, Give up after retry: ", query, err)
 			return []dicttypes.WordSense{}, err
@@ -129,17 +110,10 @@ func FindWordsByEnglish(query string) ([]dicttypes.WordSense, error) {
 }
 
 // Loads all words from the database
-func LoadDict() (map[string]dicttypes.Word, error) {
+func LoadDict(ctx context.Context, database *sql.DB) (map[string]dicttypes.Word, error) {
 	start := time.Now()
 	wdict := map[string]dicttypes.Word{}
 	avoidSub := config.AvoidSubDomains()
-	conString := webconfig.DBConfig()
-	database, err := sql.Open("mysql", conString)
-  if err != nil {
-        applog.Error("find.load_dict connecting to database: ", err)
-        return loadDictFile()
-	}
-	ctx := context.Background()
 	stmt, err := database.PrepareContext(ctx, 
 		"SELECT id, simplified, traditional, pinyin, english, parent_en, notes, headword FROM words")
     if err != nil {
