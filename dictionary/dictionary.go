@@ -19,6 +19,7 @@ package dictionary
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/alexamies/chinesenotes-go/applog"
 	"github.com/alexamies/chinesenotes-go/config"
@@ -70,6 +71,9 @@ func (searcher *Searcher) FindWordsByEnglish(ctx context.Context,
 		query string) ([]dicttypes.WordSense, error) {
 	applog.Info("findWordsByEnglish, query = ", query)
 	likeEnglish := "%" + query + "%"
+	if searcher.findEnglishStmt == nil {
+		return nil, fmt.Errorf("FindWordsByEnglish,findEnglishStmt is nil query = ", query)
+	}
 	results, err := searcher.findEnglishStmt.QueryContext(ctx, query, likeEnglish)
 	if err != nil {
 		applog.Error("FindWordsByEnglish, Error for query: ", query, err)
@@ -77,7 +81,7 @@ func (searcher *Searcher) FindWordsByEnglish(ctx context.Context,
 		results, err = searcher.findEnglishStmt.QueryContext(ctx, query, query)
 		if err != nil {
 			applog.Error("FindWordsByEnglish, Give up after retry: ", query, err)
-			return []dicttypes.WordSense{}, err
+			return nil, err
 		}
 	}
 	senses := []dicttypes.WordSense{}

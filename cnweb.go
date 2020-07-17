@@ -198,9 +198,23 @@ func findDocs(response http.ResponseWriter, request *http.Request, advanced bool
 
 	var results find.QueryResults
 	var err error
-
 	c := queryString["collection"]
 	ctx := context.Background()
+	if dictSearcher == nil {
+		applog.Info("cnweb.findDocs Re-initializing cnweb")
+		database, err = dictionary.InitDBCon()
+		if err != nil {
+			applog.Error("main.finddocs unable to connect to database: ", err)
+			http.Error(response, "Internal error", http.StatusInternalServerError)
+			return
+		}
+		dictSearcher, err = dictionary.NewSearcher(ctx, database)
+		if err != nil {
+			applog.Error("main.finddocs unable to create new searcher: ", err)
+			http.Error(response, "Internal error", http.StatusInternalServerError)
+			return
+		}
+	}
 	if (len(c) > 0) && (c[0] != "") {
 		results, err = find.FindDocumentsInCol(ctx, dictSearcher, parser, q, c[0])
 	} else {
@@ -209,8 +223,7 @@ func findDocs(response http.ResponseWriter, request *http.Request, advanced bool
 
 	if err != nil {
 		applog.Error("main.findDocs Error searching docs, ", err)
-		http.Error(response, "Error searching docs",
-			http.StatusInternalServerError)
+		http.Error(response, "Internal error", http.StatusInternalServerError)
 		return
 	}
 	resultsJson, err := json.Marshal(results)
@@ -540,25 +553,36 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(q) == 0 {
 		applog.Error("main.translationMemory Search query string is empty")
-		http.Error(w, "Search query string is empty",
-			http.StatusInternalServerError)
+		http.Error(w, "Query string is empty", http.StatusInternalServerError)
 		return
 	}
-	domains := queryString["domain"]
-	applog.Info("main.translationMemory, query, domains: ", q, domains)
 	ctx := context.Background()
+	if tmSearcher == nil {
+		applog.Info("cnweb.translationMemory, re-initializing tmSearcher")
+		var err error
+		database, err = dictionary.InitDBCon()
+		if err != nil {
+			applog.Error("main.translationMemory unable to connect to database: ", err)
+			http.Error(w, "Internal Error", http.StatusInternalServerError)
+		return
+		}
+		tmSearcher, err = transmemory.NewSearcher(ctx, database)
+		if err != nil {
+			applog.Error("main.translationMemory unable to create TM searcher: ", err)
+			http.Error(w, "Internal Error", http.StatusInternalServerError)
+			return
+		}
+	}
 	results, err := tmSearcher.Search(ctx, q, wdict)
 	if err != nil {
 		applog.Error("main.translationMemory error searching, ", err)
-		http.Error(w, "Error searching for relevant terms",
-			http.StatusInternalServerError)
+		http.Error(w, "Internal Error", http.StatusInternalServerError)
 		return
 	}
 	resultsJson, err := json.Marshal(results)
 	if err != nil {
 		applog.Error("main.translationMemory error marshalling JSON, ", err)
-		http.Error(w, "Error marshalling results",
-			http.StatusInternalServerError)
+		http.Error(w, "Internal Error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")

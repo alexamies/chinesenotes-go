@@ -26,11 +26,21 @@ import (
 func TestTranslationMemory(t *testing.T) {
 	log.Printf("TestTranslationMemory: Begin unit tests\n")
 	type test struct {
+		name string
 		query string
 		expect string
   }
   tests := []test{
-		{query: "", expect: "Search query string is empty\n"},
+		{
+			name: "empty query",
+			query: "",
+			expect: "Query string is empty\n",
+		},
+		{
+			name: "query with no results",
+			query: "hello",
+			expect: "{\"Words\":null}",
+		},
   }
   for _, tc := range tests {
   	url := fmt.Sprintf("/translation_memory?query=%s", tc.query)
