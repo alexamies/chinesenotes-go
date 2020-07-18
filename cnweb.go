@@ -556,6 +556,11 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Query string is empty", http.StatusInternalServerError)
 		return
 	}
+	domain := queryString["domain"]
+	var d string
+	if len(domain) > 0 {
+		d = domain[0]
+	}
 	ctx := context.Background()
 	if tmSearcher == nil {
 		applog.Info("cnweb.translationMemory, re-initializing tmSearcher")
@@ -573,7 +578,7 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	results, err := tmSearcher.Search(ctx, q, wdict)
+	results, err := tmSearcher.Search(ctx, q, d, wdict)
 	if err != nil {
 		applog.Error("main.translationMemory error searching, ", err)
 		http.Error(w, "Internal Error", http.StatusInternalServerError)

@@ -42,31 +42,33 @@ type Searcher struct {
 
 // Initialize SQL statement
 func NewSearcher(ctx context.Context, database *sql.DB) (*Searcher, error) {
-	stmt, err := initSQL(ctx, database)
+	unigramStmt, err := initUnigramStmt(ctx, database)
 	if err != nil {
 		return nil, err
 	}
 	return &Searcher{
 		database: database,
-		searchUnigramStmt: stmt,
+		searchUnigramStmt: unigramStmt,
 	}, nil
 }
 
-func initSQL(ctx context.Context, database *sql.DB) (*sql.Stmt, error) {
+func initUnigramStmt(ctx context.Context, database *sql.DB) (*sql.Stmt, error) {
 	return database.PrepareContext(ctx,
 `SELECT
   word,
   count(*) as count
 FROM tmindex_unigram
-WHERE 
+WHERE
+  (ch = ? OR
   ch = ? OR
   ch = ? OR
   ch = ? OR
   ch = ? OR
   ch = ? OR
   ch = ? OR
-  ch = ? OR
-  ch = ?
+  ch = ?)
+  AND
+  domain LIKE ?
 GROUP BY word
 ORDER BY count DESC LIMIT 50`)
 }
@@ -100,11 +102,13 @@ func (searcher *Searcher) queryUnigram(ctx context.Context, chars []string) ([]s
 // Parameters
 //   ctx Request context
 //   query The search query
+//   domain The domain to restrict the query to (optional)
 //   wdict The full dictionary
 // Retuns
 //   A slice of approximate results
 func (searcher *Searcher) Search(ctx context.Context,
 		query string,
+		domain string,
 		wdict map[string]dicttypes.Word) (*Results, error) {
 	chars := getChars(query)
 	matches, err := searcher.queryUnigram(ctx, chars)

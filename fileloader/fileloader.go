@@ -58,6 +58,7 @@ func LoadDictFile(fNames []string) (map[string]dicttypes.Word, error) {
 			pinyin := row[3]
 			english := row[4]
 			grammar := row[5]
+			domain :=  row[9]
 			parent_en :=  row[11]
 			// If subdomain, aka parent, should be avoided, then skip
 			if _, ok := avoidSub[parent_en]; ok {
@@ -92,6 +93,7 @@ func LoadDictFile(fNames []string) (map[string]dicttypes.Word, error) {
 			ws.Traditional = trad
 			ws.Pinyin = pinyin
 			ws.English = english
+			ws.Domain = domain
 			ws.Notes = notes
 			word, ok := wdict[ws.Simplified]
 			if ok {

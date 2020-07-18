@@ -25,7 +25,7 @@ func TestLoadDictFile0(t *testing.T) {
 	fnames := []string{}
 	dict, err := LoadDictFile(fnames)
 	if err != nil {
-		t.Error("TestLoadDictFile0: Got an error, ", err)
+		t.Fatalf("TestLoadDictFile0: Got error %v", err)
 	}
 	if len(dict) != 0 {
 		t.Error("TestLoadDictFile0: len(dict) != 0")
@@ -37,9 +37,24 @@ func TestLoadDictFile1(t *testing.T) {
 	fnames := []string{"../testdata/testdict.tsv"}
 	dict, err := LoadDictFile(fnames)
 	if err != nil {
-		t.Error("TestLoadDictFile1: Got an error, ", err)
+		t.Fatalf("TestLoadDictFile1: Got an error: %v", err)
 	}
 	if len(dict) != 4 {
-		t.Error("TestLoadDictFile1: len(dict) != 4, got ", len(dict))
+		t.Fatalf("TestLoadDictFile1: excpected len 4, got %d", len(dict))
+	}
+	chinese := "邃古"
+	word, ok := dict[chinese]
+	if !ok {
+		t.Fatalf("TestLoadDictFile1: could not find word %s", chinese)
+	}
+	senses := word.Senses
+	if len(senses) ==0 {
+		t.Fatalf("TestLoadDictFile1: expected > 0 senses, got %d", len(senses))
+	}
+	expectedDom := "Modern Chinese"
+	domain := senses[0].Domain
+	if expectedDom != domain {
+		t.Errorf("TestLoadDictFile1: expected domain %s, got %s", expectedDom,
+			domain)
 	}
 }
