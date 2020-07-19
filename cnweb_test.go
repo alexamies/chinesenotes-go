@@ -28,18 +28,38 @@ func TestTranslationMemory(t *testing.T) {
 	type test struct {
 		name string
 		query string
+		domain string
+		expectMany bool
 		expect string
   }
   tests := []test{
 		{
 			name: "empty query",
 			query: "",
+			domain: "",
+			expectMany: false,
 			expect: "Query string is empty\n",
 		},
 		{
 			name: "query with no results",
 			query: "hello",
+			domain: "",
+			expectMany: false,
 			expect: "{\"Words\":null}",
+		},
+		{
+			name: "query many results",
+			query: "結實",
+			domain: "",
+			expectMany: true,
+			expect: "",
+		},
+		{
+			name: "query with domain many results",
+			query: "結實",
+			domain: "Buddhism",
+			expectMany: true,
+			expect: "",
 		},
   }
   for _, tc := range tests {
@@ -48,8 +68,11 @@ func TestTranslationMemory(t *testing.T) {
 		w := httptest.NewRecorder()
 		translationMemory(w, r)
 		result := w.Body.String()
-		if tc.expect != result {
-			t.Errorf("expect %q, got %q", tc.expect, result)
+		if !tc.expectMany && tc.expect != result {
+			t.Errorf("%s: expect %q, got %q", tc.name, tc.expect, result)
+ 		}
+		if tc.expectMany && len(result) < 10 {
+			t.Errorf("%s: expectMany but got only %d chars", tc.name, len(result))
  		}
  	}
 }

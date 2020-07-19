@@ -37,22 +37,47 @@ type Results struct {
 // Encapsulates translation memory searcher
 type Searcher struct {
 	database *sql.DB
-	searchUnigramStmt *sql.Stmt
+	unigramStmt *sql.Stmt
+	uniDomainStmt *sql.Stmt
 }
 
 // Initialize SQL statement
 func NewSearcher(ctx context.Context, database *sql.DB) (*Searcher, error) {
 	unigramStmt, err := initUnigramStmt(ctx, database)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("NewSearcher: unable to prepare unigramStmt: %v", err)
+	}
+	uniDomainStmt, err := initUniDomainStmt(ctx, database)
+	if err != nil {
+		return nil, fmt.Errorf("NewSearcher: unable to prepare uniDomainStmt: %v", err)
 	}
 	return &Searcher{
 		database: database,
-		searchUnigramStmt: unigramStmt,
+		unigramStmt: unigramStmt,
+		uniDomainStmt: uniDomainStmt,
 	}, nil
 }
 
 func initUnigramStmt(ctx context.Context, database *sql.DB) (*sql.Stmt, error) {
+	return database.PrepareContext(ctx,
+`SELECT
+  word,
+  count(*) as count
+FROM tmindex_unigram
+WHERE
+  (ch = ? OR
+  ch = ? OR
+  ch = ? OR
+  ch = ? OR
+  ch = ? OR
+  ch = ? OR
+  ch = ? OR
+  ch = ?)
+GROUP BY word
+ORDER BY count DESC LIMIT 50`)
+}
+
+func initUniDomainStmt(ctx context.Context, database *sql.DB) (*sql.Stmt, error) {
 	return database.PrepareContext(ctx,
 `SELECT
   word,
@@ -74,14 +99,19 @@ ORDER BY count DESC LIMIT 50`)
 }
 
 // Search the trans memory for words containing the given unigrams
-func (searcher *Searcher) queryUnigram(ctx context.Context, chars []string) ([]string, error) {
+func (searcher *Searcher) queryUnigram(ctx context.Context, chars []string,
+		domain string) ([]string, error) {
 	var results *sql.Rows
 	var err error
-	results, err = searcher.searchUnigramStmt.QueryContext(ctx, chars[0], chars[1],
-			chars[2], chars[3], chars[4], chars[5], chars[6], chars[7])
+	if len(domain) == 0 {
+		results, err = searcher.unigramStmt.QueryContext(ctx, chars[0], chars[1],
+				chars[2], chars[3], chars[4], chars[5], chars[6], chars[7])
+	} else {
+		results, err = searcher.uniDomainStmt.QueryContext(ctx, chars[0], chars[1],
+				chars[2], chars[3], chars[4], chars[5], chars[6], chars[7], domain)
+	}
 	if err != nil {
-		applog.Error("queryUnigram, Error for query: ", err)
-		return nil, err
+		return nil, fmt.Errorf("queryUnigram, Error for query: %v", err)
 	}
 	var resSlice []string
 	for results.Next() {
@@ -89,8 +119,7 @@ func (searcher *Searcher) queryUnigram(ctx context.Context, chars []string) ([]s
 		var count int
 		err = results.Scan(&word, &count)
 		if err != nil {
-			applog.Error("queryUnigram, Error for scanning results: ", err)
-			return nil, err
+			return nil, fmt.Errorf("queryUnigram, Error for scanning results: %v", err)
 		}
 		resSlice = append(resSlice, word)
 	}
@@ -111,7 +140,7 @@ func (searcher *Searcher) Search(ctx context.Context,
 		domain string,
 		wdict map[string]dicttypes.Word) (*Results, error) {
 	chars := getChars(query)
-	matches, err := searcher.queryUnigram(ctx, chars)
+	matches, err := searcher.queryUnigram(ctx, chars, domain)
 	if err != nil {
 		return nil, fmt.Errorf("Search query error: %v", err)
 	}

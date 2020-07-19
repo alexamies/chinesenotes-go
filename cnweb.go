@@ -561,6 +561,7 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 	if len(domain) > 0 {
 		d = domain[0]
 	}
+	applog.Error("main.translationMemory Query, domain: ", q, d)
 	ctx := context.Background()
 	if tmSearcher == nil {
 		applog.Info("cnweb.translationMemory, re-initializing tmSearcher")

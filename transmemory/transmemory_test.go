@@ -55,21 +55,44 @@ func TestSearch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("TestSearch: cannot create a searcher: %v", err)
 	}
-	query := "結實"
-	w := dicttypes.Word{
+	w1 := dicttypes.Word{
 		Simplified: "结实",
 		Traditional: "結實",
 		Pinyin: "jiēshi",
 		HeadwordId: 10778,
 		Senses: []dicttypes.WordSense{},
 	}
-	wdict := map[string]dicttypes.Word{query: w}
-	results, err := searcher.Search(ctx, query, wdict)
-	if err != nil {
-		t.Fatalf("TestSearch: error calling search: %v", err)
-	}
-	numres := len(results.Words)
-	if numres == 0 {
-		t.Errorf("TestSearch: no results: %d", numres)
+	wdict := make(map[string]dicttypes.Word)
+	wdict[w1.Traditional] = w1
+	type test struct {
+		name string
+		query string
+		domain string
+		expectNo int
+  }
+  tests := []test{
+		{
+			name: "Happy path",
+			query: "結實", 
+			domain: "",
+			expectNo: 1,
+		},
+		{
+			name: "With domain",
+			query: "結實", 
+			domain: "Buddhism",
+			expectNo: 0,
+		},
+  }
+  for _, tc := range tests {
+		results, err := searcher.Search(ctx, tc.query, tc.domain, wdict)
+		if err != nil {
+			t.Fatalf("TestSearch %s: error calling search: %v", tc.name, err)
+		}
+		numRes := len(results.Words)
+		if tc.expectNo != numRes {
+			t.Errorf("TestSearch %s: expect no results: %d, got: %d",
+				tc.name, tc.expectNo, numRes)
+		}
 	}
 }
