@@ -23,15 +23,26 @@ import (
 	"fmt"
 	"github.com/alexamies/chinesenotes-go/applog"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
+	"sort"
 )
 
 const (
 	MAX_UNIGRAM = 8
+	UNI_COUNT_WEIGHT float64 = 1.0
+	HAMMING_WEIGHT float64 = -1.0
 )
 
 // Encapsulates search recults
 type Results struct {
 	Words []dicttypes.Word
+}
+
+// Encapsulates search recults
+type tmResult struct {
+	term string
+	unigramCount int
+	hamming int
+	combinedScore float64
 }
 
 // Encapsulates translation memory searcher
@@ -100,7 +111,7 @@ ORDER BY count DESC LIMIT 50`)
 
 // Search the trans memory for words containing the given unigrams
 func (searcher *Searcher) queryUnigram(ctx context.Context, chars []string,
-		domain string) ([]string, error) {
+		domain string) ([]tmResult, error) {
 	var results *sql.Rows
 	var err error
 	if len(domain) == 0 {
@@ -113,15 +124,14 @@ func (searcher *Searcher) queryUnigram(ctx context.Context, chars []string,
 	if err != nil {
 		return nil, fmt.Errorf("queryUnigram, Error for query: %v", err)
 	}
-	var resSlice []string
+	var resSlice []tmResult
 	for results.Next() {
-		var word string
-		var count int
-		err = results.Scan(&word, &count)
+		var result tmResult
+		err = results.Scan(&result.term, &result.unigramCount)
 		if err != nil {
 			return nil, fmt.Errorf("queryUnigram, Error for scanning results: %v", err)
 		}
-		resSlice = append(resSlice, word)
+		resSlice = append(resSlice, result)
 	}
 	applog.Info("queryUnigram, num results: ", len(resSlice))
 	return resSlice, nil
@@ -144,19 +154,52 @@ func (searcher *Searcher) Search(ctx context.Context,
 	if err != nil {
 		return nil, fmt.Errorf("Search query error: %v", err)
 	}
-	words := combineResults(matches, wdict)
+	words := combineResults(query, matches, wdict)
 	return &Results{words}, nil
 }
 
+func absInt(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
 // Combines matches with dictionary defintions to send back to client
-func combineResults(matches []string, wdict map[string]dicttypes.Word) []dicttypes.Word {
+func combineResults(query string,
+		matches []tmResult,
+		wdict map[string]dicttypes.Word) []dicttypes.Word {
+	for i := range matches {
+		matches[i].combinedScore = combineScores(query, matches[i])
+	}
+	sort.Slice(matches, func(i, j int) bool {
+		return matches[i].combinedScore > matches[j].combinedScore
+	})
 	var words []dicttypes.Word
 	for _, match := range matches {
-		if word, ok := wdict[match]; ok {
+		if word, ok := wdict[match.term]; ok {
 			words = append(words, word)
 		}
 	}
 	return words
+}
+
+// Compute combined score for result
+func combineScores(query string, match tmResult) float64 {
+	l := len([]rune(query))
+	if l == 0 {
+		return float64(100)
+	}
+	normalUni := float64(match.unigramCount) / float64(l)
+	normalHamming := float64(match.hamming) / float64(l)
+	return normalUni * UNI_COUNT_WEIGHT + normalHamming * HAMMING_WEIGHT
+}
+
+// Fill in hamming distance for match results
+func fillHamming(query string, matches []tmResult) {
+	for _, match := range matches {
+		match.hamming = hammingDist(query, match.term)
+	}
 }
 
 // Get the characters in the search query, padding to MAX_UNIGRAM with the
@@ -172,4 +215,22 @@ func getChars(query string) []string {
 		chars= append(chars, string(runes[len(runes) - 1]))
 	}
 	return chars
+}
+
+// Compute hamming distance based on similar characters
+func hammingDist(query, term string) int {
+	hamming := 0
+	rQuery := []rune(query)
+	rTerm := []rune(term)
+	for i := 0; i < len(rQuery); i++ {
+		if i < len(rTerm) {
+			if rQuery[i] != rTerm[i] {
+				hamming += 1
+			}
+			continue
+		}
+		break
+	}
+	hamming += absInt(len(rQuery) - len(rTerm))
+	return hamming
 }
