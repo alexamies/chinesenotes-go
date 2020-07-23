@@ -47,7 +47,9 @@ func AvoidSubDomains() map[string]bool {
 			log.Printf("config.AvoidSubDomains: value: %s", value)
 			avoidSub[value] = true
 		}
+		return avoidSub
 	}
+	log.Print("config.AvoidSubDomains: no values")
 	return avoidSub
 }
 

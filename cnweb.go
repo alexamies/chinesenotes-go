@@ -38,20 +38,20 @@ func init() {
 	var err error
 	database, err = dictionary.InitDBCon()
 	if err != nil {
-		applog.Error("main.init() unable to connect to database: ", err)
+		applog.Errorf("main.init() unable to connect to database: %v", err)
 	}
 	dictSearcher, err = dictionary.NewSearcher(ctx, database)
 	if err != nil {
-		applog.Error("main.init() unable to create new dict searcher: ", err)
+		applog.Errorf("main.init() unable to create new dict searcher: %v", err)
 	}
 	wdict, err = dictionary.LoadDict(ctx, database)
 	if err != nil {
-		applog.Error("main.init() unable to load dictionary: ", err)
+		applog.Errorf("main.init() unable to load dictionary: %v", err)
 	}
 	parser = find.MakeQueryParser(wdict)
 	tmSearcher, err = transmemory.NewSearcher(ctx, database)
 	if err != nil {
-		applog.Error("main.init() unable to create new TM searcher: ", err)
+		applog.Errorf("main.init() unable to create new TM searcher: %v", err)
 	}
 }
 
@@ -66,20 +66,20 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 		vars := webconfig.GetAll()
 		tmpl, err := template.New("admin_portal.html").ParseFiles("templates/admin_portal.html")
 		if err != nil {
-			applog.Error("main.adminHandler: error parsing template", err)
+			applog.Errorf("main.adminHandler: error parsing template %v", err)
 		}
 		if tmpl == nil {
 			applog.Error("main.adminHandler: Template is nil")
 		}
 		if err != nil {
-			applog.Error("main.adminHandler: error parsing template", err)
+			applog.Errorf("main.adminHandler: error parsing template %v", err)
 		}
 		err = tmpl.Execute(w, vars)
 		if err != nil {
-			applog.Error("main.adminHandler: error rendering template", err)
+			applog.Errorf("main.adminHandler: error rendering template %v", err)
 		}
 	} else {
-		applog.Info("adminHandler, Not authorized: ", sessionInfo.User)
+		applog.Infof("adminHandler, Not authorized: %v", sessionInfo.User)
 		http.Error(w, "Not authorized", http.StatusForbidden)
 	}
 }
@@ -112,14 +112,14 @@ func changePasswordFormHandler(w http.ResponseWriter, r *http.Request) {
 
 // Custom 404 page handler
 func custom404(w http.ResponseWriter, r *http.Request, url string) {
-	applog.Error("custom404: sending 404 for ", url)
+	applog.Errorf("custom404: sending 404 for %s", url)
 	displayPage(w, "404.html", nil)
 }
 
 func displayPage(w http.ResponseWriter, templateName string, content interface{}) {
 	tmpl, err := template.New(templateName).ParseFiles("templates/" + templateName)
 	if err != nil {
-		applog.Error("displayPage: error parsing template", err)
+		applog.Errorf("displayPage: error parsing template %v", err)
 		http.Error(w, "Server Error", http.StatusInternalServerError)
 		return
 	} else if tmpl == nil {
@@ -129,7 +129,7 @@ func displayPage(w http.ResponseWriter, templateName string, content interface{}
 	}
 	err = tmpl.Execute(w, content)
 	if err != nil {
-		applog.Error("displayPage: error rendering template", err)
+		applog.Errorf("displayPage: error rendering template %f", err)
 		http.Error(w, "Server Error", http.StatusInternalServerError)
 	}	
 }
@@ -168,7 +168,7 @@ func enforceValidSession(w http.ResponseWriter, r *http.Request) identity.Sessio
 			return sessionInfo
 		}
 	} else {
-		applog.Info("enforceValidSession, Invalid session ", sessionInfo.User)
+		applog.Infof("enforceValidSession, Invalid session %v", sessionInfo.User)
 		http.Error(w, "Not authorized", http.StatusForbidden)
 		return identity.InvalidSession()
 	}
@@ -204,13 +204,13 @@ func findDocs(response http.ResponseWriter, request *http.Request, advanced bool
 		applog.Info("cnweb.findDocs Re-initializing cnweb")
 		database, err = dictionary.InitDBCon()
 		if err != nil {
-			applog.Error("main.finddocs unable to connect to database: ", err)
+			applog.Errorf("main.finddocs unable to connect to database: %v", err)
 			http.Error(response, "Internal error", http.StatusInternalServerError)
 			return
 		}
 		dictSearcher, err = dictionary.NewSearcher(ctx, database)
 		if err != nil {
-			applog.Error("main.finddocs unable to create new searcher: ", err)
+			applog.Errorf("main.finddocs unable to create new searcher: %v", err)
 			http.Error(response, "Internal error", http.StatusInternalServerError)
 			return
 		}
@@ -222,18 +222,18 @@ func findDocs(response http.ResponseWriter, request *http.Request, advanced bool
 	}
 
 	if err != nil {
-		applog.Error("main.findDocs Error searching docs, ", err)
+		applog.Errorf("main.findDocs Error searching docs, %v", err)
 		http.Error(response, "Internal error", http.StatusInternalServerError)
 		return
 	}
 	resultsJson, err := json.Marshal(results)
 	if err != nil {
-		applog.Error("main.findDocs error marshalling JSON, ", err)
+		applog.Errorf("main.findDocs error marshalling JSON, %v", err)
 		http.Error(response, "Error marshalling results",
 			http.StatusInternalServerError)
 	} else {
 		if (q != "hello" && q != "Eight" ) { // Health check monitoring probe
-			applog.Info("main.findDocs, results: ", string(resultsJson))
+			applog.Infof("main.findDocs, results: %q", string(resultsJson))
 		}
 		response.Header().Set("Content-Type", "application/json; charset=utf-8")
 		fmt.Fprintf(response, string(resultsJson))
@@ -269,14 +269,14 @@ func findSubstring(response http.ResponseWriter, request *http.Request) {
 	ctx := context.Background()
 	results, err := dictSearcher.LookupSubstr(ctx, q, t, st)
 	if err != nil {
-		applog.Error("main.findSubstring Error looking up term, ", err)
+		applog.Errorf("main.findSubstring Error looking up term, %v", err)
 		http.Error(response, "Error looking up term",
 			http.StatusInternalServerError)
 		return
 	}
 	resultsJson, err := json.Marshal(results)
 	if err != nil {
-		applog.Error("main.findSubstring error marshalling JSON, ", err)
+		applog.Errorf("main.findSubstring error marshalling JSON, %v", err)
 		http.Error(response, "Error marshalling results",
 			http.StatusInternalServerError)
 	} else {
@@ -300,16 +300,16 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	sessionInfo := identity.InvalidSession()
 	err := r.ParseForm()
 	if err != nil {
-		applog.Error("loginHandler: error parsing form", err)
+		applog.Errorf("loginHandler: error parsing form: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	username := r.PostFormValue("UserName")
-	applog.Info("loginHandler: username = ", username)
+	applog.Infof("loginHandler: username = %s", username)
 	password := r.PostFormValue("Password")
 	users, err := identity.CheckLogin(username, password)
 	if err != nil {
-		applog.Error("main.loginHandler checking login, ", err)
+		applog.Errorf("main.loginHandler checking login, %v", err)
 		http.Error(w, "Error checking login", http.StatusInternalServerError)
 		return
 	}
@@ -318,7 +318,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		cookie, err := r.Cookie("session")
 		if err == nil {
-			applog.Info("loginHandler: updating session", cookie.Value)
+			applog.Infof("loginHandler: updating session: %s", cookie.Value)
 			sessionInfo = identity.UpdateSession(cookie.Value, users[0], 1)
 		}
 		if (err != nil) || !sessionInfo.Valid {
@@ -363,7 +363,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 func mediaDetailHandler(response http.ResponseWriter, request *http.Request) {
 	queryString := request.URL.Query()
 	query := queryString["mediumResolution"]
-	applog.Info("mediaDetailHandler: query: ", query)
+	applog.Infof("mediaDetailHandler: query: %s", query)
 	q := "No Query"
 	if len(query) > 0 {
 		q = query[0]
@@ -378,7 +378,7 @@ func mediaDetailHandler(response http.ResponseWriter, request *http.Request) {
 	}
 	resultsJson, err := json.Marshal(results)
 	if err != nil {
-		applog.Error("main.mediaDetailHandler error marshalling JSON, ", err)
+		applog.Errorf("main.mediaDetailHandler error marshalling JSON, %v", err)
 		http.Error(response, "Error marshalling results",
 			http.StatusInternalServerError)
 	} else {
@@ -394,7 +394,7 @@ func portalHandler(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		sessionInfo = identity.CheckSession(cookie.Value)
 	} else {
-		applog.Info("portalHandler error getting cookie: ", err)
+		applog.Info("portalHandler error getting cookie: %v", err)
 		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
 	}
@@ -402,7 +402,7 @@ func portalHandler(w http.ResponseWriter, r *http.Request) {
 	if identity.IsAuthorized(user, "translation_portal") {
 		displayPortalHome(w)
 	} else {
-		applog.Info("portalHandler with role not authorized for portal",
+		applog.Infof("portalHandler %s with role %s not authorized for portal",
 			user.UserName, user.Role)
 		http.Error(w, "Not authorized", http.StatusForbidden)
 	}
@@ -410,13 +410,13 @@ func portalHandler(w http.ResponseWriter, r *http.Request) {
 
 // Static handler for pages in the Translation Portal Library
 func portalLibraryHandler(w http.ResponseWriter, r *http.Request) {
-	applog.Info("portalLibraryHandler: url ", r.URL)
+	applog.Infof("portalLibraryHandler: url %s", r.URL)
 	sessionInfo := identity.InvalidSession()
 	cookie, err := r.Cookie("session")
 	if err == nil {
 		sessionInfo = identity.CheckSession(cookie.Value)
 	} else {
-		applog.Info("portalLibraryHandler error getting cookie: ", err)
+		applog.Infof("portalLibraryHandler error getting cookie: %v", err)
 		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
 	}
@@ -427,14 +427,15 @@ func portalLibraryHandler(w http.ResponseWriter, r *http.Request) {
 		filename := portalLibHome + "/" + filepart
 		_, err := os.Stat(filename)
 		if err != nil {
-			applog.Info("portalLibraryHandler os.Stat error: ", err, filename)
+			applog.Infof("portalLibraryHandler os.Stat error: %v for file %s",
+					err, filename)
 			custom404(w, r, filename)
 			return
 		}
-		applog.Info("portalLibraryHandler: serving file ", filename)
+		applog.Infof("portalLibraryHandler: serving file %s", filename)
 		http.ServeFile(w, r, filename)
 	} else {
-		applog.Info("portalLibraryHandler with role not authorized",
+		applog.Infof("portalLibraryHandler %s with role %s not authorized",
 			user.UserName, user.Role)
 		http.Error(w, "Not authorized", http.StatusForbidden)
 	}
@@ -496,7 +497,7 @@ func sendJSON(w http.ResponseWriter, obj interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	resultsJson, err := json.Marshal(obj)
 	if err != nil {
-		applog.Error("changePasswordHandler: error marshalling json", err)
+		applog.Errorf("changePasswordHandler: error marshalling json: %v", err)
 		http.Error(w, "Error checking login", http.StatusInternalServerError)
 		return
 	}
@@ -561,33 +562,33 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 	if len(domain) > 0 {
 		d = domain[0]
 	}
-	applog.Error("main.translationMemory Query, domain: ", q, d)
+	applog.Info("main.translationMemory Query, domain: ", q, d)
 	ctx := context.Background()
 	if tmSearcher == nil {
 		applog.Info("cnweb.translationMemory, re-initializing tmSearcher")
 		var err error
 		database, err = dictionary.InitDBCon()
 		if err != nil {
-			applog.Error("main.translationMemory unable to connect to database: ", err)
+			applog.Errorf("main.translationMemory unable to connect to database: %v", err)
 			http.Error(w, "Internal Error", http.StatusInternalServerError)
 		return
 		}
 		tmSearcher, err = transmemory.NewSearcher(ctx, database)
 		if err != nil {
-			applog.Error("main.translationMemory unable to create TM searcher: ", err)
+			applog.Errorf("main.translationMemory unable to create TM searcher: %v", err)
 			http.Error(w, "Internal Error", http.StatusInternalServerError)
 			return
 		}
 	}
 	results, err := tmSearcher.Search(ctx, q, d, wdict)
 	if err != nil {
-		applog.Error("main.translationMemory error searching, ", err)
+		applog.Errorf("main.translationMemory error searching, %v", err)
 		http.Error(w, "Internal Error", http.StatusInternalServerError)
 		return
 	}
 	resultsJson, err := json.Marshal(results)
 	if err != nil {
-		applog.Error("main.translationMemory error marshalling JSON, ", err)
+		applog.Errorf("main.translationMemory error marshalling JSON, %v", err)
 		http.Error(w, "Internal Error", http.StatusInternalServerError)
 		return
 	}

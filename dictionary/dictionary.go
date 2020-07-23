@@ -72,15 +72,16 @@ func (searcher *Searcher) FindWordsByEnglish(ctx context.Context,
 	applog.Info("findWordsByEnglish, query = ", query)
 	likeEnglish := "%" + query + "%"
 	if searcher.findEnglishStmt == nil {
-		return nil, fmt.Errorf("FindWordsByEnglish,findEnglishStmt is nil query = ", query)
+		return nil, fmt.Errorf("FindWordsByEnglish,findEnglishStmt is nil query = %s",
+			query)
 	}
 	results, err := searcher.findEnglishStmt.QueryContext(ctx, query, likeEnglish)
 	if err != nil {
-		applog.Error("FindWordsByEnglish, Error for query: ", query, err)
+		applog.Errorf("FindWordsByEnglish, Error for query: %s, error %v", query, err)
 		// Retry
 		results, err = searcher.findEnglishStmt.QueryContext(ctx, query, query)
 		if err != nil {
-			applog.Error("FindWordsByEnglish, Give up after retry: ", query, err)
+			applog.Errorf("FindWordsByEnglish, Give up after retry: %s, error: %v", query, err)
 			return nil, err
 		}
 	}
@@ -90,7 +91,7 @@ func (searcher *Searcher) FindWordsByEnglish(ctx context.Context,
 		var hw sql.NullInt64
 		var trad, pinyin, english, notes sql.NullString
 		results.Scan(&ws.Simplified, &trad, &pinyin, &english, &notes, &hw)
-		applog.Info("FindWordsByEnglish, simplified, headword = ",
+		applog.Infof("FindWordsByEnglish, simplified, headword = %s",
 			ws.Simplified, hw)
 		if trad.Valid {
 			ws.Traditional = trad.String

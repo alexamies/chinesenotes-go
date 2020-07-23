@@ -133,7 +133,7 @@ func (searcher *Searcher) queryUnigram(ctx context.Context, chars []string,
 		}
 		resSlice = append(resSlice, result)
 	}
-	applog.Info("queryUnigram, num results: ", len(resSlice))
+	applog.Infof("queryUnigram, num results: %d", len(resSlice))
 	return resSlice, nil
 }
 

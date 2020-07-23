@@ -16,6 +16,7 @@ package config
 
 import (
 	"log"
+	"reflect"
 	"testing"
 )
 
@@ -24,7 +25,16 @@ func TestCorpusDataDir(t *testing.T) {
 	log.Printf("TestCorpusDataDir: Begin unit tests\n")
 	result := CorpusDataDir()
 	expect := "../data/corpus"
-	if result != expect {
-		t.Error("CorpusDataDir expected, ", expect, ", got ", result)
+	if expect != result {
+		t.Errorf("expected: %s, got: %s", expect, result)
+	}
+}
+
+// Test AvoidSubDomains
+func TestAvoidSubDomains(t *testing.T) {
+	result := AvoidSubDomains()
+	expect := make(map[string]bool)
+	if !reflect.DeepEqual(expect, result) {
+		t.Errorf("expected: %v, got: %v", expect, result)
 	}
 }
