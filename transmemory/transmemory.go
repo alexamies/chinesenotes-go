@@ -24,6 +24,7 @@ import (
 	"github.com/alexamies/chinesenotes-go/applog"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"sort"
+	"strings"
 )
 
 const (
@@ -93,7 +94,7 @@ func initUniDomainStmt(ctx context.Context, database *sql.DB) (*sql.Stmt, error)
 `SELECT
   word,
   count(*) as count
-FROM tmindex_unigram
+FROM tmindex_uni_domain
 WHERE
   (ch = ? OR
   ch = ? OR
@@ -133,7 +134,7 @@ func (searcher *Searcher) queryUnigram(ctx context.Context, chars []string,
 		}
 		resSlice = append(resSlice, result)
 	}
-	applog.Infof("queryUnigram, num results: %d", len(resSlice))
+	applog.Infof("queryUnigram, num results: %d\n", len(resSlice))
 	return resSlice, nil
 }
 
@@ -154,6 +155,7 @@ func (searcher *Searcher) Search(ctx context.Context,
 	if err != nil {
 		return nil, fmt.Errorf("Search query error: %v", err)
 	}
+	printTopResults(query, domain, matches)
 	words := combineResults(query, matches, wdict)
 	return &Results{words}, nil
 }
@@ -233,4 +235,24 @@ func hammingDist(query, term string) int {
 	}
 	hamming += absInt(len(rQuery) - len(rTerm))
 	return hamming
+}
+
+// Prints top search results
+func printTopResults(query, domain string, matches []tmResult) {
+	applog.Infof("transmemory.printTopResults, query: %s, domain: %s" +
+			", top results:\n", query, domain)
+	if len(matches) == 0 {
+		applog.Infof("transmemory.Search no results")
+		return
+	}
+	var sb strings.Builder
+	for i := 0; i < 10; i++ {
+		if i == len(matches) {
+			return
+		}
+		m := fmt.Sprintf("%d: %s, %d, %d, %f\n", i, matches[i].term,
+			matches[i].unigramCount, matches[i].hamming, matches[i].combinedScore)
+		sb.WriteString(m)
+	}
+	applog.Infof("transmemory.printTopResults, matchs:\n%s\n", sb.String())
 }

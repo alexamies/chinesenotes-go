@@ -243,6 +243,7 @@ func TestSearch(t *testing.T) {
 		query string
 		domain string
 		expectNo int
+		expectTop string
   }
   tests := []test{
 		{
@@ -250,23 +251,32 @@ func TestSearch(t *testing.T) {
 			query: "結實", 
 			domain: "",
 			expectNo: 1,
+			expectTop: "結實",
 		},
 		{
 			name: "With domain",
 			query: "結實", 
 			domain: "Buddhism",
 			expectNo: 0,
+			expectTop: "結實",
 		},
   }
   for _, tc := range tests {
 		results, err := searcher.Search(ctx, tc.query, tc.domain, wdict)
 		if err != nil {
-			t.Fatalf("TestSearch %s: error calling search: %v", tc.name, err)
+			t.Fatalf("%s: error calling search: %v", tc.name, err)
 		}
 		numRes := len(results.Words)
 		if tc.expectNo != numRes {
-			t.Errorf("TestSearch %s: expect no results: %d, got: %d",
+			t.Errorf("%s: expect no results: %d, got: %d",
 				tc.name, tc.expectNo, numRes)
+		}
+		if numRes > 0 {
+			top := results.Words[0].Traditional
+			if tc.expectTop != top {
+				t.Errorf("%s: expect top result: %s, got: %s",
+					tc.name, tc.expectTop, top)
+			}
 		}
 	}
 }
