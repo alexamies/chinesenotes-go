@@ -29,6 +29,7 @@ import (
 
 const (
 	MAX_UNIGRAM = 8
+	PINYIN_WEIGHT float64 = 1.0
 	UNI_COUNT_WEIGHT float64 = 1.0
 	HAMMING_WEIGHT float64 = -1.0
 )
@@ -44,30 +45,66 @@ type tmResult struct {
 	unigramCount int
 	hamming int
 	combinedScore float64
+	hasPinyin int
 }
 
 // Encapsulates translation memory searcher
 type Searcher struct {
 	database *sql.DB
+	pinyinStmt *sql.Stmt
+	pinyinDomainStmt *sql.Stmt
 	unigramStmt *sql.Stmt
 	uniDomainStmt *sql.Stmt
 }
 
 // Initialize SQL statement
 func NewSearcher(ctx context.Context, database *sql.DB) (*Searcher, error) {
+	pinyinStmt, err := initPinyinStmt(ctx, database)
+	if err != nil {
+		return nil, fmt.Errorf("NewSearcher: unable to prepare pinyinStmt:\n%v", err)
+	}
+	pinyinDomainStmt, err := initPinyinDomainStmt(ctx, database)
+	if err != nil {
+		return nil, fmt.Errorf("NewSearcher: unable to prepare pinyinDomainStmt:\n%v", err)
+	}
 	unigramStmt, err := initUnigramStmt(ctx, database)
 	if err != nil {
-		return nil, fmt.Errorf("NewSearcher: unable to prepare unigramStmt: %v", err)
+		return nil, fmt.Errorf("NewSearcher: unable to prepare unigramStmt:\n%v", err)
 	}
 	uniDomainStmt, err := initUniDomainStmt(ctx, database)
 	if err != nil {
-		return nil, fmt.Errorf("NewSearcher: unable to prepare uniDomainStmt: %v", err)
+		return nil, fmt.Errorf("NewSearcher: unable to prepare uniDomainStmt:\n%v", err)
 	}
 	return &Searcher{
 		database: database,
+		pinyinStmt: pinyinStmt,
+		pinyinDomainStmt: pinyinDomainStmt,
 		unigramStmt: unigramStmt,
 		uniDomainStmt: uniDomainStmt,
 	}, nil
+}
+
+// Find words with similar pinyin or with notes conaining the query
+func initPinyinStmt(ctx context.Context, database *sql.DB) (*sql.Stmt, error) {
+	return database.PrepareContext(ctx, 
+`SELECT DISTINCT simplified
+FROM words
+WHERE
+  pinyin LIKE ? OR notes LIKE ?
+LIMIT 20`)
+}
+
+// Find words with similar pinyin or with notes conaining the query
+// for a given domain
+func initPinyinDomainStmt(ctx context.Context, database *sql.DB) (*sql.Stmt, error) {
+	return database.PrepareContext(ctx, 
+`SELECT DISTINCT simplified
+FROM words
+WHERE
+  (pinyin LIKE ? OR notes LIKE ?)
+  AND
+  (topic_en = ?)
+LIMIT 20`)
 }
 
 func initUnigramStmt(ctx context.Context, database *sql.DB) (*sql.Stmt, error) {
@@ -105,9 +142,42 @@ WHERE
   ch = ? OR
   ch = ?)
   AND
-  domain LIKE ?
+  domain = ?
 GROUP BY word
 ORDER BY count DESC LIMIT 50`)
+}
+
+// Search the trans memory for words containing the given unigrams
+func (searcher *Searcher) queryPinyin(ctx context.Context, query,
+		domain string, wdict map[string]dicttypes.Word) ([]tmResult, error) {
+	pinyin := findPinyin(query, wdict)
+	if len(pinyin) == 0 {
+		return nil, fmt.Errorf("queryPinyin, No pinyin for query,\n%s", query)
+	}
+	var results *sql.Rows
+	var err error
+	if len(domain) == 0 {
+		results, err = searcher.pinyinStmt.QueryContext(ctx, pinyin, query)
+	} else {
+		results, err = searcher.pinyinDomainStmt.QueryContext(ctx, pinyin, query,
+				domain)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("queryPinyin, Error for query, %s:\n%v", query, err)
+	}
+	var resSlice []tmResult
+	for results.Next() {
+		var result tmResult
+		err = results.Scan(&result.term)
+		if err != nil {
+			return nil, fmt.Errorf("queryPinyin, Error for scanning results, %s:\n%v",
+					query, err)
+		}
+		result.hasPinyin = 1.0
+		resSlice = append(resSlice, result)
+	}
+	applog.Infof("queryPinyin, num results: %d\n", len(resSlice))
+	return resSlice, nil
 }
 
 // Search the trans memory for words containing the given unigrams
@@ -123,14 +193,14 @@ func (searcher *Searcher) queryUnigram(ctx context.Context, chars []string,
 				chars[2], chars[3], chars[4], chars[5], chars[6], chars[7], domain)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("queryUnigram, Error for query: %v", err)
+		return nil, fmt.Errorf("queryUnigram, Error for query:\n%v", err)
 	}
 	var resSlice []tmResult
 	for results.Next() {
 		var result tmResult
 		err = results.Scan(&result.term, &result.unigramCount)
 		if err != nil {
-			return nil, fmt.Errorf("queryUnigram, Error for scanning results: %v", err)
+			return nil, fmt.Errorf("queryUnigram, Error for scanning results:\n%v", err)
 		}
 		resSlice = append(resSlice, result)
 	}
@@ -153,10 +223,11 @@ func (searcher *Searcher) Search(ctx context.Context,
 	chars := getChars(query)
 	matches, err := searcher.queryUnigram(ctx, chars, domain)
 	if err != nil {
-		return nil, fmt.Errorf("Search query error: %v", err)
+		return nil, fmt.Errorf("Search query error:\n%v", err)
 	}
+	pinyinMatches, err := searcher.queryPinyin(ctx, query, domain, wdict)
 	printTopResults(query, domain, matches)
-	words := combineResults(query, matches, wdict)
+	words := combineResults(query, matches, pinyinMatches, wdict)
 	return &Results{words}, nil
 }
 
@@ -167,13 +238,47 @@ func absInt(x int) int {
 	return x
 }
 
+// Adds two sets of matches with no dups, including simplified vs trad dups
+func addMatches(matches1, matches2 []tmResult,
+		wdict map[string]dicttypes.Word) []tmResult {
+	matchMap := make(map[int]tmResult)
+	var mDups []tmResult
+	for _, m := range matches1 {
+		mDups = append(mDups, m)
+	}
+	for _, m := range matches2 {
+		mDups = append(mDups, m)
+	}
+	for _, m := range mDups {
+		if w, ok := wdict[m.term]; ok {
+			hwId := w.HeadwordId
+			if m2, ok := matchMap[hwId]; ok {
+				if m.combinedScore > m2.combinedScore {
+					matchMap[hwId] = m
+				}
+				continue
+			}
+			matchMap[hwId] = m
+		}
+	}
+	var matches []tmResult
+	for _, m := range matchMap {
+		matches = append(matches, m)
+	}
+	return matches
+}
+
 // Combines matches with dictionary defintions to send back to client
 func combineResults(query string,
-		matches []tmResult,
+		matches, pinyinMatches []tmResult,
 		wdict map[string]dicttypes.Word) []dicttypes.Word {
 	for i := range matches {
 		matches[i].combinedScore = combineScores(query, matches[i])
 	}
+	for i := range pinyinMatches {
+		pinyinMatches[i].combinedScore = combineScores(query, pinyinMatches[i])
+	}
+	matches = addMatches(matches, pinyinMatches, wdict)
 	sort.Slice(matches, func(i, j int) bool {
 		return matches[i].combinedScore > matches[j].combinedScore
 	})
@@ -194,7 +299,8 @@ func combineScores(query string, match tmResult) float64 {
 	}
 	normalUni := float64(match.unigramCount) / float64(l)
 	normalHamming := float64(match.hamming) / float64(l)
-	return normalUni * UNI_COUNT_WEIGHT + normalHamming * HAMMING_WEIGHT
+	return normalUni * UNI_COUNT_WEIGHT + normalHamming * HAMMING_WEIGHT +
+			float64(match.hasPinyin) * PINYIN_WEIGHT
 }
 
 // Fill in hamming distance for match results
@@ -202,6 +308,17 @@ func fillHamming(query string, matches []tmResult) {
 	for _, match := range matches {
 		match.hamming = hammingDist(query, match.term)
 	}
+}
+
+// Finds the pinyin for a given Chinese string
+func findPinyin(query string, wdict map[string]dicttypes.Word) string {
+	pinyin := ""
+	for _, ch := range query {
+		if word, ok := wdict[string(ch)]; ok {
+			pinyin += word.Pinyin
+		}
+	}
+	return pinyin
 }
 
 // Get the characters in the search query, padding to MAX_UNIGRAM with the

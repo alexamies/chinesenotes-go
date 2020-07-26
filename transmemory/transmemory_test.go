@@ -22,6 +22,69 @@ import (
 	"testing"
 )
 
+func mockDict() map[string]dicttypes.Word {
+	w1 := dicttypes.Word{
+		Simplified: "结实",
+		Traditional: "結實",
+		Pinyin: "jiēshi",
+		HeadwordId: 10778,
+		Senses: []dicttypes.WordSense{},
+	}
+	w2 := dicttypes.Word{
+		Simplified: "结",
+		Traditional: "結",
+		Pinyin: "jiē",
+		HeadwordId: 42,
+		Senses: []dicttypes.WordSense{},
+	}
+	w3 := dicttypes.Word{
+		Simplified: "实",
+		Traditional: "實",
+		Pinyin: "shí",
+		HeadwordId: 43,
+		Senses: []dicttypes.WordSense{},
+	}
+	w4 := dicttypes.Word{
+		Simplified: "开花结实",
+		Traditional: "開花結實",
+		Pinyin: "kāi huā jiē shi",
+		HeadwordId: 100973,
+		Senses: []dicttypes.WordSense{},
+	}
+	wdict := make(map[string]dicttypes.Word)
+	wdict[w1.Traditional] = w1
+	wdict[w2.Traditional] = w2
+	wdict[w3.Traditional] = w3
+	wdict[w4.Traditional] = w4
+	return wdict
+}
+
+func TestAddMatches(t *testing.T) {
+	wdict := mockDict()
+	type test struct {
+		name string
+		matches1 []tmResult
+		matches2 []tmResult
+		expect []tmResult
+  }
+	var matches1, matches2, expect []tmResult
+  tests := []test{
+		{
+			name: "Empty set",
+			matches1: matches1,
+			matches2: matches2,
+			expect: expect,
+		},
+  }
+  for _, tc := range tests {
+		result := addMatches(tc.matches1, tc.matches2, wdict)
+		if len(tc.expect) != len(result) {
+			t.Fatalf("%s: expected len %d, got %d", tc.name, len(tc.expect),
+				len(result))
+		}
+	}
+}
+
 // Test getChars function
 func TestCombineResults(t *testing.T) {
 	type test struct {
@@ -45,33 +108,13 @@ func TestCombineResults(t *testing.T) {
 		unigramCount: 1,
 		hamming: 2,
   }
-  matches := []tmResult{mPartial, mExact, mPoor}
-  expect := []string{"結實", "結", "實"}
-	w1 := dicttypes.Word{
-		Simplified: "结实",
-		Traditional: "結實",
-		Pinyin: "jiēshi",
-		HeadwordId: 10778,
-		Senses: []dicttypes.WordSense{},
-	}
-	w2 := dicttypes.Word{
-		Simplified: "结",
-		Traditional: "結",
-		Pinyin: "jiē",
-		HeadwordId: 42,
-		Senses: []dicttypes.WordSense{},
-	}
-	w3 := dicttypes.Word{
-		Simplified: "实",
-		Traditional: "實",
-		Pinyin: "shí",
-		HeadwordId: 43,
-		Senses: []dicttypes.WordSense{},
-	}
-	wdict := make(map[string]dicttypes.Word)
-	wdict[w1.Traditional] = w1
-	wdict[w2.Traditional] = w2
-	wdict[w3.Traditional] = w3
+  mLong := tmResult{
+		term: "開花結實",
+		unigramCount: 2,
+		hamming: 2,
+  }
+  matches := []tmResult{mPartial, mExact, mPoor, mLong}
+  expect := []string{"結實", "開花結實", "結",  "實"}
   tests := []test{
 		{
 			name: "Happy path",
@@ -79,9 +122,11 @@ func TestCombineResults(t *testing.T) {
 			matches: matches,
 			expect: expect,
 		},
-   }
+  }
+  var pinyinMatches []tmResult
+  wdict := mockDict()
   for _, tc := range tests {
-		result := combineResults(tc.query, tc.matches, wdict)
+		result := combineResults(tc.query, tc.matches, pinyinMatches, wdict)
 		if len(tc.expect) != len(result) {
 			t.Errorf("%s: expected len %d, got %d", tc.name, len(tc.expect),
 				len(result))
@@ -89,7 +134,7 @@ func TestCombineResults(t *testing.T) {
 		}
 		for i, term := range tc.expect {
 			if term != result[i].Traditional {
-				t.Errorf("%s: expected %s, got %s", tc.name, term, result[i].Traditional)
+				t.Errorf("%s, %d: expected %s, got %s", tc.name, i, term, result[i].Traditional)
 			}
 		}
 	}
@@ -219,15 +264,36 @@ func TestHamming(t *testing.T) {
 }
 
 // Test getChars function
+func TestQueryPinyin(t *testing.T) {
+	ctx := context.Background()
+	database, err := dictionary.InitDBCon()
+	if err != nil {
+		t.Fatalf("cannot connect to database: %v", err)
+	}
+	searcher, err := NewSearcher(ctx, database)
+	if err != nil {
+		t.Fatalf("cannot create a searcher: %v", err)
+	}
+	wdict := mockDict()
+	matches, err := searcher.queryPinyin(ctx, "結實", "", wdict)
+	if err != nil {
+		t.Fatalf("error calling queryPinyin: %v", err)
+	}
+	if len(matches) == 0 {
+		t.Errorf("no results")
+	}
+}
+
+// Test getChars function
 func TestSearch(t *testing.T) {
 	ctx := context.Background()
 	database, err := dictionary.InitDBCon()
 	if err != nil {
-		t.Fatalf("TestSearch: cannot connect to database: %v", err)
+		t.Fatalf("cannot connect to database: %v", err)
 	}
 	searcher, err := NewSearcher(ctx, database)
 	if err != nil {
-		t.Fatalf("TestSearch: cannot create a searcher: %v", err)
+		t.Fatalf("cannot create a searcher: %v", err)
 	}
 	w1 := dicttypes.Word{
 		Simplified: "结实",
