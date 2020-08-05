@@ -28,10 +28,11 @@ import (
 )
 
 const (
-	MAX_UNIGRAM = 8
-	PINYIN_WEIGHT float64 = 1.0
-	UNI_COUNT_WEIGHT float64 = 1.0
-	HAMMING_WEIGHT float64 = -1.0
+	maxUnigram = 8
+	pinyinWeight float64 = 0.5
+	uniCountWeight float64 = 1.0
+	hammingWeight float64 = -1.0
+	substringWeight float64 = 5.0
 )
 
 // Encapsulates search recults
@@ -46,6 +47,7 @@ type tmResult struct {
 	hamming int
 	combinedScore float64
 	hasPinyin int
+	isSubstring int
 }
 
 // Encapsulates translation memory searcher
@@ -149,7 +151,7 @@ ORDER BY count DESC LIMIT 50`)
 
 // Search the trans memory for words containing the given unigrams
 func (searcher *Searcher) queryPinyin(ctx context.Context, query,
-		domain string, wdict map[string]dicttypes.Word) ([]tmResult, error) {
+		domain string, wdict map[string]dicttypes.Word) ([]*tmResult, error) {
 	pinyin := findPinyin(query, wdict)
 	if len(pinyin) == 0 {
 		return nil, fmt.Errorf("queryPinyin, No pinyin for query,\n%s", query)
@@ -165,7 +167,7 @@ func (searcher *Searcher) queryPinyin(ctx context.Context, query,
 	if err != nil {
 		return nil, fmt.Errorf("queryPinyin, Error for query, %s:\n%v", query, err)
 	}
-	var resSlice []tmResult
+	var resSlice []*tmResult
 	for results.Next() {
 		var result tmResult
 		err = results.Scan(&result.term)
@@ -174,7 +176,7 @@ func (searcher *Searcher) queryPinyin(ctx context.Context, query,
 					query, err)
 		}
 		result.hasPinyin = 1.0
-		resSlice = append(resSlice, result)
+		resSlice = append(resSlice, &result)
 	}
 	applog.Infof("queryPinyin, num results: %d\n", len(resSlice))
 	return resSlice, nil
@@ -182,7 +184,7 @@ func (searcher *Searcher) queryPinyin(ctx context.Context, query,
 
 // Search the trans memory for words containing the given unigrams
 func (searcher *Searcher) queryUnigram(ctx context.Context, chars []string,
-		domain string) ([]tmResult, error) {
+		domain string) ([]*tmResult, error) {
 	var results *sql.Rows
 	var err error
 	if len(domain) == 0 {
@@ -195,14 +197,14 @@ func (searcher *Searcher) queryUnigram(ctx context.Context, chars []string,
 	if err != nil {
 		return nil, fmt.Errorf("queryUnigram, Error for query:\n%v", err)
 	}
-	var resSlice []tmResult
+	var resSlice []*tmResult
 	for results.Next() {
 		var result tmResult
 		err = results.Scan(&result.term, &result.unigramCount)
 		if err != nil {
 			return nil, fmt.Errorf("queryUnigram, Error for scanning results:\n%v", err)
 		}
-		resSlice = append(resSlice, result)
+		resSlice = append(resSlice, &result)
 	}
 	applog.Infof("queryUnigram, num results: %d\n", len(resSlice))
 	return resSlice, nil
@@ -226,7 +228,6 @@ func (searcher *Searcher) Search(ctx context.Context,
 		return nil, fmt.Errorf("Search query error:\n%v", err)
 	}
 	pinyinMatches, err := searcher.queryPinyin(ctx, query, domain, wdict)
-	printTopResults(query, domain, matches)
 	words := combineResults(query, matches, pinyinMatches, wdict)
 	return &Results{words}, nil
 }
@@ -239,10 +240,10 @@ func absInt(x int) int {
 }
 
 // Adds two sets of matches with no dups, including simplified vs trad dups
-func addMatches(matches1, matches2 []tmResult,
-		wdict map[string]dicttypes.Word) []tmResult {
-	matchMap := make(map[int]tmResult)
-	var mDups []tmResult
+func addMatches(matches1, matches2 []*tmResult,
+		wdict map[string]dicttypes.Word) []*tmResult {
+	matchMap := make(map[int]*tmResult)
+	var mDups []*tmResult
 	for _, m := range matches1 {
 		mDups = append(mDups, m)
 	}
@@ -261,7 +262,7 @@ func addMatches(matches1, matches2 []tmResult,
 			matchMap[hwId] = m
 		}
 	}
-	var matches []tmResult
+	var matches []*tmResult
 	for _, m := range matchMap {
 		matches = append(matches, m)
 	}
@@ -270,8 +271,12 @@ func addMatches(matches1, matches2 []tmResult,
 
 // Combines matches with dictionary defintions to send back to client
 func combineResults(query string,
-		matches, pinyinMatches []tmResult,
+		matches, pinyinMatches []*tmResult,
 		wdict map[string]dicttypes.Word) []dicttypes.Word {
+	fillHamming(query, matches)
+	fillHamming(query, pinyinMatches)
+	fillSubstring(query, matches)
+	fillSubstring(query, pinyinMatches)
 	for i := range matches {
 		matches[i].combinedScore = combineScores(query, matches[i])
 	}
@@ -288,25 +293,35 @@ func combineResults(query string,
 			words = append(words, word)
 		}
 	}
+	printTopResults(query, matches)
 	return words
 }
 
 // Compute combined score for result
-func combineScores(query string, match tmResult) float64 {
+func combineScores(query string, match *tmResult) float64 {
 	l := len([]rune(query))
 	if l == 0 {
 		return float64(100)
 	}
 	normalUni := float64(match.unigramCount) / float64(l)
 	normalHamming := float64(match.hamming) / float64(l)
-	return normalUni * UNI_COUNT_WEIGHT + normalHamming * HAMMING_WEIGHT +
-			float64(match.hasPinyin) * PINYIN_WEIGHT
+	return normalUni * uniCountWeight +
+			normalHamming * hammingWeight +
+			float64(match.hasPinyin) * pinyinWeight +
+			float64(match.isSubstring) * substringWeight
 }
 
 // Fill in hamming distance for match results
-func fillHamming(query string, matches []tmResult) {
+func fillHamming(query string, matches []*tmResult) {
 	for _, match := range matches {
 		match.hamming = hammingDist(query, match.term)
+	}
+}
+
+// Fill in hamming distance for match results
+func fillSubstring(query string, matches []*tmResult) {
+	for _, match := range matches {
+		match.isSubstring = eitherSubstring(query, match.term)
 	}
 }
 
@@ -321,12 +336,12 @@ func findPinyin(query string, wdict map[string]dicttypes.Word) string {
 	return pinyin
 }
 
-// Get the characters in the search query, padding to MAX_UNIGRAM with the
+// Get the characters in the search query, padding to maxUnigram with the
 // last character
 func getChars(query string) []string {
 	runes := []rune(query)
 	var chars []string
-	for i := 0; i < MAX_UNIGRAM; i++ {
+	for i := 0; i < maxUnigram; i++ {
 		if i < len(runes) {
 			chars= append(chars, string(runes[i]))
 			continue
@@ -354,21 +369,38 @@ func hammingDist(query, term string) int {
 	return hamming
 }
 
+// Find whether eight string is a substring of the other, unless only a single
+// character
+// Return
+//   1 if either is a substring
+//   0 otherwise
+func eitherSubstring(s1, s2 string) int {
+	if len(s1) == 1 || len(s1) == 1 {
+		return 0
+	}
+	if strings.Contains(s1, s2) || strings.Contains(s2, s1) {
+		return 1
+	}
+	return 0
+}
+
 // Prints top search results
-func printTopResults(query, domain string, matches []tmResult) {
-	applog.Infof("transmemory.printTopResults, query: %s, domain: %s" +
-			", top results:\n", query, domain)
+func printTopResults(query string, matches []*tmResult) {
+	applog.Infof("transmemory.printTopResults, query: %s" +
+			", top results:\n", query)
 	if len(matches) == 0 {
 		applog.Infof("transmemory.Search no results")
 		return
 	}
 	var sb strings.Builder
+	sb.WriteString("\nTerm, Unigram count, Hamming, Substring, Combined\n")
 	for i := 0; i < 10; i++ {
 		if i == len(matches) {
-			return
+			break
 		}
-		m := fmt.Sprintf("%d: %s, %d, %d, %f\n", i, matches[i].term,
-			matches[i].unigramCount, matches[i].hamming, matches[i].combinedScore)
+		m := fmt.Sprintf("%d: %s, %d, %d, %d, %f\n", i, matches[i].term,
+			matches[i].unigramCount, matches[i].hamming, matches[i].isSubstring,
+			matches[i].combinedScore)
 		sb.WriteString(m)
 	}
 	applog.Infof("transmemory.printTopResults, matchs:\n%s\n", sb.String())

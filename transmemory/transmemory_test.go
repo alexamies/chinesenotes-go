@@ -51,11 +51,27 @@ func mockDict() map[string]dicttypes.Word {
 		HeadwordId: 100973,
 		Senses: []dicttypes.WordSense{},
 	}
+	w5 := dicttypes.Word{
+		Simplified: "大方广入如来智德不思议经",
+		Traditional: "大方廣入如來智德不思議經",
+		Pinyin: "Dàfāngguǎng Rù Rúlái Zhì Dé Bù Sīyì Jīng",
+		HeadwordId: 1234,
+		Senses: []dicttypes.WordSense{},
+	}
+	w6 := dicttypes.Word{
+		Simplified: "从门入者不是家珍",
+		Traditional: "從門入者不是家珍",
+		Pinyin: "cóng mén rù zhě bùshì jiāzhēn",
+		HeadwordId: 1235,
+		Senses: []dicttypes.WordSense{},
+	}
 	wdict := make(map[string]dicttypes.Word)
 	wdict[w1.Traditional] = w1
 	wdict[w2.Traditional] = w2
 	wdict[w3.Traditional] = w3
 	wdict[w4.Traditional] = w4
+	wdict[w5.Traditional] = w5
+	wdict[w6.Traditional] = w6
 	return wdict
 }
 
@@ -63,11 +79,11 @@ func TestAddMatches(t *testing.T) {
 	wdict := mockDict()
 	type test struct {
 		name string
-		matches1 []tmResult
-		matches2 []tmResult
-		expect []tmResult
+		matches1 []*tmResult
+		matches2 []*tmResult
+		expect []*tmResult
   }
-	var matches1, matches2, expect []tmResult
+	var matches1, matches2, expect []*tmResult
   tests := []test{
 		{
 			name: "Empty set",
@@ -90,40 +106,54 @@ func TestCombineResults(t *testing.T) {
 	type test struct {
 		name string
 		query string
-		matches []tmResult
+		matches []*tmResult
 		expect []string
   }
+  // for query 結實
   mPartial := tmResult{
 		term: "結",
 		unigramCount: 1,
-		hamming: 1,
   }
   mExact := tmResult{
 		term: "結實",
 		unigramCount: 2,
-		hamming: 0,
   }
   mPoor := tmResult{
 		term: "實",
 		unigramCount: 1,
-		hamming: 2,
   }
   mLong := tmResult{
 		term: "開花結實",
 		unigramCount: 2,
-		hamming: 2,
   }
-  matches := []tmResult{mPartial, mExact, mPoor, mLong}
-  expect := []string{"結實", "開花結實", "結",  "實"}
+  matches := []*tmResult{&mPartial, &mExact, &mPoor, &mLong}
+  expect := []string{"結實", "結",  "實", "開花結實"}
+  // For query 把手拽不入
+  mLong1 := tmResult{
+		term: "大方廣入如來智德不思議經",
+		unigramCount: 2,
+  }
+  mLong2 := tmResult{
+		term: "從門入者不是家珍",
+		unigramCount: 2,
+  }
+  lMatches := []*tmResult{&mLong1, &mLong2}
+  lExpect := []string{"從門入者不是家珍", "大方廣入如來智德不思議經"}
   tests := []test{
 		{
-			name: "Happy path",
+			name: "happy path",
 			query: "結實",
 			matches: matches,
 			expect: expect,
 		},
+		{
+			name: "long strings",
+			query: "把手拽不入",
+			matches: lMatches,
+			expect: lExpect,
+		},
   }
-  var pinyinMatches []tmResult
+  var pinyinMatches []*tmResult
   wdict := mockDict()
   for _, tc := range tests {
 		result := combineResults(tc.query, tc.matches, pinyinMatches, wdict)
@@ -134,7 +164,8 @@ func TestCombineResults(t *testing.T) {
 		}
 		for i, term := range tc.expect {
 			if term != result[i].Traditional {
-				t.Errorf("%s, %d: expected %s, got %s", tc.name, i, term, result[i].Traditional)
+				t.Errorf("%s, query: %s, %d: expected %s, got %s",
+						tc.name, tc.query, i, term, result[i].Traditional)
 			}
 		}
 	}
@@ -145,7 +176,7 @@ func TestCombineScores(t *testing.T) {
 	type test struct {
 		name string
 		query string
-		match tmResult
+		match *tmResult
 		expect float64
   }
   mPartial := tmResult{
@@ -163,24 +194,39 @@ func TestCombineScores(t *testing.T) {
 		unigramCount: 0,
 		hamming: 2,
   }
+  const normalUni = 2.0 / 5.0
+  const normalHamming = 12 / 5.0
+  const expectLong = normalUni * uniCountWeight +
+  		normalHamming * hammingWeight
+  mLong := tmResult{
+		term: "大方廣入如來智德不思議經)",
+		unigramCount: 2,
+		hamming: 12,
+  }
   tests := []test{
 		{
 			name: "Happy path",
 			query: "結實",
-			match: mPartial,
+			match: &mPartial,
 			expect: 0.0,
 		},
 		{
 			name: "Same",
 			query: "結實",
-			match: mExact,
+			match: &mExact,
 			expect: 1.0,
 		},
 		{
 			name: "differenter and differenter",
 			query: "結實",
-			match: mNoOverlap,
+			match: &mNoOverlap,
 			expect: -1.0,
+		},
+		{
+			name: "long example",
+			query: "把手拽不入",
+			match: &mLong,
+			expect: expectLong,
 		},
    }
   for _, tc := range tests {
@@ -252,6 +298,12 @@ func TestHamming(t *testing.T) {
 			query: "一玉",
 			term: "一玉一",
 			expect: 1,
+		},
+		{
+			name: "Long example with no overlap",
+			query: "把手拽不入",
+			term: "大方廣入如來智德不思議經",
+			expect: 12,
 		},
   }
   for _, tc := range tests {
