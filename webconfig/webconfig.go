@@ -42,7 +42,30 @@ func init() {
 	configVars = readConfig()
 }
 
+// Get the configuration string to connect to the database
 func DBConfig() string {
+	instanceConnectionName := os.Getenv("INSTANCE_CONNECTION_NAME")
+	dbUser := "app_user"
+	user := os.Getenv("DBUSER")
+	if user != "" {
+		dbUser = user
+	}
+	dbpass := os.Getenv("DBPASSWORD")
+	dbname := "corpus_index"
+	d := os.Getenv("DATABASE")
+	if d != "" {
+		dbname = d
+	}
+	// Connection via Unix socket
+	if len(instanceConnectionName) > 0 {
+		socketDir, isSet := os.LookupEnv("DB_SOCKET_DIR")
+		if !isSet {
+			socketDir = "/cloudsql"
+		}
+		return fmt.Sprintf("%s:%s@unix(/%s/%s)/%s?parseTime=true", dbUser, dbpass,
+			socketDir, instanceConnectionName, dbname)
+	}
+	// Connection via TCP
 	dbhost := "mariadb"
 	host := os.Getenv("DBHOST")
 	if host != "" {
@@ -53,18 +76,7 @@ func DBConfig() string {
 	if port != "" {
 		dbport = port
 	}
-	dbuser := "app_user"
-	user := os.Getenv("DBUSER")
-	if user != "" {
-		dbuser = user
-	}
-	dbpass := os.Getenv("DBPASSWORD")
-	dbname := "corpus_index"
-	d := os.Getenv("DATABASE")
-	if d != "" {
-		dbname = d
-	}
-	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbuser, dbpass, dbhost,
+	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbpass, dbhost,
 		dbport, dbname)
 }
 
@@ -76,17 +88,17 @@ func GetAll() map[string]string {
 // The home directory of the Chinese Notes project
 func GetCnReaderHome() string {
 	cnReaderHome := os.Getenv("CNREADER_HOME")
-	if cnReaderHome == "" {
-		applog.Info("config.readConfig: CNREADER_HOME is not defined")
+	if len(cnReaderHome) == 0 {
 		cnReaderHome = "."
 	}
+	applog.Infof("config.readConfig: CNREADER_HOME set to %s", cnReaderHome)
 	return cnReaderHome
 }
 
 // The home directory of the web application
 func GetCnWebHome() string {
 	cnWebHome := os.Getenv("CNWEB_HOME")
-	if cnWebHome == "" {
+	if len(cnWebHome) == 0 {
 		applog.Info("config.readConfig: CNWEB_HOME is not defined")
 		cnWebHome = ".."
 	}

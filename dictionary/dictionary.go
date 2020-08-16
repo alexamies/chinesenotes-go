@@ -29,28 +29,40 @@ import (
 	"time"
 )
 
-// Encapsulates dictionary searcher
+// Searcher looks up Chinese words by either Chinese or English.
+// 
+// If the dictionary searcher cannot connect to the database then
+// it will run in degraded mode by looking up Chinese words form dictionary
+// file.
 type Searcher struct {
 	database *sql.DB
 	findEnglishStmt *sql.Stmt
 	findSubstrStmt *sql.Stmt
+	databaseInitialized bool
 }
 
 // Initialize SQL statements
-func NewSearcher(ctx context.Context, database *sql.DB) (*Searcher, error) {
+func NewSearcher(ctx context.Context, database *sql.DB) *Searcher {
 	stmt, err := initEnglishQuery(ctx, database)
 	if err != nil {
-		return nil, err
+		applog.Infof("NewSearcher, database initializaton error %v", err)
+		return &Searcher{
+			databaseInitialized: false,
+		}
 	}
 	substStmt, err := initSubtrQuery(ctx, database)
 	if err != nil {
-		return nil, err
+		applog.Infof("NewSearcher, query initializaton error %v", err)
+		return &Searcher{
+			databaseInitialized: false,
+		}
 	}
 	return &Searcher{
 		database: database,
 		findEnglishStmt: stmt,
 		findSubstrStmt: substStmt,
-	}, nil
+		databaseInitialized: true,
+	}
 }
 
 func InitDBCon() (*sql.DB, error) {
@@ -67,9 +79,14 @@ LIMIT 20`)
 }
 
 // Returns the word senses with English approximate or Pinyin exact match
+func (searcher *Searcher) DatabaseInitialized() bool {
+	return searcher.databaseInitialized
+}
+
+// Returns the word senses with English approximate or Pinyin exact match
 func (searcher *Searcher) FindWordsByEnglish(ctx context.Context,
 		query string) ([]dicttypes.WordSense, error) {
-	applog.Info("findWordsByEnglish, query = ", query)
+	applog.Infof("findWordsByEnglish, query = %s", query)
 	likeEnglish := "%" + query + "%"
 	if searcher.findEnglishStmt == nil {
 		return nil, fmt.Errorf("FindWordsByEnglish,findEnglishStmt is nil query = %s",
@@ -195,13 +212,5 @@ func LoadDict(ctx context.Context, database *sql.DB) (map[string]dicttypes.Word,
 
 // Loads all words from a static file included in the Docker image
 func loadDictFile() (map[string]dicttypes.Word, error) {
-	applog.Info("loadDictFile, enter")
-	wsFilenames := config.LUFileNames()
-	cnReaderHome := webconfig.GetCnReaderHome()
-	fnames := []string{}
-	for _, wsfilename := range wsFilenames {
-		fName := cnReaderHome + "/" + wsfilename
-		fnames = append(fnames, fName)
-	}
-	return fileloader.LoadDictFile(fnames)
+	return fileloader.LoadDictFile(config.LUFileNames())
 }

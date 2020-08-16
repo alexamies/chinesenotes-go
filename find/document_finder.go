@@ -84,7 +84,10 @@ type QueryResults struct {
 
 // Initialize the package
 func init() {
-	initFind()
+	err := initFind()
+	if err != nil {
+		applog.Errorf("find.init, Error: %v", err)
+	}
 }
 
 // For printing out retrieved document metadata
@@ -106,7 +109,7 @@ func cacheColDetails() map[string]string {
 	ctx := context.Background()
 	results, err := findAllColTitlesStmt.QueryContext(ctx)
 	if err != nil {
-		applog.Error("cacheColDetails, Error for query: ", err)
+		applog.Errorf("cacheColDetails, Error for query: %v", err)
 		return colMap
 	}
 	defer results.Close()
@@ -116,18 +119,17 @@ func cacheColDetails() map[string]string {
 		results.Scan(&gloss_file, &title)
 		colMap[gloss_file] = title
 	}
-	applog.Info("cacheColDetails, len(colMap) = ", len(colMap))
+	applog.Infof("cacheColDetails, len(colMap) = %d", len(colMap))
 	return colMap
 }
 
 // Cache the details of all documents by target file name
-func cacheDocDetails() map[string]Document {
+func cacheDocDetails() (map[string]Document, error) {
 	docMap = map[string]Document{}
 	ctx := context.Background()
 	results, err := findAllTitlesStmt.QueryContext(ctx)
 	if err != nil {
-		applog.Error("cacheDocDetails, Error for query: ", err)
-		return docMap
+		return nil, fmt.Errorf("cacheDocDetails, Error for query: %v", err)
 	}
 	defer results.Close()
 
@@ -137,8 +139,8 @@ func cacheDocDetails() map[string]Document {
 			&doc.CollectionTitle)
 		docMap[doc.GlossFile] = doc
 	}
-	applog.Info("cacheDocDetails, len(docMap) = ", len(docMap))
-	return docMap
+	applog.Infof("cacheDocDetails, len(docMap) = %d", len(docMap))
+	return docMap, nil
 }
 
 // Cache the plain text file names
@@ -212,11 +214,10 @@ func findBodyBM25(terms []string) ([]Document, error) {
 	applog.Info("findBodyBM25, terms = ", terms)
 	if simBM251Stmt == nil {
 		applog.Error("findBodyBM25, simBM251Stmt == nil")
-		// Re-initialize
-		initFind()
-		if simBM251Stmt == nil {
-			applog.Error("findBodyBM25, still simBM251Stmt == nil")
-		  return []Document{}, nil
+		// Try to re-initialize
+		err := initFind()
+		if err != nil {
+			return nil, fmt.Errorf("find.findBodyBM25, Error: %v", err)
 		}
 	}
 	ctx := context.Background()
@@ -511,12 +512,12 @@ func findDocsByTitleInCol(query, col_gloss_file string) ([]Document, error) {
 // Find documents by both title and contents, and merge the lists
 func findDocuments(query string, terms []TextSegment,
 		advanced bool) ([]Document, error) {
-	applog.Info("findDocuments, enter: ", query)
+	applog.Infof("findDocuments, enter: %s", query)
 	docs, err := findDocsByTitle(query)
 	if err != nil {
 		return nil, err
 	}
-	applog.Info("findDocuments, by title len(docs): ", query, len(docs))
+	applog.Infof("findDocuments, by title len(docs): %s, %d", query, len(docs))
 	queryTerms := toQueryTerms(terms)
 	if (!advanced) {
 		return docs, nil
@@ -524,7 +525,7 @@ func findDocuments(query string, terms []TextSegment,
 
 	// For more than one term find docs that are similar body and merge
 	docMap := toSimilarDocMap(docs) // similarity = 1.0
-	applog.Info("findDocuments, len(docMap): ", query, len(docMap))
+	applog.Infof("findDocuments, len(docMap): %s, %d", query, len(docMap))
 	simDocs, err := findBodyBM25(queryTerms)
 	if err != nil {
 		return nil, err
@@ -534,7 +535,7 @@ func findDocuments(query string, terms []TextSegment,
 	// If less than 2 terms then do not need to check bigrams
 	if len(terms) < 2 {
 		sortedDocs := toSortedDocList(docMap)
-		applog.Info("findDocuments, < 2 len(sortedDocs): ", query, 
+		applog.Infof("findDocuments, < 2 len(sortedDocs): %s, %d", query, 
 			len(sortedDocs))
 		relevantDocs := toRelevantDocList(sortedDocs, queryTerms)
 		return relevantDocs, nil
@@ -545,9 +546,9 @@ func findDocuments(query string, terms []TextSegment,
 	}
 	mergeDocList(docMap, moreDocs)
 	sortedDocs := toSortedDocList(docMap)
-	applog.Info("findDocuments, len(sortedDocs): ", query, len(sortedDocs))
+	applog.Infof("findDocuments, len(sortedDocs): %s, %d", query, len(sortedDocs))
 	relevantDocs := toRelevantDocList(sortedDocs, queryTerms)
-	applog.Info("findDocuments, len(relevantDocs): ", query, len(relevantDocs))
+	applog.Infof("findDocuments, len(relevantDocs): %s, %d", query, len(relevantDocs))
 	return relevantDocs, nil
 }
 
@@ -555,13 +556,13 @@ func findDocuments(query string, terms []TextSegment,
 // merge the lists
 func findDocumentsInCol(query string, terms []TextSegment,
 		col_gloss_file string) ([]Document, error) {
-	applog.Info("findDocumentsInCol, col_gloss_file, terms: ", col_gloss_file,
-		terms)
+	applog.Infof("findDocumentsInCol, col_gloss_file, terms: %s, %v",
+		col_gloss_file, terms)
 	docs, err := findDocsByTitleInCol(query, col_gloss_file)
 	if err != nil {
 		return nil, err
 	}
-	applog.Info("findDocumentsInCol, len(docs) by title: ", len(docs))
+	applog.Infof("findDocumentsInCol, len(docs) by title: %d", len(docs))
 	//applog.Info("findDocumentsInCol, docs array by title: ", docs)
 	queryTerms := toQueryTerms(terms)
 
@@ -580,15 +581,16 @@ func findDocumentsInCol(query string, terms []TextSegment,
 		simBGDocs, err := findBodyBgInCol(queryTerms, col_gloss_file)
 		//applog.Info("findDocumentsInCol, len(simBGDocs) ", len(simBGDocs))
 		if err != nil {
-			applog.Info("findDocumentsInCol, findBodyBgInCol error: ", err)
-			return nil, err
+			return nil, fmt.Errorf("findDocumentsInCol, findBodyBgInCol error: %v",
+					err)
 		}
 		mergeDocList(docMap, simBGDocs)
 	}
 	sortedDocs := toSortedDocList(docMap)
-	applog.Info("findDocumentsInCol, len(sortedDocs): ", len(sortedDocs))
+	applog.Infof("findDocumentsInCol, len(sortedDocs): %d", len(sortedDocs))
 	relevantDocs := toRelevantDocList(sortedDocs, queryTerms)
-	applog.Info("findDocumentsInCol, len(relevantDocs): ", query, len(relevantDocs))
+	applog.Infof("findDocumentsInCol, len(relevantDocs): %s, %d", query,
+			len(relevantDocs))
 	return relevantDocs, nil
 }
 
@@ -602,10 +604,10 @@ func findDocumentsInCol(query string, terms []TextSegment,
 func FindDocuments(ctx context.Context,
 		dictSearcher *dictionary.Searcher,
 		parser QueryParser, query string,
-		advanced bool) (QueryResults, error) {
+		advanced bool) (*QueryResults, error) {
 	if query == "" {
 		applog.Error("FindDocuments, Empty query string")
-		return QueryResults{}, errors.New("Empty query string")
+		return nil, errors.New("Empty query string")
 	}
 	terms := parser.ParseQuery(query)
 	if (len(terms) == 1) && (terms[0].DictEntry.HeadwordId == 0) {
@@ -613,7 +615,7 @@ func FindDocuments(ctx context.Context,
 	    	"English and Pinyin matches: ", query)
 		senses, err := dictSearcher.FindWordsByEnglish(ctx, terms[0].QueryText)
 		if err != nil {
-			return QueryResults{}, err
+			return nil, err
 		} else {
 			terms[0].Senses = senses
 		}
@@ -622,16 +624,12 @@ func FindDocuments(ctx context.Context,
 	collections := findCollections(query)
 	documents, err := findDocuments(query, terms, advanced)
 	if err != nil {
-		applog.Error("FindDocuments, error from findDocuments: ", err)
-		// Got an error, see if we can connect and try again
-		if hello() {
-			documents, err = findDocuments(query, terms, advanced)
-		} // else do not try again, giveup and return the error
+		return nil, fmt.Errorf("FindDocuments, error from findDocuments: %v", err)
 	}
 	nDoc := len(documents)
 	applog.Info("FindDocuments, query, nTerms, collection, doc count: ", query,
 		len(terms), nCol, nDoc)
-	return QueryResults{query, "", nCol, nDoc, collections, documents, terms}, err
+	return &QueryResults{query, "", nCol, nDoc, collections, documents, terms}, nil
 }
 
 // Returns a QueryResults object containing matching collections, documents,
@@ -645,10 +643,10 @@ func FindDocuments(ctx context.Context,
 func FindDocumentsInCol(ctx context.Context,
 		dictSearcher *dictionary.Searcher,
 		parser QueryParser, query,
-		col_gloss_file string) (QueryResults, error) {
+		col_gloss_file string) (*QueryResults, error) {
 	if query == "" {
 		applog.Error("FindDocumentsInCol, Empty query string")
-		return QueryResults{}, errors.New("Empty query string")
+		return nil, errors.New("Empty query string")
 	}
 	terms := parser.ParseQuery(query)
 	if (len(terms) == 1) && (terms[0].DictEntry.HeadwordId == 0) {
@@ -656,22 +654,19 @@ func FindDocumentsInCol(ctx context.Context,
 	    	"look for English and Pinyin matches: ", query)
 		senses, err := dictSearcher.FindWordsByEnglish(ctx, terms[0].QueryText)
 		if err != nil {
-			return QueryResults{}, err
+			return nil, err
 		} else {
 			terms[0].Senses = senses
 		}
 	}
 	documents, err := findDocumentsInCol(query, terms, col_gloss_file)
 	if err != nil {
-		// Got an error, see if we can connect and try again
-		if hello() {
-			documents, err = findDocumentsInCol(query, terms, col_gloss_file)
-		} // else do not try again, giveup and return the error
+		return nil, err
 	}
 	nDoc := len(documents)
 	applog.Info("FindDocumentsInCol, query, nTerms, collection, doc count: ", query,
 		len(terms), 1, nDoc)
-	return QueryResults{query, col_gloss_file, 1, nDoc, []Collection{}, documents, terms}, err
+	return &QueryResults{query, col_gloss_file, 1, nDoc, []Collection{}, documents, terms}, err
 }
 
 // Returns the headword words in the query (only a single word based on Chinese
@@ -711,46 +706,32 @@ func findWords(query string) ([]dicttypes.Word, error) {
 	return words, nil
 }
 
-func hello() bool {
-	words, err := findWords("你好")
-	if err != nil {
-		conString := webconfig.DBConfig()
-		applog.Error("find/hello: got error with findWords ", conString, err)
-		return false
-	}
-	if len(words) != 1 {
-		applog.Error("find/hello: could not find my word ", len(words))
-		return false
-	} 
-	applog.Info("find/hello: Ready to go")
-	return true
-}
-
 // Open database connection and prepare statements. Allows for re-initialization
 // at most every minute
-func initFind() {
-	if time.Since(lastInitialized).Seconds() < 60 {
-		applog.Info("find.initFind Not initializing document_finder")
-		return
+func initFind() error {
+	lastInit := time.Since(lastInitialized).Seconds()
+	if lastInit < 30 {
+		applog.Infof("find.initFind Not initializing document_finder: %d", lastInit)
+		return nil
 	}
 	applog.Info("find.initFind Initializing document_finder, ",
 		time.Since(lastInitialized).Seconds(), " seconds")
 	avdl = webconfig.GetEnvIntValue("AVG_DOC_LEN", AVG_DOC_LEN)
 	err := initStatements()
 	if err != nil {
-		applog.Error("find.initFind: error preparing database statements, running in" +
-				"degraded mode", err)
-		return
-	}
-	result := hello() 
-	if !result {
 		conString := webconfig.DBConfig()
-		applog.Error("find.initFind: got error with findWords ", conString, err)
+		applog.Errorf("find.initFind: got error with conString %v", conString, err)
+		return fmt.Errorf("find.initFind: error preparing database statements, %v",
+			err)
 	}
-	docMap = cacheDocDetails()
+	docMap, err = cacheDocDetails()
+	if err != nil {
+		return err
+	}
 	colMap = cacheColDetails()
 	docFileMap = cacheDocFileMap()
 	lastInitialized = time.Now()
+	return nil
 }
 
 func initStatements() error {
@@ -1316,7 +1297,7 @@ func toRelevantDocList(docs []Document, terms []string) []Document {
 	for _, doc  := range docs {
 		plainTextFN, ok := docFileMap[doc.GlossFile]
 		if !ok {
-			applog.Info("find.toRelevantDocList could not find ", plainTextFN)
+			applog.Infof("find.toRelevantDocList could not find %s", plainTextFN)
 			continue
 		}
 		keys = append(keys, plainTextFN)
@@ -1328,7 +1309,7 @@ func toRelevantDocList(docs []Document, terms []string) []Document {
 			MIN_SIMILARITY)
 		plainTextFN, ok := docFileMap[doc.GlossFile]
 		if !ok {
-			applog.Info("find.toRelevantDocList 2 could not find ", plainTextFN)
+			applog.Infof("find.toRelevantDocList 2 could not find %s", plainTextFN)
 		}
 		docMatch := docMatches[plainTextFN]
 		doc = setMatchDetails(doc, terms, docMatch)

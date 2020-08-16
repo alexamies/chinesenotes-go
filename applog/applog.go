@@ -16,7 +16,7 @@ func Errorf(msg string, args ... interface{}) {
 	if len(args) == 0 {
 		fmt.Println("ERROR: ", msg)
 	} else {
-
+		msg += "\n"
 		fmt.Printf("ERROR: " + msg, args...)
 	}
 }
@@ -29,6 +29,7 @@ func Infof(msg string, args ... interface{}) {
 	if len(args) == 0 {
 		fmt.Println("INFO: ", msg)
 	} else {
+		msg += "\n"
 		fmt.Printf("INFO: " + msg, args...)
 	}
 }
@@ -41,6 +42,7 @@ func Fatalf(msg string, args ... interface{}) {
 	if len(args) == 0 {
 		log.Fatal("FATAL: " + msg)
 	} else {
+		msg += "\n"
 		log.Fatalf("FATAL: " + msg, args...)
 	}
 }

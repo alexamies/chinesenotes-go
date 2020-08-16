@@ -31,10 +31,10 @@ func LoadDictFile(fNames []string) (map[string]dicttypes.Word, error) {
 	wdict := map[string]dicttypes.Word{}
 	avoidSub := config.AvoidSubDomains()
 	for _, fName := range fNames {
-		applog.Info("dictionary.loadDictFile: fName: ", fName)
+		applog.Infof("fileloader.LoadDictFile: fName: %s", fName)
 		wsfile, err := os.Open(fName)
 		if err != nil {
-			applog.Error("dictionary.loadDictFile, error: ", err)
+			applog.Errorf("fileloader.LoadDictFile, error: %v", err)
 			return wdict, err
 		}
 		defer wsfile.Close()

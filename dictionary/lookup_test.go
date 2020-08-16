@@ -16,6 +16,7 @@ package dictionary
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"testing"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
@@ -45,11 +46,13 @@ func TestLookupSubstr(t *testing.T) {
 	ctx := context.Background()
 	database, err := InitDBCon()
 	if err != nil {
-		t.Fatalf("TestFindWordsByEnglish: cannot connect to database: %v", err)
+		fmt.Printf("TestLookupSubstr: cannot connect to database: %v", err)
+		return
 	}
 	dictSearcher, err := NewSearcher(ctx, database)
 	if err != nil {
-		t.Fatalf("TestFindWordsByEnglish: cannot create dictSearcher: %v", err)
+		fmt.Printf("TestLookupSubstr: cannot create dictSearcher: %v", err)
+		return
 	}
 	type test struct {
 		name string

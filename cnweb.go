@@ -40,10 +40,7 @@ func init() {
 	if err != nil {
 		applog.Errorf("main.init() unable to connect to database: %v", err)
 	}
-	dictSearcher, err = dictionary.NewSearcher(ctx, database)
-	if err != nil {
-		applog.Errorf("main.init() unable to create new dict searcher: %v", err)
-	}
+	dictSearcher = dictionary.NewSearcher(ctx, database)
 	wdict, err = dictionary.LoadDict(ctx, database)
 	if err != nil {
 		applog.Errorf("main.init() unable to load dictionary: %v", err)
@@ -196,24 +193,17 @@ func findDocs(response http.ResponseWriter, request *http.Request, advanced bool
 		}
 	}
 
-	var results find.QueryResults
+	var results *find.QueryResults
 	var err error
 	c := queryString["collection"]
 	ctx := context.Background()
-	if dictSearcher == nil {
+	if dictSearcher == nil || !dictSearcher.DatabaseInitialized() {
 		applog.Info("cnweb.findDocs Re-initializing cnweb")
 		database, err = dictionary.InitDBCon()
 		if err != nil {
 			applog.Errorf("main.finddocs unable to connect to database: %v", err)
-			http.Error(response, "Internal error", http.StatusInternalServerError)
-			return
 		}
-		dictSearcher, err = dictionary.NewSearcher(ctx, database)
-		if err != nil {
-			applog.Errorf("main.finddocs unable to create new searcher: %v", err)
-			http.Error(response, "Internal error", http.StatusInternalServerError)
-			return
-		}
+		dictSearcher = dictionary.NewSearcher(ctx, database)
 	}
 	if (len(c) > 0) && (c[0] != "") {
 		results, err = find.FindDocumentsInCol(ctx, dictSearcher, parser, q, c[0])
@@ -598,7 +588,7 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 
 //Entry point for the web application
 func main() {
-	applog.Info("cnweb.main Starting cnweb")
+	applog.Info("cnweb.main Iniitalizing cnweb")
 	http.HandleFunc("/#", findHandler)
 	http.HandleFunc("/find/", findHandler)
 	http.HandleFunc("/findadvanced/", findAdvanced)
@@ -621,5 +611,6 @@ func main() {
 	http.HandleFunc("/loggedin/submitcpwd", changePasswordHandler)
 	http.HandleFunc("/", displayHome)
 	portStr := ":" + strconv.Itoa(webconfig.GetPort())
+	applog.Infof("cnweb.main Starting http server on port %s", portStr)
 	http.ListenAndServe(portStr, nil)
 }

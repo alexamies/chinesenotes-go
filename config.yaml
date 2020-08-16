@@ -1,0 +1,4 @@
+# The name of the directory with dictionary files
+DictionaryDir: testdata
+
+LUFiles: testdict.tsv

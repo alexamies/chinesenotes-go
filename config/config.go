@@ -30,7 +30,11 @@ var configVars map[string]string
 
 func init() {
 	projectHome = "."
-	log.Println("config.init")
+	cnReaderHome := os.Getenv("CNREADER_HOME")
+	if len(cnReaderHome) != 0 {
+		projectHome = cnReaderHome
+	}
+	log.Printf("config.init projectHome = %s", projectHome)
 	var err error
 	configVars, err = readConfig()
 	if err != nil {
@@ -84,7 +88,7 @@ func GetVar(key string) string {
 
 // The name of the text files with lexical units (word senses)
 func LUFileNames() []string {
-	fileNames := []string{DictionaryDir() + "/words.txt"}
+	fileNames := []string{}
 	val, ok := configVars["LUFiles"]
 	if ok {
 		tokens := strings.Split(val, ",")

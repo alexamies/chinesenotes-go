@@ -39,8 +39,8 @@ func TestLoadDictFile1(t *testing.T) {
 	if err != nil {
 		t.Fatalf("TestLoadDictFile1: Got an error: %v", err)
 	}
-	if len(dict) != 4 {
-		t.Fatalf("TestLoadDictFile1: excpected len 4, got %d", len(dict))
+	if len(dict) < 4 {
+		t.Fatalf("TestLoadDictFile1: excpected at least 4, got %d", len(dict))
 	}
 	chinese := "邃古"
 	word, ok := dict[chinese]

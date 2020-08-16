@@ -30,6 +30,7 @@ import (
 const (
 	maxUnigram = 8
 	pinyinWeight float64 = 0.5
+	notesWeight float64 = 1.0
 	uniCountWeight float64 = 1.0
 	hammingWeight float64 = -1.0
 	substringWeight float64 = 5.0
@@ -47,6 +48,7 @@ type tmResult struct {
 	hamming int
 	combinedScore float64
 	hasPinyin int
+	inNotes int
 	isSubstring int
 }
 
@@ -175,7 +177,11 @@ func (searcher *Searcher) queryPinyin(ctx context.Context, query,
 			return nil, fmt.Errorf("queryPinyin, Error for scanning results, %s:\n%v",
 					query, err)
 		}
-		result.hasPinyin = 1.0
+		if strings.Contains(result.term, query) {
+			result.inNotes = 1
+		} else {
+			result.hasPinyin = 1
+		}
 		resSlice = append(resSlice, &result)
 	}
 	applog.Infof("queryPinyin, num results: %d\n", len(resSlice))
@@ -308,7 +314,8 @@ func combineScores(query string, match *tmResult) float64 {
 	return normalUni * uniCountWeight +
 			normalHamming * hammingWeight +
 			float64(match.hasPinyin) * pinyinWeight +
-			float64(match.isSubstring) * substringWeight
+			float64(match.isSubstring) * substringWeight +
+			float64(match.inNotes) * notesWeight
 }
 
 // Fill in hamming distance for match results
@@ -393,12 +400,14 @@ func printTopResults(query string, matches []*tmResult) {
 		return
 	}
 	var sb strings.Builder
-	sb.WriteString("\nTerm, Unigram count, Hamming, Substring, Combined\n")
+	sb.WriteString("\nTerm, Has Pinyin, In Notes, Unigram count, Hamming, " +
+			"Substring, Combined\n")
 	for i := 0; i < 10; i++ {
 		if i == len(matches) {
 			break
 		}
-		m := fmt.Sprintf("%d: %s, %d, %d, %d, %f\n", i, matches[i].term,
+		m := fmt.Sprintf("%d: %s, %d, %d, %d, %d, %d, %f\n", i, matches[i].term,
+			matches[i].hasPinyin, matches[i].inNotes, 
 			matches[i].unigramCount, matches[i].hamming, matches[i].isSubstring,
 			matches[i].combinedScore)
 		sb.WriteString(m)

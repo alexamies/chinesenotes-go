@@ -71,11 +71,13 @@ func TestFindDocuments1(t *testing.T) {
 	ctx := context.Background()
 	database, err := dictionary.InitDBCon()
 	if err != nil {
-		t.Fatalf("TestFindDocuments1: cannot connect to database: %v", err)
+		fmt.Printf("TestFindDocuments1: cannot connect to database: %v", err)
+		return
 	}
 	dictSearcher, err := dictionary.NewSearcher(ctx, database)
 	if err != nil {
-		t.Fatalf("TestFindDocuments1: cannot create dictSearcher: %v", err)
+		fmt.Printf("TestFindDocuments1: cannot create dictSearcher: %v", err)
+		return
 	}
 	dict := map[string]dicttypes.Word{}
 	parser := MakeQueryParser(dict)
@@ -92,11 +94,13 @@ func TestFindDocuments2(t *testing.T) {
 	ctx := context.Background()
 	database, err := dictionary.InitDBCon()
 	if err != nil {
-		t.Fatalf("TestFindDocuments2: cannot connect to database: %v", err)
+		fmt.Printf("TestFindDocuments2: cannot connect to database: %v", err)
+		return
 	}
 	dictSearcher, err := dictionary.NewSearcher(ctx, database)
 	if err != nil {
-		t.Fatalf("TestFindDocuments2: cannot create dictSearcher: %v", err)
+		fmt.Printf("TestFindDocuments2: cannot create dictSearcher: %v", err)
+		return
 	}
 	dict := map[string]dicttypes.Word{}
 	parser := MakeQueryParser(dict)
@@ -110,11 +114,13 @@ func TestFindDocuments3(t *testing.T) {
 	ctx := context.Background()
 	database, err := dictionary.InitDBCon()
 	if err != nil {
-		t.Fatalf("TestFindDocuments3: cannot connect to database: %v", err)
+		fmt.Printf("TestFindDocuments3: cannot connect to database: %v", err)
+		return
 	}
 	dictSearcher, err := dictionary.NewSearcher(ctx, database)
 	if err != nil {
-		t.Fatalf("TestFindDocuments3: cannot create dictSearcher: %v", err)
+		fmt.Printf("TestFindDocuments3: cannot create dictSearcher: %v", err)
+		return
 	}
 	dict := map[string]dicttypes.Word{}
 	parser := MakeQueryParser(dict)
@@ -135,7 +141,7 @@ func TestFindDocuments3(t *testing.T) {
 func testFindBodyBM25(terms []string, t *testing.T) {
 	docs, err := findBodyBM25(terms)
 	if err != nil {
-		t.Errorf("testFindBodyBM25: %s got an error, %v\n", terms, err)
+		fmt.Printf("testFindBodyBM25: %s got an error, %v\n", terms, err)
 	}
 	fmt.Printf("testFindBodyBM25, len(docs) = %d\n", len(docs))
 	if len(docs) > 0 {
@@ -157,7 +163,8 @@ func TestFindBodyBM253(t *testing.T) {
 	terms := []string{"后妃", "之", "德"}
 	docSimilarity, err := findBodyBM25(terms)
 	if err != nil {
-		t.Error("TestfindBodyBM251: got error, ", err)
+		fmt.Printf("TestfindBodyBM251: got error, %v", err)
+		return
 	}
 	fmt.Printf("TestfindBodyBM251, len(docSimilarity) = %d", len(docSimilarity))
 }
@@ -166,7 +173,8 @@ func TestFindBodyBM254(t *testing.T) {
 	terms := []string{"后妃", "之", "德", "也"}
 	docSimilarity, err := findBodyBM25(terms)
 	if err != nil {
-		t.Error("TestfindBodyBM254: got error, ", err)
+		fmt.Printf("TestfindBodyBM254: got error, %v", err)
+		return
 	}
 	fmt.Printf("TestfindBodyBM254, len(docSimilarity) = %d",
 		len(docSimilarity))
@@ -237,11 +245,13 @@ func TestFindDocumentsInCol0(t *testing.T) {
 	ctx := context.Background()
 	database, err := dictionary.InitDBCon()
 	if err != nil {
-		t.Fatalf("TestFindDocumentsInCol0: cannot connect to database: %v", err)
+		fmt.Printf("TestFindDocumentsInCol0: cannot connect to database: %v", err)
+		return
 	}
 	dictSearcher, err := dictionary.NewSearcher(ctx, database)
 	if err != nil {
-		t.Fatalf("TestFindDocumentsInCol0: cannot create dictSearcher: %v", err)
+		fmt.Printf("TestFindDocumentsInCol0: cannot create dictSearcher: %v", err)
+		return
 	}
 	dict := map[string]dicttypes.Word{}
 	parser := MakeQueryParser(dict)
@@ -255,11 +265,13 @@ func TestFindDocumentsInCol1(t *testing.T) {
 	ctx := context.Background()
 	database, err := dictionary.InitDBCon()
 	if err != nil {
-		t.Fatalf("TestFindDocumentsInCol1: cannot connect to database: %v", err)
+		fmt.Printf("TestFindDocumentsInCol1: cannot connect to database: %v", err)
+		return
 	}
 	dictSearcher, err := dictionary.NewSearcher(ctx, database)
 	if err != nil {
-		t.Fatalf("TestFindDocumentsInCol1: cannot create dictSearcher: %v", err)
+		fmt.Printf("TestFindDocumentsInCol1: cannot create dictSearcher: %v", err)
+		return
 	}
 	dict := map[string]dicttypes.Word{}
 	parser := MakeQueryParser(dict)
@@ -276,11 +288,13 @@ func TestFindDocumentsInCol2(t *testing.T) {
 	ctx := context.Background()
 	database, err := dictionary.InitDBCon()
 	if err != nil {
-		t.Fatalf("TestFindDocumentsInCol2: cannot connect to database: %v", err)
+		fmt.Printf("TestFindDocumentsInCol2: cannot connect to database: %v", err)
+		return
 	}
 	dictSearcher, err := dictionary.NewSearcher(ctx, database)
 	if err != nil {
-		t.Fatalf("TestFindDocumentsInCol2: cannot create dictSearcher: %v", err)
+		fmt.Printf("TestFindDocumentsInCol2: cannot create dictSearcher: %v", err)
+		return
 	}
 	dict := map[string]dicttypes.Word{}
 	parser := MakeQueryParser(dict)
@@ -297,11 +311,13 @@ func TestFindDocumentsInCol3(t *testing.T) {
 	ctx := context.Background()
 	database, err := dictionary.InitDBCon()
 	if err != nil {
-		t.Fatalf("TestFindDocumentsInCol3: cannot connect to database: %v", err)
+		fmt.Printf("TestFindDocumentsInCol3: cannot connect to database: %v", err)
+		return
 	}
 	dictSearcher, err := dictionary.NewSearcher(ctx, database)
 	if err != nil {
-		t.Fatalf("TestFindDocumentsInCol3: cannot create dictSearcher: %v", err)
+		fmt.Printf("TestFindDocumentsInCol3: cannot create dictSearcher: %v", err)
+		return
 	}
 	dict := map[string]dicttypes.Word{}
 	parser := MakeQueryParser(dict)
@@ -318,11 +334,13 @@ func TestFindDocumentsInCol4(t *testing.T) {
 	ctx := context.Background()
 	database, err := dictionary.InitDBCon()
 	if err != nil {
-		t.Fatalf("TestFindDocumentsInCol4: cannot connect to database: %v", err)
+		fmt.Printf("TestFindDocumentsInCol4: cannot connect to database: %v", err)
+		return
 	}
 	dictSearcher, err := dictionary.NewSearcher(ctx, database)
 	if err != nil {
-		t.Fatalf("TestFindDocumentsInCol4: cannot create dictSearcher: %v", err)
+		fmt.Printf("TestFindDocumentsInCol4: cannot create dictSearcher: %v", err)
+		return
 	}
 	dict := map[string]dicttypes.Word{}
 	parser := MakeQueryParser(dict)
@@ -339,11 +357,13 @@ func TestFindDocumentsInCol5(t *testing.T) {
 	ctx := context.Background()
 	database, err := dictionary.InitDBCon()
 	if err != nil {
-		t.Fatalf("TestFindDocumentsInCol5: cannot connect to database: %v", err)
+		fmt.Printf("TestFindDocumentsInCol5: cannot connect to database: %v", err)
+		return
 	}
 	dictSearcher, err := dictionary.NewSearcher(ctx, database)
 	if err != nil {
-		t.Fatalf("TestFindDocumentsInCol5: cannot create dictSearcher: %v", err)
+		fmt.Printf("TestFindDocumentsInCol5: cannot create dictSearcher: %v", err)
+		return
 	}
 	dict := map[string]dicttypes.Word{}
 	parser := MakeQueryParser(dict) // 箴也所以攻疾防患
@@ -360,11 +380,13 @@ func TestFindDocumentsInCol6(t *testing.T) {
 	ctx := context.Background()
 	database, err := dictionary.InitDBCon()
 	if err != nil {
-		t.Fatalf("TestFindDocumentsInCol6: cannot connect to database: %v", err)
+		fmt.Printf("TestFindDocumentsInCol6: cannot connect to database: %v", err)
+		return
 	}
 	dictSearcher, err := dictionary.NewSearcher(ctx, database)
 	if err != nil {
-		t.Fatalf("TestFindDocumentsInCol6: cannot create dictSearcher: %v", err)
+		fmt.Printf("TestFindDocumentsInCol6: cannot create dictSearcher: %v", err)
+		return
 	}
 	dict := map[string]dicttypes.Word{}
 	parser := MakeQueryParser(dict)
