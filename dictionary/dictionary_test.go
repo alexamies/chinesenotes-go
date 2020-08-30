@@ -30,9 +30,9 @@ func TestFindWordsByEnglish(t *testing.T) {
 		fmt.Printf("TestFindWordsByEnglish: cannot connect to database: %v", err)
 		return
 	}
-	dictSearcher, err := NewSearcher(ctx, database)
-	if err != nil {
-		fmt.Printf("TestFindWordsByEnglish: cannot create dictSearcher: %v", err)
+	dictSearcher := NewSearcher(ctx, database)
+	if !dictSearcher.DatabaseInitialized() {
+		fmt.Print("TestFindWordsByEnglish: cannot iniitalize DB")
 		return
 	}
 	senses, err := dictSearcher.FindWordsByEnglish(ctx, "hello")

@@ -611,8 +611,8 @@ func FindDocuments(ctx context.Context,
 	}
 	terms := parser.ParseQuery(query)
 	if (len(terms) == 1) && (terms[0].DictEntry.HeadwordId == 0) {
-	    applog.Info("FindDocuments,Query does not contain Chinese, look for " +
-	    	"English and Pinyin matches: ", query)
+	    applog.Infof("FindDocuments,Query does not contain Chinese, look for " +
+	    	"English and Pinyin matches: %s", query)
 		senses, err := dictSearcher.FindWordsByEnglish(ctx, terms[0].QueryText)
 		if err != nil {
 			return nil, err

@@ -49,9 +49,9 @@ func TestLookupSubstr(t *testing.T) {
 		fmt.Printf("TestLookupSubstr: cannot connect to database: %v", err)
 		return
 	}
-	dictSearcher, err := NewSearcher(ctx, database)
-	if err != nil {
-		fmt.Printf("TestLookupSubstr: cannot create dictSearcher: %v", err)
+	dictSearcher := NewSearcher(ctx, database)
+	if !dictSearcher.DatabaseInitialized() {
+		fmt.Print("TestLookupSubstr: cannot init DB")
 		return
 	}
 	type test struct {

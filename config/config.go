@@ -103,7 +103,11 @@ func LUFileNames() []string {
 // Reads the configuration file with project variables
 func readConfig() (map[string]string, error) {
 	vars := make(map[string]string)
-	fileName := projectHome + "/config.yaml"
+	sep := "/"
+	if strings.HasSuffix(projectHome, "/") {
+		sep = ""
+	}
+	fileName := projectHome + sep + "config.yaml"
 	configFile, err := os.Open(fileName)
 	if err != nil {
 		projectHome = ".."

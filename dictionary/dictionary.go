@@ -206,7 +206,7 @@ func LoadDict(ctx context.Context, database *sql.DB) (map[string]dicttypes.Word,
 			}
 		}
 	}
-	applog.Info("LoadDict, loading time: ", time.Since(start))
+	applog.Infof("LoadDict loading time: %d", time.Since(start))
 	return wdict, nil
 }
 
