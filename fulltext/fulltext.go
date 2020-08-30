@@ -81,7 +81,7 @@ type GCSLoader struct{
 // Gets the matching text from a local file and find the best match
 func (loader GCSLoader) GetMatching(plainTextFile string,
 		queryTerms []string) (MatchingText, error) {
-	applog.Info("GCSLoader.GetMatching ", plainTextFile)
+	applog.Infof("GCSLoader.GetMatching %s", plainTextFile)
 	ctx := context.Background()
 	r, err := loader.client.Bucket(loader.bucket).Object(plainTextFile).NewReader(ctx)
 	if err != nil {
@@ -94,24 +94,23 @@ func (loader GCSLoader) GetMatching(plainTextFile string,
         return MatchingText{}, err
 	}
 	txt := string(bs)
-	applog.Info("GCSLoader.GetMatching len(txt) ", len(txt))
+	applog.Infof("GCSLoader.GetMatching len(txt) %d", len(txt))
 	return getMatch(txt, queryTerms), nil
 }
 
 // Uses the environment variableS GOOGLE_APPLICATION_CREDENTIALS and TEXT_BUCKET
 // to determine whether to load the files from the local file system or GCS.
 func getLoader() TextLoader {
-	if _, ok := os.LookupEnv("GOOGLE_APPLICATION_CREDENTIALS"); ok {
-		if bucket, ok := os.LookupEnv("TEXT_BUCKET"); ok {
-			loader, err := NewGCSLoader(bucket)
-			if err == nil {
-				applog.Info("fulltext.getLoader, using GCSLoader")
-				return loader
-			}
+	if bucket, ok := os.LookupEnv("TEXT_BUCKET"); ok {
+		loader, err := NewGCSLoader(bucket)
+		if err == nil {
+			applog.Info("fulltext.getLoader, using GCSLoader")
+			return loader
 		}
+		applog.Infof("fulltext.getLoader, error creating GCSLoader: %v", err)
 	}
 	if corpusDir, ok := os.LookupEnv("CORPUS_DIR"); ok {
-		applog.Info("fulltext.getLoader, using LocalTextLoader, ", corpusDir)
+		applog.Infof("fulltext.getLoader, using LocalTextLoader: %s ", corpusDir)
 		return LocalTextLoader{corpusDir}
 	}
 	applog.Info("fulltext.getLoader, using LocalTextLoader,default corpusDir")
@@ -191,11 +190,11 @@ func getMatch(txt string, queryTerms []string) MatchingText {
 
 // Creates and initiates a new GCSLoader object
 func NewGCSLoader(bucket string) (GCSLoader, error) {
-	applog.Info("fulltext.NewGCSLoader, ", bucket)
+	applog.Infof("fulltext.NewGCSLoader %s ", bucket)
 	ctx := context.Background()
 	client, err := storage.NewClient(ctx)
 	if err != nil {
-    	applog.Info("fulltext.NewGCSLoader error getting client ", err)
+    	applog.Infof("fulltext.NewGCSLoader error getting client %v", err)
     	return GCSLoader{}, err 
 	}
 	return GCSLoader{bucket, client}, nil

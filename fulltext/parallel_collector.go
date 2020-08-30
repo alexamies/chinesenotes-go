@@ -39,7 +39,7 @@ func (job Job) Do(loader TextLoader, queryTerms []string) {
 	mt, err := loader.GetMatching(job.key, queryTerms)
 	if err != nil {
 		// log and move on
-		applog.Info("job.Do error ", job.key, err)
+		applog.Infof("job.Do key %v, error: %v", job.key, err)
 	} else {
 		dm.MT = mt
 	}

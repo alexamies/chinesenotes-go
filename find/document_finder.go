@@ -33,10 +33,10 @@ import (
 )
 
 const (
-	MAX_RETURNED = 50
-	MIN_SIMILARITY = -4.75
-	AVG_DOC_LEN = 4497
-	INTERCEPT = -4.75 // From logistic regression
+	maxReturned = 50
+	minSimilarity = -4.75
+	avDocLen = 4497
+	intercept = -4.75 // From logistic regression
 )
 
 var (
@@ -167,9 +167,9 @@ func cacheDocFileMap() map[string]string {
 // relevance for BM25 for words, BM25 for bigrams, and bit vector dot product.
 // Raw BM25 values are scaled with 1.0 being the top value
 func combineByWeight(doc Document, maxSimWords, maxSimBigram float64) Document {
-	similarity := MIN_SIMILARITY
+	similarity := minSimilarity
 	if maxSimWords != 0. && maxSimBigram != 0. {
-		similarity = INTERCEPT +
+		similarity = intercept +
 			WEIGHT[0] * doc.SimWords / maxSimWords +
 			WEIGHT[1] * doc.SimBigram / maxSimBigram +
 			WEIGHT[2] * doc.SimBitVector
@@ -627,8 +627,8 @@ func FindDocuments(ctx context.Context,
 		return nil, fmt.Errorf("FindDocuments, error from findDocuments: %v", err)
 	}
 	nDoc := len(documents)
-	applog.Info("FindDocuments, query, nTerms, collection, doc count: ", query,
-		len(terms), nCol, nDoc)
+	applog.Infof("FindDocuments, query %s, nTerms %d, collection %d, doc count %d: ",
+			query, len(terms), nCol, nDoc)
 	return &QueryResults{query, "", nCol, nDoc, collections, documents, terms}, nil
 }
 
@@ -650,8 +650,8 @@ func FindDocumentsInCol(ctx context.Context,
 	}
 	terms := parser.ParseQuery(query)
 	if (len(terms) == 1) && (terms[0].DictEntry.HeadwordId == 0) {
-	    applog.Info("FindDocumentsInCol, Query does not contain Chinese, " +
-	    	"look for English and Pinyin matches: ", query)
+	    applog.Infof("FindDocumentsInCol, Query does not contain Chinese, " +
+	    	"look for English and Pinyin matches query: %s", query)
 		senses, err := dictSearcher.FindWordsByEnglish(ctx, terms[0].QueryText)
 		if err != nil {
 			return nil, err
@@ -664,8 +664,8 @@ func FindDocumentsInCol(ctx context.Context,
 		return nil, err
 	}
 	nDoc := len(documents)
-	applog.Info("FindDocumentsInCol, query, nTerms, collection, doc count: ", query,
-		len(terms), 1, nDoc)
+	applog.Infof("FindDocumentsInCol, query %s, nTerms %d, collection %d, doc count %d ",
+			query, len(terms), 1, nDoc)
 	return &QueryResults{query, col_gloss_file, 1, nDoc, []Collection{}, documents, terms}, err
 }
 
@@ -714,9 +714,9 @@ func initFind() error {
 		applog.Infof("find.initFind Not initializing document_finder: %d", lastInit)
 		return nil
 	}
-	applog.Info("find.initFind Initializing document_finder, ",
-		time.Since(lastInitialized).Seconds(), " seconds")
-	avdl = webconfig.GetEnvIntValue("AVG_DOC_LEN", AVG_DOC_LEN)
+	applog.Infof("find.initFind Initializing document_finder %d seconds ",
+		time.Since(lastInitialized).Seconds())
+	avdl = webconfig.GetEnvIntValue("AVG_DOC_LEN", avDocLen)
 	err := initStatements()
 	if err != nil {
 		conString := webconfig.DBConfig()
@@ -1305,15 +1305,15 @@ func toRelevantDocList(docs []Document, terms []string) []Document {
 	docMatches := fulltext.GetMatches(keys, terms)
 	relDocs := []Document{}
 	for _, doc  := range docs {
-		applog.Info("toRelevantDocList, check: ", doc.Similarity, 
-			MIN_SIMILARITY)
+		applog.Infof("toRelevantDocList, check Similarity %f, min %f",
+				doc.Similarity, minSimilarity)
 		plainTextFN, ok := docFileMap[doc.GlossFile]
 		if !ok {
 			applog.Infof("find.toRelevantDocList 2 could not find %s", plainTextFN)
 		}
 		docMatch := docMatches[plainTextFN]
 		doc = setMatchDetails(doc, terms, docMatch)
-		if doc.Similarity < MIN_SIMILARITY {
+		if doc.Similarity < minSimilarity {
 			return relDocs
 		}
 		relDocs = append(relDocs, doc)
@@ -1368,8 +1368,8 @@ func toSortedDocList(similarDocMap map[string]Document) []Document {
 	sort.Slice(simDocs, func(i, j int) bool {
 		return simDocs[i].Similarity > simDocs[j].Similarity
 	})
-	if len(simDocs) > MAX_RETURNED {
-		return simDocs[:MAX_RETURNED]
+	if len(simDocs) > maxReturned {
+		return simDocs[:maxReturned]
 	}
 	return simDocs
 }

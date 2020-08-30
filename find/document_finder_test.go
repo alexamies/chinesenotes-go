@@ -54,7 +54,7 @@ func TestCombineByWeight(t *testing.T) {
 		t.Error("TestCombineByWeight: simDoc.Similarity == 0.0")
 	}
 	fmt.Printf("TestCacheColDetails: simDoc %v\n", simDoc)
-	similarity := INTERCEPT + 
+	similarity := intercept + 
 		WEIGHT[0] * doc.SimWords / maxSimWords +
 		WEIGHT[1] * doc.SimBigram / maxBigram +
 		WEIGHT[2] * doc.SimBitVector
@@ -74,8 +74,8 @@ func TestFindDocuments1(t *testing.T) {
 		fmt.Printf("TestFindDocuments1: cannot connect to database: %v", err)
 		return
 	}
-	dictSearcher, err := dictionary.NewSearcher(ctx, database)
-	if err != nil {
+	dictSearcher := dictionary.NewSearcher(ctx, database)
+	if !dictSearcher.DatabaseInitialized() {
 		fmt.Printf("TestFindDocuments1: cannot create dictSearcher: %v", err)
 		return
 	}
@@ -97,8 +97,8 @@ func TestFindDocuments2(t *testing.T) {
 		fmt.Printf("TestFindDocuments2: cannot connect to database: %v", err)
 		return
 	}
-	dictSearcher, err := dictionary.NewSearcher(ctx, database)
-	if err != nil {
+	dictSearcher := dictionary.NewSearcher(ctx, database)
+	if !dictSearcher.DatabaseInitialized() {
 		fmt.Printf("TestFindDocuments2: cannot create dictSearcher: %v", err)
 		return
 	}
@@ -117,8 +117,8 @@ func TestFindDocuments3(t *testing.T) {
 		fmt.Printf("TestFindDocuments3: cannot connect to database: %v", err)
 		return
 	}
-	dictSearcher, err := dictionary.NewSearcher(ctx, database)
-	if err != nil {
+	dictSearcher := dictionary.NewSearcher(ctx, database)
+	if !dictSearcher.DatabaseInitialized() {
 		fmt.Printf("TestFindDocuments3: cannot create dictSearcher: %v", err)
 		return
 	}
@@ -248,8 +248,8 @@ func TestFindDocumentsInCol0(t *testing.T) {
 		fmt.Printf("TestFindDocumentsInCol0: cannot connect to database: %v", err)
 		return
 	}
-	dictSearcher, err := dictionary.NewSearcher(ctx, database)
-	if err != nil {
+	dictSearcher := dictionary.NewSearcher(ctx, database)
+	if !dictSearcher.DatabaseInitialized() {
 		fmt.Printf("TestFindDocumentsInCol0: cannot create dictSearcher: %v", err)
 		return
 	}
@@ -268,8 +268,8 @@ func TestFindDocumentsInCol1(t *testing.T) {
 		fmt.Printf("TestFindDocumentsInCol1: cannot connect to database: %v", err)
 		return
 	}
-	dictSearcher, err := dictionary.NewSearcher(ctx, database)
-	if err != nil {
+	dictSearcher := dictionary.NewSearcher(ctx, database)
+	if !dictSearcher.DatabaseInitialized() {
 		fmt.Printf("TestFindDocumentsInCol1: cannot create dictSearcher: %v", err)
 		return
 	}
@@ -291,8 +291,8 @@ func TestFindDocumentsInCol2(t *testing.T) {
 		fmt.Printf("TestFindDocumentsInCol2: cannot connect to database: %v", err)
 		return
 	}
-	dictSearcher, err := dictionary.NewSearcher(ctx, database)
-	if err != nil {
+	dictSearcher := dictionary.NewSearcher(ctx, database)
+	if !dictSearcher.DatabaseInitialized() {
 		fmt.Printf("TestFindDocumentsInCol2: cannot create dictSearcher: %v", err)
 		return
 	}
@@ -314,8 +314,8 @@ func TestFindDocumentsInCol3(t *testing.T) {
 		fmt.Printf("TestFindDocumentsInCol3: cannot connect to database: %v", err)
 		return
 	}
-	dictSearcher, err := dictionary.NewSearcher(ctx, database)
-	if err != nil {
+	dictSearcher := dictionary.NewSearcher(ctx, database)
+	if !dictSearcher.DatabaseInitialized() {
 		fmt.Printf("TestFindDocumentsInCol3: cannot create dictSearcher: %v", err)
 		return
 	}
@@ -337,8 +337,8 @@ func TestFindDocumentsInCol4(t *testing.T) {
 		fmt.Printf("TestFindDocumentsInCol4: cannot connect to database: %v", err)
 		return
 	}
-	dictSearcher, err := dictionary.NewSearcher(ctx, database)
-	if err != nil {
+	dictSearcher:= dictionary.NewSearcher(ctx, database)
+	if !dictSearcher.DatabaseInitialized() {
 		fmt.Printf("TestFindDocumentsInCol4: cannot create dictSearcher: %v", err)
 		return
 	}
@@ -360,8 +360,8 @@ func TestFindDocumentsInCol5(t *testing.T) {
 		fmt.Printf("TestFindDocumentsInCol5: cannot connect to database: %v", err)
 		return
 	}
-	dictSearcher, err := dictionary.NewSearcher(ctx, database)
-	if err != nil {
+	dictSearcher := dictionary.NewSearcher(ctx, database)
+	if !dictSearcher.DatabaseInitialized() {
 		fmt.Printf("TestFindDocumentsInCol5: cannot create dictSearcher: %v", err)
 		return
 	}
@@ -383,8 +383,8 @@ func TestFindDocumentsInCol6(t *testing.T) {
 		fmt.Printf("TestFindDocumentsInCol6: cannot connect to database: %v", err)
 		return
 	}
-	dictSearcher, err := dictionary.NewSearcher(ctx, database)
-	if err != nil {
+	dictSearcher := dictionary.NewSearcher(ctx, database)
+	if !dictSearcher.DatabaseInitialized() {
 		fmt.Printf("TestFindDocumentsInCol6: cannot create dictSearcher: %v", err)
 		return
 	}
