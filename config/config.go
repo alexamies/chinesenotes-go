@@ -34,11 +34,11 @@ func init() {
 	if len(cnReaderHome) != 0 {
 		projectHome = cnReaderHome
 	}
-	log.Printf("config.init projectHome = %s", projectHome)
+	log.Printf("config.init projectHome = %s\n", projectHome)
 	var err error
 	configVars, err = readConfig()
 	if err != nil {
-		log.Printf("config.init: error reading config: %v", err)
+		log.Printf("config.init: error reading config: %v\n", err)
 	}
 }
 
@@ -130,7 +130,7 @@ func readConfig() (map[string]string, error) {
 			err = nil
 			eof = true
 		} else if err != nil {
-			err := fmt.Errorf("error reading config file: %v", err)
+			err := fmt.Errorf("error reading config file: %v\n", err)
 			return map[string]string{}, err
 		}
 		// Ignore comments

@@ -398,15 +398,15 @@ func portalHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Static handler for pages in the Translation Portal Library
+// Handle static but private pages in the Translation Portal Library
 func portalLibraryHandler(w http.ResponseWriter, r *http.Request) {
-	applog.Infof("portalLibraryHandler: url %s", r.URL)
+	applog.Infof("portalLibraryHandler: url %s\n", r.URL)
 	sessionInfo := identity.InvalidSession()
 	cookie, err := r.Cookie("session")
 	if err == nil {
 		sessionInfo = identity.CheckSession(cookie.Value)
 	} else {
-		applog.Infof("portalLibraryHandler error getting cookie: %v", err)
+		applog.Infof("portalLibraryHandler error getting cookie: %v\n", err)
 		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
 	}
@@ -417,15 +417,15 @@ func portalLibraryHandler(w http.ResponseWriter, r *http.Request) {
 		filename := portalLibHome + "/" + filepart
 		_, err := os.Stat(filename)
 		if err != nil {
-			applog.Infof("portalLibraryHandler os.Stat error: %v for file %s",
+			applog.Infof("portalLibraryHandler os.Stat error: %v for file %s\n",
 					err, filename)
 			custom404(w, r, filename)
 			return
 		}
-		applog.Infof("portalLibraryHandler: serving file %s", filename)
+		applog.Infof("portalLibraryHandler: serving file %s\n", filename)
 		http.ServeFile(w, r, filename)
 	} else {
-		applog.Infof("portalLibraryHandler %s with role %s not authorized",
+		applog.Infof("portalLibraryHandler %s with role %s not authorized\n",
 			user.UserName, user.Role)
 		http.Error(w, "Not authorized", http.StatusForbidden)
 	}

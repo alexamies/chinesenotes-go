@@ -55,6 +55,7 @@ type tmResult struct {
 // Encapsulates translation memory searcher
 type Searcher struct {
 	database *sql.DB
+	databaseInitialized bool
 	pinyinStmt *sql.Stmt
 	pinyinDomainStmt *sql.Stmt
 	unigramStmt *sql.Stmt
@@ -81,11 +82,17 @@ func NewSearcher(ctx context.Context, database *sql.DB) (*Searcher, error) {
 	}
 	return &Searcher{
 		database: database,
+		databaseInitialized: true,
 		pinyinStmt: pinyinStmt,
 		pinyinDomainStmt: pinyinDomainStmt,
 		unigramStmt: unigramStmt,
 		uniDomainStmt: uniDomainStmt,
 	}, nil
+}
+
+// Returns the word senses with English approximate or Pinyin exact match
+func (searcher *Searcher) DatabaseInitialized() bool {
+	return searcher.databaseInitialized
 }
 
 // Find words with similar pinyin or with notes conaining the query

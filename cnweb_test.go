@@ -66,6 +66,10 @@ func TestTranslationMemory(t *testing.T) {
   	url := fmt.Sprintf("/translation_memory?query=%s", tc.query)
 		r := httptest.NewRequest(http.MethodPost, url, nil)
 		w := httptest.NewRecorder()
+		if (tmSearcher == nil) || !tmSearcher.DatabaseInitialized() {
+			fmt.Println("cnweb_test database not initialized, skippining unit tests")
+			return
+		}
 		translationMemory(w, r)
 		result := w.Body.String()
 		if !tc.expectMany && tc.expect != result {

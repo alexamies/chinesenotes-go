@@ -6,9 +6,13 @@ package applog
 import (
 	"fmt"
 	"log"
+	"strings"
 )
 
 func Error(msg string, args ... interface{}) {
+	if !strings.HasSuffix(msg, "\n") {
+		msg += "\n"
+	}
 	fmt.Printf("ERROR: " + msg, args...)
 }
 
@@ -22,6 +26,9 @@ func Errorf(msg string, args ... interface{}) {
 }
 
 func Info(msg string, args ... interface{}) {
+	if !strings.HasSuffix(msg, "\n") {
+		msg += "\n"
+	}
 	fmt.Printf("INFO: " + msg, args...)
 }
 
@@ -35,6 +42,9 @@ func Infof(msg string, args ... interface{}) {
 }
 
 func Fatal(msg string, args ... interface{}) {
+	if !strings.HasSuffix(msg, "\n") {
+		msg += "\n"
+	}
 	log.Fatalf("FATAL: " + msg, args...)
 }
 

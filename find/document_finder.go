@@ -748,15 +748,15 @@ func initStatements() error {
 		"SELECT plain_text_file, gloss_file " +
 		"FROM document")
     if err != nil {
-        applog.Error("find.initStatements() Error for docListStmt: ", err)
-    	  applog.Info("find.initStatements() conString: ", conString)
+        applog.Errorf("find.initStatements() Error for docListStmt: %v\n", err)
+    	  applog.Infof("find.initStatements() conString: %s\n", conString)
         return err
     }
 
 	findColStmt, err = database.PrepareContext(ctx,
 		"SELECT title, gloss_file FROM collection WHERE title LIKE ? LIMIT 20")
     if err != nil {
-        applog.Error("find.initStatements() Error preparing collection stmt: ",
+        applog.Errorf("find.initStatements() Error preparing collection stmt: %v\n",
         	err)
         return err
     }
@@ -764,7 +764,7 @@ func initStatements() error {
 	countColStmt, err = database.PrepareContext(ctx,
 		"SELECT count(title) FROM collection WHERE title LIKE ?")
     if err != nil {
-        applog.Error("find.initStatements() Error preparing cstmt: ",err)
+        applog.Errorf("find.initStatements() Error preparing cstmt: %v\n",err)
         return err
     }
 
@@ -774,7 +774,7 @@ func initStatements() error {
 		"FROM document " +
 		"WHERE col_plus_doc_title LIKE ? LIMIT 20")
     if err != nil {
-        applog.Error("find.initStatements() Error preparing dstmt: ", err)
+        applog.Errorf("find.initStatements() Error preparing dstmt: %v\n", err)
         return err
     }
 
@@ -786,7 +786,7 @@ func initStatements() error {
 		"AND col_gloss_file = ? " +
 		"LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error preparing dstmt: ", err)
+        applog.Errorf("find.initStatements() Error preparing dstmt: %v\n", err)
         return err
     }
 
@@ -827,7 +827,7 @@ func initStatements() error {
 		"GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBM252Stmt: ", err)
+        applog.Errorf("find.initStatements() Error for simBM252Stmt: %s\n", err)
         return err
     }
 
@@ -843,7 +843,7 @@ func initStatements() error {
 		"GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBM253Stmt: ", err)
+        applog.Errorf("find.initStatements() Error for simBM253Stmt: %v\n", err)
         return err
     }
 
@@ -859,7 +859,7 @@ func initStatements() error {
 		"GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBM254Stmt: ", err)
+        applog.Errorf("find.initStatements() Error for simBM254Stmt: %v\n", err)
         return err
     }
 
@@ -876,7 +876,7 @@ func initStatements() error {
 		"GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBM255Stmt: ", err)
+        applog.Errorf("find.initStatements() Error for simBM255Stmt: %v\n", err)
         return err
     }
 
@@ -893,7 +893,7 @@ func initStatements() error {
 		"GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBM256Stmt: ", err)
+        applog.Errorf("find.initStatements() Error for simBM256Stmt: %v\n", err)
         return err
     }
 
@@ -912,7 +912,7 @@ func initStatements() error {
 		"GROUP BY document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBM25Col1Stmt: ", err)
+        applog.Errorf("find.initStatements() Error for simBM25Col1Stmt: %v\n", err)
         return err
     }
 
@@ -929,7 +929,7 @@ func initStatements() error {
 		"GROUP BY document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBM252Stmt: ", err)
+        applog.Errorf("find.initStatements() Error for simBM252Stmt: %v\n", err)
         return err
     }
 
@@ -946,7 +946,7 @@ func initStatements() error {
 		"GROUP BY document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBM253Stmt: ", err)
+        applog.Errorf("find.initStatements() Error for simBM253Stmt: %v\n", err)
         return err
     }
 
@@ -963,7 +963,7 @@ func initStatements() error {
 		"GROUP BY document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBM254Stmt: ", err)
+        applog.Errorf("find.initStatements() Error for simBM254Stmt: %v\n", err)
         return err
     }
 
@@ -980,7 +980,7 @@ func initStatements() error {
 		"GROUP BY document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBM255Stmt: ", err)
+        applog.Errorf("find.initStatements() Error for simBM255Stmt: %v\n", err)
         return err
     }
 
@@ -998,7 +998,7 @@ func initStatements() error {
 		"GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBM256Stmt: ", err)
+        applog.Errorf("find.initStatements() Error for simBM256Stmt: %v\n", err)
         return err
     }
 
@@ -1014,7 +1014,7 @@ func initStatements() error {
 		"GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBigram1Stmt: ", err)
+        applog.Error("find.initStatements() Error for simBigram1Stmt: %v\n", err)
         return err
     }
 
@@ -1028,7 +1028,7 @@ func initStatements() error {
 		"WHERE bigram = ? OR bigram = ? GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBM252Stmt: ", err)
+        applog.Error("find.initStatements() Error for simBM252Stmt: %v\n", err)
         return err
     }
 
@@ -1043,7 +1043,7 @@ func initStatements() error {
 		"GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBigram3Stmt: ", err)
+        applog.Errorf("find.initStatements() Error for simBigram3Stmt: %v\n", err)
         return err
     }
 
@@ -1058,7 +1058,7 @@ func initStatements() error {
 		"GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBigram4Stmt: ", err)
+        applog.Errorf("find.initStatements() Error for simBigram4Stmt: %v\n", err)
         return err
     }
 
@@ -1074,7 +1074,7 @@ func initStatements() error {
 		"GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBigram5Stmt: ", err)
+        applog.Errorf("find.initStatements() Error for simBigram5Stmt: %v\n", err)
         return err
     }
 
@@ -1092,7 +1092,7 @@ func initStatements() error {
 		"GROUP BY document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBgCol1Stmt: ", err)
+        applog.Errorf("find.initStatements() Error for simBgCol1Stmt: %v\n", err)
         return err
     }
 
@@ -1124,7 +1124,7 @@ func initStatements() error {
 		"GROUP BY document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBgCol3Stmt: ", err)
+        applog.Errorf("find.initStatements() Error for simBgCol3Stmt: %v\n", err)
         return err
     }
 
@@ -1140,7 +1140,7 @@ func initStatements() error {
 		"GROUP BY document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBgCol4Stmt: ", err)
+        applog.Errorf("find.initStatements() Error for simBgCol4Stmt: %v\n", err)
         return err
     }
 
@@ -1157,7 +1157,7 @@ func initStatements() error {
 		"GROUP BY document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBgCol5Stmt: ", err)
+        applog.Errorf("find.initStatements() Error for simBgCol5Stmt: %v\n", err)
         return err
     }
 
@@ -1166,7 +1166,7 @@ func initStatements() error {
 		"SELECT gloss_file, title, col_gloss_file, col_title " +
 		"FROM document LIMIT 5000000")
     if err != nil {
-        applog.Error("find.initStatements() Error for findAllTitlesStmt: ", err)
+        applog.Errorf("find.initStatements() Error for findAllTitlesStmt: %v\n", err)
         return err
     }
 
@@ -1174,7 +1174,7 @@ func initStatements() error {
 	findAllColTitlesStmt, err = database.PrepareContext(ctx, 
 		"SELECT gloss_file, title FROM collection LIMIT 500000")
     if err != nil {
-        applog.Error("find.initStatements() Error for findAllColTitlesStmt: ",
+        applog.Errorf("find.initStatements() Error for findAllColTitlesStmt: %v\n",
         	err)
         return err
     }
@@ -1237,7 +1237,7 @@ func mergeDocList(simDocMap map[string]Document, docList []Document) {
 							}
 				simDocMap[simDoc.GlossFile] = doc
 			} else {
-				applog.Info("mergeDocList, doc title not found: ", simDoc)
+				applog.Infof("mergeDocList, doc title not found: %v\n", simDoc)
 				simDocMap[simDoc.GlossFile] = simDoc
 			}
 		}
@@ -1252,7 +1252,7 @@ func mergeDocList(simDocMap map[string]Document, docList []Document) {
 // doc.ContainsTerms is a list of terms found both in the query and the doc
 // sorted in the same order as the query terms with words merged to bigrams
 func setMatchDetails(doc Document, terms []string, docMatch fulltext.DocMatch) Document {
-	fmt.Println("sortContainsWords: ", terms)
+	applog.Infof("sortContainsWords: %v\n", terms)
 	containsTems := []string{}
 	for i, term := range terms {
 		//fmt.Printf("sortContainsWords: i = %d\n", i)
@@ -1297,7 +1297,7 @@ func toRelevantDocList(docs []Document, terms []string) []Document {
 	for _, doc  := range docs {
 		plainTextFN, ok := docFileMap[doc.GlossFile]
 		if !ok {
-			applog.Infof("find.toRelevantDocList could not find %s", plainTextFN)
+			applog.Infof("find.toRelevantDocList could not find %s\n", plainTextFN)
 			continue
 		}
 		keys = append(keys, plainTextFN)
@@ -1305,11 +1305,11 @@ func toRelevantDocList(docs []Document, terms []string) []Document {
 	docMatches := fulltext.GetMatches(keys, terms)
 	relDocs := []Document{}
 	for _, doc  := range docs {
-		applog.Infof("toRelevantDocList, check Similarity %f, min %f",
+		applog.Infof("toRelevantDocList, check Similarity %f, min %f\n",
 				doc.Similarity, minSimilarity)
 		plainTextFN, ok := docFileMap[doc.GlossFile]
 		if !ok {
-			applog.Infof("find.toRelevantDocList 2 could not find %s", plainTextFN)
+			applog.Infof("find.toRelevantDocList 2 could not find %s\n", plainTextFN)
 		}
 		docMatch := docMatches[plainTextFN]
 		doc = setMatchDetails(doc, terms, docMatch)

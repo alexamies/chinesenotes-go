@@ -26,6 +26,7 @@ import (
 )
 
 var (
+	authenticator *Authenticator
 	database *sql.DB
 	domain *string
 	changePasswordStmt *sql.Stmt
@@ -40,6 +41,11 @@ var (
 	updateSessionStmt *sql.Stmt
 	updateResetRequestStmt *sql.Stmt
 )
+
+// Encapsulates translation memory searcher
+type Authenticator struct {
+	databaseInitialized bool
+}
 
 type ChangePasswordResult struct {
 	OldPasswordValid bool
@@ -67,17 +73,24 @@ type UserInfo struct {
 }
 
 func init() {
-	err := initStatements()
+	var err error
+	authenticator, err = initStatements()
 	if err != nil {
-		applog.Error("identity/init: error preparing database statements, running" +
-			"in degraded mode", err)
+		applog.Errorf("identity/init: error preparing database statements, running" +
+			"in degraded mode %v\n", err)
 		return
 	}
-	applog.Info("identity/init: Ready to go, ")
+	applog.Infof("identity/init: authenticator initialized: %v\n",
+		authenticator.DatabaseInitialized())
+}
+
+// Returns the word senses with English approximate or Pinyin exact match
+func (a *Authenticator) DatabaseInitialized() bool {
+	return a.databaseInitialized
 }
 
 // Open database connection and prepare statements
-func initStatements() error {
+func initStatements() (*Authenticator, error) {
 	conString := webconfig.DBConfig()
 	db, err := sql.Open("mysql", conString)
 	if err != nil {
@@ -97,7 +110,7 @@ func initStatements() error {
 		LIMIT 1`)
     if err != nil {
         applog.Error("auth.init() Error preparing stmt1: ", err)
-        return err
+        return nil, err
     }
     loginStmt = stmt1
 
@@ -107,7 +120,7 @@ func initStatements() error {
 		VALUES (?, ?, ?)`)
     if err != nil {
         applog.Error("auth.init() Error preparing stmt2: ", err)
-        return err
+        return nil, err
     }
     saveSessionStmt = stmt2
 
@@ -120,7 +133,7 @@ func initStatements() error {
 		LIMIT 1`)
     if err != nil {
         applog.Error("auth.init() Error preparing stmt3: ", err)
-        return err
+        return nil, err
     }
     checkSessionStmt = stmt3
 
@@ -130,7 +143,7 @@ func initStatements() error {
 		WHERE SessionID = ?`)
     if err != nil {
         applog.Error("auth.init() Error preparing stmt4: ", err)
-        return err
+        return nil, err
     }
     logoutStmt = stmt4
 
@@ -141,7 +154,7 @@ func initStatements() error {
 		WHERE SessionID = ?`)
     if err != nil {
         applog.Error("auth.init() Error preparing stmt5: ", err)
-        return err
+        return nil, err
     }
     updateSessionStmt = stmt5
 
@@ -151,7 +164,7 @@ func initStatements() error {
 		WHERE UserID = ?`)
     if err != nil {
         applog.Error("auth.init() Error preparing stmt6: ", err)
-        return err
+        return nil, err
     }
     changePasswordStmt = stmt6
 
@@ -162,7 +175,7 @@ func initStatements() error {
 		LIMIT 1`)
     if err != nil {
         applog.Error("auth.init() Error preparing stmt7: ", err)
-        return err
+        return nil, err
     }
     getUserStmt = stmt7
 
@@ -172,7 +185,7 @@ func initStatements() error {
 		VALUES (?, ?)`)
     if err != nil {
         applog.Error("auth.init() Error preparing stmt8: ", err)
-        return err
+        return nil, err
     }
     requestResetStmt = stmt8
 
@@ -183,7 +196,7 @@ func initStatements() error {
 		LIMIT 1`)
     if err != nil {
         applog.Error("auth.init() Error preparing stmt9: ", err)
-        return err
+        return nil, err
     }
     getUserByEmailStmt = stmt9
 
@@ -195,7 +208,7 @@ func initStatements() error {
 		LIMIT 1`)
     if err != nil {
         applog.Error("auth.init() Error preparing stmt10: ", err)
-        return err
+        return nil, err
     }
     getResetRequestStmt = stmt10
 
@@ -205,11 +218,13 @@ func initStatements() error {
 		WHERE Token = ?`)
     if err != nil {
         applog.Error("auth.init() Error preparing stmt11: ", err)
-        return err
+        return nil, err
     }
     updateResetRequestStmt = stmt11
 
-    return nil
+	return &Authenticator{
+		databaseInitialized: true,
+	}, nil
 }
 
 // Log a user in when they already have an unauthenticated session
@@ -251,13 +266,13 @@ func CheckLogin(username, password string) ([]UserInfo, error) {
 	results, err := loginStmt.QueryContext(ctx, username, hstr)
 	defer results.Close()
 	if err != nil {
-		applog.Error("CheckLogin, Error for username: ", username, err)
+		applog.Errorf("CheckLogin, Error for username: %s, %v\n", username, err)
 		// Sleep for a while, reinitialize, and retry
 		time.Sleep(2000 * time.Millisecond)
 		initStatements()
 		results, err = loginStmt.QueryContext(ctx, username, hstr)
 		if err != nil {
-			applog.Error("CheckLogin, Give up after retry: ", username, err)
+			applog.Errorf("CheckLogin, Give up after retry for user %s, %v\n", username, err)
 			return []UserInfo{}, err
 		}
 	}
@@ -270,10 +285,10 @@ func CheckLogin(username, password string) ([]UserInfo, error) {
 		users = append(users, user)
 	}
 	if len(users) == 0 {
-		applog.Info("CheckLogin, user or password wrong: ", username)
+		applog.Infof("CheckLogin, user or password wrong for user %s\n", username)
 		u, _ := GetUser(username)
 		if len(u) == 0 {
-			applog.Info("CheckLogin, user not found: ", username)
+			applog.Infof("CheckLogin, user %s not found\n", username)
 		}
 	}
 	return users, nil
@@ -285,21 +300,21 @@ func CheckSession(sessionid string) SessionInfo {
 	if len(sessions) != 1 {
 		return InvalidSession()
 	}
-	applog.Info("CheckSession, Authenticated =", sessions[0].Authenticated)
+	applog.Infof("CheckSession, Authenticated = %v\n", sessions[0].Authenticated)
 	return sessions[0]
 }
 
 // Check session when the user requests a page
 func checkSessionStore(sessionid string) []SessionInfo {
-	applog.Info("CheckSession, sessionid: ", sessionid)
+	applog.Infof("checkSessionStore, sessionid: %s\n", sessionid)
 	if checkSessionStmt == nil {
-		applog.Info("CheckSession, checkSessionStmt == nil")
+		applog.Info("checkSessionStore, checkSessionStmt == nil")
 		return []SessionInfo{}
 	}
 	ctx := context.Background()
 	results, err := checkSessionStmt.QueryContext(ctx, sessionid)
 	if err != nil {
-		applog.Error("checkSessionStore, Error: ", err)
+		applog.Errorf("checkSessionStore, Error: %v\n", err)
 	}
 	defer results.Close()
 
@@ -313,7 +328,7 @@ func checkSessionStore(sessionid string) []SessionInfo {
 		session.Valid = true
 		sessions = append(sessions, session)
 	}
-	applog.Info("checkSessionStore, sessions found: ", len(sessions))
+	applog.Infof("checkSessionStore, sessions found: %d\n", len(sessions))
 	return sessions
 }
 
@@ -378,16 +393,17 @@ func IsAuthorized(user UserInfo, permission string) bool {
 
 // Log the user out of the current session
 func Logout(sessionid string) {
+	applog.Infof("Logout, sessionid: %s\n", sessionid)
 	if logoutStmt == nil {
 		return
 	}
 	ctx := context.Background()
 	result, err := logoutStmt.ExecContext(ctx, sessionid)
 	if err != nil {
-		applog.Error("Logout, Error: ", err)
+		applog.Errorf("Logout, Error: %v\n", err)
 	} else {
 		rowsAffected, _ := result.RowsAffected()
-		applog.Info("Logout, rows updated:", rowsAffected)
+		applog.Infof("Logout, rows updated: %d\n", rowsAffected)
 	}
 }
 

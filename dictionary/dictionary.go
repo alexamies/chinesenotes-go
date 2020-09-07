@@ -108,7 +108,7 @@ func (searcher *Searcher) FindWordsByEnglish(ctx context.Context,
 		var hw sql.NullInt64
 		var trad, pinyin, english, notes sql.NullString
 		results.Scan(&ws.Simplified, &trad, &pinyin, &english, &notes, &hw)
-		applog.Infof("FindWordsByEnglish, simplified, headword = %s",
+		applog.Infof("FindWordsByEnglish, simplified, headword = %s, %v",
 			ws.Simplified, hw)
 		if trad.Valid {
 			ws.Traditional = trad.String
