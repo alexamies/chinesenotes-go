@@ -313,11 +313,13 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		if (err != nil) || !sessionInfo.Valid {
 			sessionid := identity.NewSessionId()
-			//applog.Info("loginHandler: creating new session %v", sessionid)
+			domain := webconfig.GetSiteDomain()
+			applog.Info("loginHandler: setting new session %s\n for domain %s\n",
+				sessionid, domain)
 			cookie := &http.Cookie{
         		Name: "session",
         		Value: sessionid,
-        		Domain: webconfig.GetSiteDomain(),
+        		Domain: domain,
         		Path: "/",
         		MaxAge: 86400*30, // One month
         	}
@@ -400,7 +402,7 @@ func portalHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handle static but private pages in the Translation Portal Library
 func portalLibraryHandler(w http.ResponseWriter, r *http.Request) {
-	applog.Infof("portalLibraryHandler: url %s\n", r.URL)
+	applog.Infof("portalLibraryHandler: url %s\n", r.URL.Path)
 	sessionInfo := identity.InvalidSession()
 	cookie, err := r.Cookie("session")
 	if err == nil {

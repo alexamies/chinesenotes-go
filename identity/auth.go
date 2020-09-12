@@ -527,7 +527,7 @@ func ResetPassword(token, password string) bool {
 
 // Save an authenticated session to the database
 func SaveSession(sessionid string, userInfo UserInfo, authenticated int) SessionInfo {
-	applog.Info("SaveSession, sessionid:", sessionid)
+	applog.Infof("SaveSession, sessionid: %s\n", sessionid)
 	if saveSessionStmt == nil {
 		return SessionInfo{}
 	}
@@ -535,11 +535,11 @@ func SaveSession(sessionid string, userInfo UserInfo, authenticated int) Session
 	result, err := saveSessionStmt.ExecContext(ctx, sessionid, userInfo.UserID,
 		authenticated)
 	if err != nil {
-		applog.Info("SaveSession, Error for username: ", userInfo.UserID, err)
+		applog.Infof("SaveSession, Error for user %d, %v\n ", userInfo.UserID, err)
 		return InvalidSession()
 	}
 	rowsAffected, _ := result.RowsAffected()
-	applog.Info("SaveSession, rows updated: ", rowsAffected)
+	applog.Infof("SaveSession, rows updated: %d\n", rowsAffected)
 	return SessionInfo{
 		Authenticated: authenticated,
 		Valid: true,

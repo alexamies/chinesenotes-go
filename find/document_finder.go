@@ -192,20 +192,21 @@ func combineByWeight(doc Document, maxSimWords, maxSimBigram float64) Document {
 	return simDoc
 }
 
-func countCollections(query string) int {
+func countCollections(query string) (int, error) {
 	if countColStmt == nil {
-		return -1
+		return 0, fmt.Errorf("countColStmt is nil")
 	}
 	var count int
 	ctx := context.Background()
 	results, err := countColStmt.QueryContext(ctx, "%" + query + "%")
-	results.Next()
-	results.Scan(&count)
 	if err != nil {
 		applog.Error("countCollections: Error for query: ", query, err)
+		return 0, fmt.Errorf("countCollections: query %s, error: %v", query, err)
 	}
+	results.Next()
+	results.Scan(&count)
 	results.Close()
-	return count
+	return count, nil
 }
 
 // Search the corpus for document bodies most similar using a BM25 model.
@@ -620,7 +621,10 @@ func FindDocuments(ctx context.Context,
 			terms[0].Senses = senses
 		}
 	}
-	nCol := countCollections(query)
+	nCol, err := countCollections(query)
+	if err != nil {
+		return nil, fmt.Errorf("FindDocuments, error from countCollections: %v", err)
+	}
 	collections := findCollections(query)
 	documents, err := findDocuments(query, terms, advanced)
 	if err != nil {
