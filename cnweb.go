@@ -30,6 +30,7 @@ var (
 	wdict map[string]dicttypes.Word
 	dictSearcher *dictionary.Searcher
 	tmSearcher *transmemory.Searcher
+	authenticator *identity.Authenticator
 )
 
 func init() {
@@ -38,26 +39,42 @@ func init() {
 	var err error
 	database, err = dictionary.InitDBCon()
 	if err != nil {
-		applog.Errorf("main.init() unable to connect to database: %v", err)
+		applog.Errorf("main.init() unable to connect to database: \n%v\n", err)
 	}
 	dictSearcher = dictionary.NewSearcher(ctx, database)
 	wdict, err = dictionary.LoadDict(ctx, database)
 	if err != nil {
-		applog.Errorf("main.init() unable to load dictionary: %v", err)
+		applog.Errorf("main.init() unable to load dictionary: \n%v", err)
 	}
 	parser = find.MakeQueryParser(wdict)
 	tmSearcher, err = transmemory.NewSearcher(ctx, database)
 	if err != nil {
-		applog.Errorf("main.init() unable to create new TM searcher: %v", err)
+		applog.Errorf("main.init() unable to create new TM searcher: \n%v\n", err)
+	}
+	if webconfig.PasswordProtected() {
+		authenticator, err = identity.NewAuthenticator(ctx)
+		if err != nil {
+			applog.Errorf("init authenticator not initialized, \n%v", err)
+			return
+		}
 	}
 }
 
 // Starting point for the Administration Portal
 func adminHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+	if authenticator == nil {
+		var err error
+		authenticator, err = identity.NewAuthenticator(ctx)
+		if err != nil {
+			applog.Errorf("changePasswordHandler authenticator not initialized, \n%v\n", err)
+			http.Error(w, "Not authorized", http.StatusForbidden)
+		}
+	}
 	sessionInfo := identity.InvalidSession()
 	cookie, err := r.Cookie("session")
 	if err == nil {
-		sessionInfo = identity.CheckSession(cookie.Value)
+		sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
 	}
 	if identity.IsAuthorized(sessionInfo.User, "admin_portal") {
 		vars := webconfig.GetAll()
@@ -83,11 +100,20 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 
 // Process a change password request
 func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+	if authenticator == nil {
+		var err error
+		authenticator, err = identity.NewAuthenticator(ctx)
+		if err != nil {
+			applog.Errorf("changePasswordHandler authenticator not initialized, \n%v\n", err)
+			http.Error(w, "Not authorized", http.StatusForbidden)
+		}
+	}
 	sessionInfo := enforceValidSession(w, r)
 	if sessionInfo.Authenticated == 1 {
 		oldPassword := r.PostFormValue("OldPassword")
 		password := r.PostFormValue("Password")
-		result := identity.ChangePassword(sessionInfo.User, oldPassword,
+		result := authenticator.ChangePassword(ctx, sessionInfo.User, oldPassword,
 			password)
     	if strings.Contains(r.Header.Get("Accept"), "application/json") {
     		sendJSON(w, result)
@@ -156,10 +182,19 @@ func displayPortalHome(w http.ResponseWriter) {
 
 // Process a change password request
 func enforceValidSession(w http.ResponseWriter, r *http.Request) identity.SessionInfo {
+	ctx := context.Background()
+	if authenticator == nil {
+		var err error
+		authenticator, err = identity.NewAuthenticator(ctx)
+		if err != nil {
+			applog.Errorf("enforceValidSession authenticator not initialized, \n%v\n", err)
+			http.Error(w, "Not authorized", http.StatusForbidden)
+		}
+	}
 	sessionInfo := identity.InvalidSession()
 	cookie, err := r.Cookie("session")
 	if err == nil {
-		sessionInfo = identity.CheckSession(cookie.Value)
+		sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
 		if sessionInfo.Authenticated != 1 {
 			http.Error(w, "Not authorized", http.StatusForbidden)
 			return sessionInfo
@@ -287,6 +322,15 @@ func loginFormHandler(w http.ResponseWriter, r *http.Request) {
 
 // Process a login request
 func loginHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+	if authenticator == nil {
+		var err error
+		authenticator, err = identity.NewAuthenticator(ctx)
+		if err != nil {
+			applog.Errorf("loginHandler authenticator not initialized, \n%v\n", err)
+			http.Error(w, "Not authorized", http.StatusForbidden)
+		}
+	}
 	sessionInfo := identity.InvalidSession()
 	err := r.ParseForm()
 	if err != nil {
@@ -297,7 +341,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	username := r.PostFormValue("UserName")
 	applog.Infof("loginHandler: username = %s", username)
 	password := r.PostFormValue("Password")
-	users, err := identity.CheckLogin(username, password)
+	users, err := authenticator.CheckLogin(ctx, username, password)
 	if err != nil {
 		applog.Errorf("main.loginHandler checking login, %v", err)
 		http.Error(w, "Error checking login", http.StatusInternalServerError)
@@ -309,7 +353,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("session")
 		if err == nil {
 			applog.Infof("loginHandler: updating session: %s", cookie.Value)
-			sessionInfo = identity.UpdateSession(cookie.Value, users[0], 1)
+			sessionInfo = authenticator.UpdateSession(ctx, cookie.Value, users[0], 1)
 		}
 		if (err != nil) || !sessionInfo.Valid {
 			sessionid := identity.NewSessionId()
@@ -324,7 +368,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
         		MaxAge: 86400*30, // One month
         	}
         	http.SetCookie(w, cookie)
-        	sessionInfo = identity.SaveSession(sessionid, users[0], 1)
+        	sessionInfo = authenticator.SaveSession(ctx, sessionid, users[0], 1)
         }
     }
     if strings.Contains(r.Header.Get("Accept"), "application/json") {
@@ -339,12 +383,21 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+	if authenticator == nil {
+		var err error
+		authenticator, err = identity.NewAuthenticator(ctx)
+		if err != nil {
+			applog.Errorf("loginHandler authenticator not initialized, \n%v\n", err)
+			http.Error(w, "Not authorized", http.StatusForbidden)
+		}
+	}
 	cookie, err := r.Cookie("session")
 	if err != nil {
 		// OK, just don't show the contents that require a login
 		applog.Error("logoutHandler: no cookie")
 	} else {
-		identity.Logout(cookie.Value)
+		authenticator.Logout(ctx, cookie.Value)
 	}
 	message := "Please come back again"
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -379,12 +432,21 @@ func mediaDetailHandler(response http.ResponseWriter, request *http.Request) {
 	}
 }
 
-// Starting point for the Translation Portal
+// portalHandler is the starting point for the Translation Portal
 func portalHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+	if authenticator == nil {
+		var err error
+		authenticator, err = identity.NewAuthenticator(ctx)
+		if err != nil {
+			applog.Errorf("portalHandler: authenticator not initialized, \n%v\n", err)
+			http.Error(w, "Not authorized", http.StatusForbidden)
+		}
+	}
 	sessionInfo := identity.InvalidSession()
 	cookie, err := r.Cookie("session")
 	if err == nil {
-		sessionInfo = identity.CheckSession(cookie.Value)
+		sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
 	} else {
 		applog.Info("portalHandler error getting cookie: %v", err)
 		http.Error(w, "Server error", http.StatusInternalServerError)
@@ -400,13 +462,22 @@ func portalHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Handle static but private pages in the Translation Portal Library
+// portalLibraryHandler handles static but private pages
 func portalLibraryHandler(w http.ResponseWriter, r *http.Request) {
 	applog.Infof("portalLibraryHandler: url %s\n", r.URL.Path)
+	ctx := context.Background()
+	if authenticator == nil {
+		var err error
+		authenticator, err = identity.NewAuthenticator(ctx)
+		if err != nil {
+			applog.Errorf("portalLibraryHandler: authenticator not initialized, \n%v\n", err)
+			http.Error(w, "Not authorized", http.StatusForbidden)
+		}
+	}
 	sessionInfo := identity.InvalidSession()
 	cookie, err := r.Cookie("session")
 	if err == nil {
-		sessionInfo = identity.CheckSession(cookie.Value)
+		sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
 	} else {
 		applog.Infof("portalLibraryHandler error getting cookie: %v\n", err)
 		http.Error(w, "Server error", http.StatusInternalServerError)
@@ -440,10 +511,19 @@ func requestResetFormHandler(w http.ResponseWriter, r *http.Request) {
 	displayPage(w, "request_reset_form.html", content)
 }
 
-// Process a request for password reset
+// requestResetHandler processes requests for password reset
 func requestResetHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+	if authenticator == nil {
+		var err error
+		authenticator, err = identity.NewAuthenticator(ctx)
+		if err != nil {
+			applog.Errorf("requestResetHandler: authenticator not initialized, \n%v\n", err)
+			http.Error(w, "Not authorized", http.StatusForbidden)
+		}
+	}
 	email := r.PostFormValue("Email")
-	result := identity.RequestPasswordReset(email)
+	result := authenticator.RequestPasswordReset(ctx, email)
 	if result.RequestResetSuccess {
 		err := mail.SendPasswordReset(result.User, result.Token)
 		if err != nil {
@@ -471,9 +551,18 @@ func resetPasswordFormHandler(w http.ResponseWriter, r *http.Request) {
 
 func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	applog.Info("resetPasswordHandler enter")
+	ctx := context.Background()
+	if authenticator == nil {
+		var err error
+		authenticator, err = identity.NewAuthenticator(ctx)
+		if err != nil {
+			applog.Errorf("resetPasswordHandler: authenticator not initialized, \n%v\n", err)
+			http.Error(w, "Not authorized", http.StatusForbidden)
+		}
+	}
 	token := r.PostFormValue("Token")
 	newPassword := r.PostFormValue("NewPassword")
-	result := identity.ResetPassword(token, newPassword)
+	result := authenticator.ResetPassword(ctx, token, newPassword)
 	content := make(map[string]bool)
 	if result {
 		content["ResetPasswordSuccessful"] = true
@@ -496,12 +585,21 @@ func sendJSON(w http.ResponseWriter, obj interface{}) {
 	fmt.Fprintf(w, string(resultsJson))
 }
 
-// Check to see if the user has a session
+// sessionHandler checks to see if the user has a session.
 func sessionHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+	if authenticator == nil {
+		var err error
+		authenticator, err = identity.NewAuthenticator(ctx)
+		if err != nil {
+			applog.Errorf("sessionHandler: authenticator not initialized, \n%v\n", err)
+			http.Error(w, "Not authorized", http.StatusForbidden)
+		}
+	}
 	sessionInfo := identity.InvalidSession()
 	cookie, err := r.Cookie("session")
 	if err == nil {
-		sessionInfo = identity.CheckSession(cookie.Value)
+		sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
 	}
 	if (err != nil) || (!sessionInfo.Valid) {
 		// OK, just don't show the contents that don't require a login
@@ -522,7 +620,7 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 			FullName: "",
 			Role: "",
 		}
-    identity.SaveSession(sessionid, userInfo, 0)
+    authenticator.SaveSession(ctx, sessionid, userInfo, 0)
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	resultsJson, err := json.Marshal(sessionInfo)

@@ -22,11 +22,10 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/alexamies/chinesenotes-go/applog"
 	"github.com/alexamies/chinesenotes-go/webconfig"
-	"time"
 )
 
-var (
-	authenticator *Authenticator
+// Encapsulates translation memory searcher
+type Authenticator struct {
 	database *sql.DB
 	domain *string
 	changePasswordStmt *sql.Stmt
@@ -40,11 +39,6 @@ var (
 	saveSessionStmt *sql.Stmt
 	updateSessionStmt *sql.Stmt
 	updateResetRequestStmt *sql.Stmt
-)
-
-// Encapsulates translation memory searcher
-type Authenticator struct {
-	databaseInitialized bool
 }
 
 type ChangePasswordResult struct {
@@ -72,36 +66,32 @@ type UserInfo struct {
 	UserName, Email, FullName, Role string
 }
 
-func init() {
-	var err error
-	authenticator, err = initStatements()
+// NewAuthenticator creates but does not initialize an Authenticator object.
+//
+// Params:
+//   isProtected - set this to true if only the site is password protected
+func NewAuthenticator(ctx context.Context) (*Authenticator, error) {
+	a := Authenticator{}
+	err := a.initStatements(ctx)
 	if err != nil {
-		applog.Errorf("identity/init: error preparing database statements, running" +
-			"in degraded mode %v\n", err)
-		return
+		return nil, err
 	}
-	applog.Infof("identity/init: authenticator initialized: %v\n",
-		authenticator.DatabaseInitialized())
+	applog.Info("NewAuthenticator: authenticator initialized")
+	return &a, nil
 }
 
-// Returns the word senses with English approximate or Pinyin exact match
-func (a *Authenticator) DatabaseInitialized() bool {
-	return a.databaseInitialized
-}
-
-// Open database connection and prepare statements
-func initStatements() (*Authenticator, error) {
+// initStatements opens a database connection and prepares the statements.
+func (a *Authenticator) initStatements(ctx context.Context) error {
 	conString := webconfig.DBConfig()
-	db, err := sql.Open("mysql", conString)
+	var err error
+	a.database, err = sql.Open("mysql", conString)
 	if err != nil {
 		applog.Error("FATAL: could not connect to the database, ",
 			err)
-		//panic(err.Error())
+		return err
 	}
-	database = db
 
-	ctx := context.Background()
-	stmt1, err := database.PrepareContext(ctx,
+	a.loginStmt, err = a.database.PrepareContext(ctx,
 		`SELECT user.UserID, UserName, Email, FullName, Role 
 		FROM user, passwd 
 		WHERE UserName = ? 
@@ -109,127 +99,104 @@ func initStatements() (*Authenticator, error) {
 		AND Password = ?
 		LIMIT 1`)
     if err != nil {
-        applog.Error("auth.init() Error preparing stmt1: ", err)
-        return nil, err
+        return err
     }
-    loginStmt = stmt1
 
-	stmt2, err := database.PrepareContext(ctx,
+	a.saveSessionStmt, err = a.database.PrepareContext(ctx,
 		`INSERT INTO
 		  session (SessionID, UserID, Authenticated)
 		VALUES (?, ?, ?)`)
     if err != nil {
-        applog.Error("auth.init() Error preparing stmt2: ", err)
-        return nil, err
+        return err
     }
-    saveSessionStmt = stmt2
 
     // Need to fix use of username in session table. Should be UserId
-	stmt3, err := database.PrepareContext(ctx,
+	a.checkSessionStmt, err = a.database.PrepareContext(ctx,
 		`SELECT user.UserID, UserName, Email, FullName, Role, Authenticated
 		FROM user, session 
 		WHERE SessionID = ? 
 		AND user.UserID = session.UserID
 		LIMIT 1`)
     if err != nil {
-        applog.Error("auth.init() Error preparing stmt3: ", err)
-        return nil, err
+        return err
     }
-    checkSessionStmt = stmt3
 
-	stmt4, err := database.PrepareContext(ctx,
+	a.logoutStmt, err = a.database.PrepareContext(ctx,
 		`UPDATE session SET
 		Authenticated = 0
 		WHERE SessionID = ?`)
     if err != nil {
-        applog.Error("auth.init() Error preparing stmt4: ", err)
-        return nil, err
+        return err
     }
-    logoutStmt = stmt4
 
-	stmt5, err := database.PrepareContext(ctx,
+	a.updateSessionStmt, err = a.database.PrepareContext(ctx,
 		`UPDATE session SET
 		Authenticated = ?,
 		UserID = ?
 		WHERE SessionID = ?`)
     if err != nil {
-        applog.Error("auth.init() Error preparing stmt5: ", err)
-        return nil, err
+        return err
     }
-    updateSessionStmt = stmt5
 
-	stmt6, err := database.PrepareContext(ctx,
+	a.changePasswordStmt, err = a.database.PrepareContext(ctx,
 		`UPDATE passwd SET
 		Password = ?
 		WHERE UserID = ?`)
     if err != nil {
-        applog.Error("auth.init() Error preparing stmt6: ", err)
-        return nil, err
+        return err
     }
-    changePasswordStmt = stmt6
 
-	stmt7, err := database.PrepareContext(ctx,
+	a.getUserStmt, err = a.database.PrepareContext(ctx,
 		`SELECT user.UserID, UserName, Email, FullName, Role 
 		FROM user
 		WHERE UserName = ? 
 		LIMIT 1`)
     if err != nil {
-        applog.Error("auth.init() Error preparing stmt7: ", err)
-        return nil, err
+        return err
     }
-    getUserStmt = stmt7
 
-	stmt8, err := database.PrepareContext(ctx,
+	a.requestResetStmt, err = a.database.PrepareContext(ctx,
 		`INSERT INTO
 		passwdreset (Token, UserID)
 		VALUES (?, ?)`)
     if err != nil {
-        applog.Error("auth.init() Error preparing stmt8: ", err)
-        return nil, err
+        return err
     }
-    requestResetStmt = stmt8
 
-	stmt9, err := database.PrepareContext(ctx,
+	a.getUserByEmailStmt, err = a.database.PrepareContext(ctx,
 		`SELECT user.UserID, UserName, Email, FullName, Role 
 		FROM user
 		WHERE Email = ? 
 		LIMIT 1`)
     if err != nil {
-        applog.Error("auth.init() Error preparing stmt9: ", err)
-        return nil, err
+        return err
     }
-    getUserByEmailStmt = stmt9
 
-	stmt10, err := database.PrepareContext(ctx,
+	a.getResetRequestStmt, err = a.database.PrepareContext(ctx,
 		`SELECT UserID
 		FROM passwdreset
 		WHERE Token = ?
 		AND Valid = 1
 		LIMIT 1`)
     if err != nil {
-        applog.Error("auth.init() Error preparing stmt10: ", err)
-        return nil, err
+        return err
     }
-    getResetRequestStmt = stmt10
 
-	stmt11, err := database.PrepareContext(ctx,
+	a.updateResetRequestStmt, err = a.database.PrepareContext(ctx,
 		`UPDATE passwdreset SET
 		Valid = 0
 		WHERE Token = ?`)
     if err != nil {
-        applog.Error("auth.init() Error preparing stmt11: ", err)
-        return nil, err
+        return err
     }
-    updateResetRequestStmt = stmt11
 
-	return &Authenticator{
-		databaseInitialized: true,
-	}, nil
+	return nil
 }
 
-// Log a user in when they already have an unauthenticated session
-func ChangePassword(userInfo UserInfo, oldPassword, password string) ChangePasswordResult {
-	users, err := CheckLogin(userInfo.UserName, oldPassword)
+// ChangePassword enables the user to change passwords.
+func (a *Authenticator) ChangePassword(ctx context.Context, userInfo UserInfo,
+			oldPassword, password string) ChangePasswordResult {
+	users, err := a.CheckLogin(ctx, userInfo.UserName, oldPassword)
 	if err != nil {
 		applog.Error("ChangePassword checking login, ", err)
 		return ChangePasswordResult{true, false, false}
@@ -239,11 +206,10 @@ func ChangePassword(userInfo UserInfo, oldPassword, password string) ChangePassw
 			userInfo.UserName)
 		return ChangePasswordResult{false, false, false}
 	}
-	ctx := context.Background()
 	h := sha256.New()
 	h.Write([]byte(password))
 	hstr := fmt.Sprintf("%x", h.Sum(nil))
-	result, err := changePasswordStmt.ExecContext(ctx, hstr, userInfo.UserID)
+	result, err := a.changePasswordStmt.ExecContext(ctx, hstr, userInfo.UserID)
 	if err != nil {
 		applog.Error("ChangePassword, Error: ", err)
 		return ChangePasswordResult{true, false, false}
@@ -253,28 +219,21 @@ func ChangePassword(userInfo UserInfo, oldPassword, password string) ChangePassw
 	return ChangePasswordResult{true, true, false}
 }
 
-// Check password when the user logs in
-func CheckLogin(username, password string) ([]UserInfo, error) {
-	if loginStmt == nil {
+// CheckLogin checks the password when the user logs in.
+func (a *Authenticator) CheckLogin(ctx context.Context,
+		username, password string) ([]UserInfo, error) {
+	if a.loginStmt == nil {
 		return []UserInfo{}, nil
 	}
 	h := sha256.New()
 	h.Write([]byte(password))
 	hstr := fmt.Sprintf("%x", h.Sum(nil))
 	//applog.Info("CheckLogin, username, hstr:", username, hstr)
-	ctx := context.Background()
-	results, err := loginStmt.QueryContext(ctx, username, hstr)
+	results, err := a.loginStmt.QueryContext(ctx, username, hstr)
 	defer results.Close()
 	if err != nil {
 		applog.Errorf("CheckLogin, Error for username: %s, %v\n", username, err)
-		// Sleep for a while, reinitialize, and retry
-		time.Sleep(2000 * time.Millisecond)
-		initStatements()
-		results, err = loginStmt.QueryContext(ctx, username, hstr)
-		if err != nil {
-			applog.Errorf("CheckLogin, Give up after retry for user %s, %v\n", username, err)
-			return []UserInfo{}, err
-		}
+		return []UserInfo{}, err
 	}
 
 	users := []UserInfo{}
@@ -286,7 +245,7 @@ func CheckLogin(username, password string) ([]UserInfo, error) {
 	}
 	if len(users) == 0 {
 		applog.Infof("CheckLogin, user or password wrong for user %s\n", username)
-		u, _ := GetUser(username)
+		u, _ := a.GetUser(ctx, username)
 		if len(u) == 0 {
 			applog.Infof("CheckLogin, user %s not found\n", username)
 		}
@@ -294,9 +253,9 @@ func CheckLogin(username, password string) ([]UserInfo, error) {
 	return users, nil
 }
 
-// Check session when the user requests a page
-func CheckSession(sessionid string) SessionInfo {
-	sessions := checkSessionStore(sessionid)
+// CheckSession checks the session when the user requests a page.
+func (a *Authenticator) CheckSession(ctx context.Context, sessionid string) SessionInfo {
+	sessions := a.checkSessionStore(ctx, sessionid)
 	if len(sessions) != 1 {
 		return InvalidSession()
 	}
@@ -304,15 +263,15 @@ func CheckSession(sessionid string) SessionInfo {
 	return sessions[0]
 }
 
-// Check session when the user requests a page
-func checkSessionStore(sessionid string) []SessionInfo {
+// checkSessionStore checks the session when the user requests a page
+func (a *Authenticator) checkSessionStore(ctx context.Context,
+		sessionid string) []SessionInfo {
 	applog.Infof("checkSessionStore, sessionid: %s\n", sessionid)
-	if checkSessionStmt == nil {
+	if a.checkSessionStmt == nil {
 		applog.Info("checkSessionStore, checkSessionStmt == nil")
 		return []SessionInfo{}
 	}
-	ctx := context.Background()
-	results, err := checkSessionStmt.QueryContext(ctx, sessionid)
+	results, err := a.checkSessionStmt.QueryContext(ctx, sessionid)
 	if err != nil {
 		applog.Errorf("checkSessionStore, Error: %v\n", err)
 	}
@@ -332,14 +291,14 @@ func checkSessionStore(sessionid string) []SessionInfo {
 	return sessions
 }
 
-// Get the user information
-func GetUser(username string) ([]UserInfo, error) {
+// GetUser gets the user information.
+func (a *Authenticator) GetUser(ctx context.Context,
+		username string) ([]UserInfo, error) {
 	applog.Info("getUser, username:", username)
-	if getUserStmt == nil {
+	if a.getUserStmt == nil {
 		return []UserInfo{}, nil
 	}
-	ctx := context.Background()
-	results, err := getUserStmt.QueryContext(ctx, username)
+	results, err := a.getUserStmt.QueryContext(ctx, username)
 	defer results.Close()
 	if err != nil {
 		applog.Error("getUser, Error for username: ", username, err)
@@ -356,7 +315,7 @@ func GetUser(username string) ([]UserInfo, error) {
 	return users, nil
 }
 
-// Empty session struct for an unauthenticated session
+// InvalidSession creates an empty session struct.
 func InvalidSession() SessionInfo {
 	userInfo := UserInfo{
 		UserID: 1,
@@ -391,14 +350,10 @@ func IsAuthorized(user UserInfo, permission string) bool {
 	return false
 }
 
-// Log the user out of the current session
-func Logout(sessionid string) {
+// Logout logs the user out of the current session.
+func (a *Authenticator) Logout(ctx context.Context, sessionid string) {
 	applog.Infof("Logout, sessionid: %s\n", sessionid)
-	if logoutStmt == nil {
-		return
-	}
-	ctx := context.Background()
-	result, err := logoutStmt.ExecContext(ctx, sessionid)
+	result, err := a.logoutStmt.ExecContext(ctx, sessionid)
 	if err != nil {
 		applog.Errorf("Logout, Error: %v\n", err)
 	} else {
@@ -429,8 +384,9 @@ func OldPasswordDoesNotMatch() ChangePasswordResult {
 	return ChangePasswordResult{false, true, false}
 }
 
-// Request a password reset, to be sent by email
-func RequestPasswordReset(email string) RequestResetResult {
+// RequestPasswordReset requests a password reset, to be sent by email.
+func (a *Authenticator) RequestPasswordReset(ctx context.Context,
+		email string) RequestResetResult {
 	applog.Info("RequestPasswordReset, email:", email)
 	b := make([]byte, 32)
     _, err := rand.Read(b)
@@ -443,11 +399,7 @@ func RequestPasswordReset(email string) RequestResetResult {
 		applog.Info("RequestPasswordReset, Error: ", err)
 		return RequestResetResult{true, false, true, InvalidUser(), ""}
 	}
-	ctx := context.Background()
-	if getUserByEmailStmt == nil {
-		return RequestResetResult{}
-	}
-	results, err := getUserByEmailStmt.QueryContext(ctx, email)
+	results, err := a.getUserByEmailStmt.QueryContext(ctx, email)
 	defer results.Close()
 	if err != nil {
 		applog.Error("RequestPasswordReset, Error for email: ", email, err)
@@ -466,7 +418,7 @@ func RequestPasswordReset(email string) RequestResetResult {
 		return RequestResetResult{false, false, true, InvalidUser(), ""}
 	}
 
-	result, err := requestResetStmt.ExecContext(ctx, token, users[0].UserID)
+	result, err := a.requestResetStmt.ExecContext(ctx, token, users[0].UserID)
 	if err != nil {
 		applog.Info("RequestPasswordReset, Error for email: ", email, err)
 		return RequestResetResult{true, false, true, InvalidUser(), ""}
@@ -476,15 +428,10 @@ func RequestPasswordReset(email string) RequestResetResult {
 	return RequestResetResult{true, true, false, users[0], token}
 }
 
-// Reset a password
-func ResetPassword(token, password string) bool {
+// ResetPassword resets a password.
+func (a *Authenticator) ResetPassword(ctx context.Context, token, password string) bool {
 	applog.Info("ResetPassword, token:", token)
-	if getResetRequestStmt == nil {
-		applog.Error("ResetPassword, getResetRequestStmt == nil")
-		return false
-	}
-	ctx := context.Background()
-	results, err := getResetRequestStmt.QueryContext(ctx, token)
+	results, err := a.getResetRequestStmt.QueryContext(ctx, token)
 	defer results.Close()
 	if err != nil {
 		applog.Error("ResetPassword, Error for token: ", token, err)
@@ -506,7 +453,7 @@ func ResetPassword(token, password string) bool {
 	h := sha256.New()
 	h.Write([]byte(password))
 	hstr := fmt.Sprintf("%x", h.Sum(nil))
-	result, err := changePasswordStmt.ExecContext(ctx, hstr, userId)
+	result, err := a.changePasswordStmt.ExecContext(ctx, hstr, userId)
 	if err != nil {
 		applog.Error("ResetPassword, Error setting password: ", err)
 		return false
@@ -515,7 +462,7 @@ func ResetPassword(token, password string) bool {
 	applog.Info("ResetPassword, rows updated for change pwd:", rowsAffected)
 
 	// Update reset token so that it cannot be used again
-	result, err = updateResetRequestStmt.ExecContext(ctx, token)
+	result, err = a.updateResetRequestStmt.ExecContext(ctx, token)
 	if err != nil {
 		applog.Error("ResetPassword, Error updating reset token: ", err)
 	} 
@@ -525,14 +472,11 @@ func ResetPassword(token, password string) bool {
 	return true
 }
 
-// Save an authenticated session to the database
-func SaveSession(sessionid string, userInfo UserInfo, authenticated int) SessionInfo {
+// SaveSession saves an authenticated session to the database
+func (a *Authenticator) SaveSession(ctx context.Context,
+		sessionid string, userInfo UserInfo, authenticated int) SessionInfo {
 	applog.Infof("SaveSession, sessionid: %s\n", sessionid)
-	if saveSessionStmt == nil {
-		return SessionInfo{}
-	}
-	ctx := context.Background()
-	result, err := saveSessionStmt.ExecContext(ctx, sessionid, userInfo.UserID,
+	result, err := a.saveSessionStmt.ExecContext(ctx, sessionid, userInfo.UserID,
 		authenticated)
 	if err != nil {
 		applog.Infof("SaveSession, Error for user %d, %v\n ", userInfo.UserID, err)
@@ -547,17 +491,17 @@ func SaveSession(sessionid string, userInfo UserInfo, authenticated int) Session
 	}
 }
 
-// Log a user in when they already have an unauthenticated session
-func UpdateSession(sessionid string, userInfo UserInfo, authenticated int) SessionInfo {
-	ctx := context.Background()
-	result, err := updateSessionStmt.ExecContext(ctx, authenticated,
+// UpdateSession logs a user in when they already have an unauthenticated session.
+func (a *Authenticator) UpdateSession(ctx context.Context,
+		sessionid string, userInfo UserInfo, authenticated int) SessionInfo {
+	result, err := a.updateSessionStmt.ExecContext(ctx, authenticated,
 		userInfo.UserID, sessionid)
 	if err != nil {
 		applog.Error("UpdateSession, Error: ", err)
 		return InvalidSession()
 	} 
 	rowsAffected, _ := result.RowsAffected()
-	applog.Info("UpdateSession, rows updated:", rowsAffected)
+	applog.Infof("UpdateSession, rows updated: %d\n", rowsAffected)
 	return SessionInfo{
 		Authenticated: authenticated,
 		User: userInfo,

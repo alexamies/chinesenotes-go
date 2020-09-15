@@ -15,20 +15,21 @@
 package identity
 
 import (
-	"fmt"
-	"log"
+	"context"
 	"testing"
-)
 
-// Test package initialization, which requires a database connection
-func TestInit(t *testing.T) {
-	log.Printf("TestInit: Begin unit tests\n")
-}
+	"github.com/alexamies/chinesenotes-go/webconfig"
+)
 
 // Test check login method
 func TestChangePassword(t *testing.T) {
-	if (authenticator == nil) || !authenticator.DatabaseInitialized() {
-		fmt.Println("TestChangePassword database not initialized, skipping tests")
+	if !webconfig.PasswordProtected() {
+		return
+	}
+	ctx := context.Background()
+	a, err := NewAuthenticator(ctx)
+	if err != nil {
+		t.Errorf("TestChangePassword authenticator not initialized, %v", err)
 		return
 	}
 	userInfo := UserInfo{
@@ -38,7 +39,7 @@ func TestChangePassword(t *testing.T) {
 		FullName: "",
 		Role: "",
 	}
-	result := ChangePassword(userInfo, "guest", "guest")
+	result := a.ChangePassword(ctx, userInfo, "guest", "guest")
 	if !result.ChangeSuccessful {
 		t.Error("TestChangePassword: !result.ChangeSuccessful")
 	}
@@ -46,11 +47,16 @@ func TestChangePassword(t *testing.T) {
 
 // Test check login method
 func TestCheckLogin1(t *testing.T) {
-	if (authenticator == nil) || !authenticator.DatabaseInitialized() {
-		fmt.Println("TestCheckLogin1 database not initialized, skipping tests")
+	if !webconfig.PasswordProtected() {
 		return
 	}
-	user, err := CheckLogin("guest", "guest")
+	ctx := context.Background()
+	a, err := NewAuthenticator(ctx)
+	if err != nil {
+		t.Errorf("TestCheckLogin1 authenticator not initialized, %v", err)
+		return
+	}
+	user, err := a.CheckLogin(ctx, "guest", "guest")
 	if err != nil {
 		t.Errorf("TestCheckLogin1: error, %v", err)
 	}
@@ -61,11 +67,16 @@ func TestCheckLogin1(t *testing.T) {
 
 // Test check login method
 func TestCheckLogin2(t *testing.T) {
-	if (authenticator == nil) || !authenticator.DatabaseInitialized() {
-		fmt.Println("TestCheckLogin2 database not initialized, skipping tests")
+	if !webconfig.PasswordProtected() {
 		return
 	}
-	user, err := CheckLogin("admin", "changeme")
+	ctx := context.Background()
+	a, err := NewAuthenticator(ctx)
+	if err != nil {
+		t.Errorf("TestCheckLogin2 authenticator not initialized, %v", err)
+		return
+	}
+	user, err := a.CheckLogin(ctx, "admin", "changeme")
 	if err != nil {
 		t.Error("TestCheckLogin2: error, ", err)
 	}
@@ -76,12 +87,17 @@ func TestCheckLogin2(t *testing.T) {
 
 // Test CheckSession function with expected result that session does not exist
 func TestCheckSession1(t *testing.T) {
-	if (authenticator == nil) || !authenticator.DatabaseInitialized() {
-		fmt.Println("TestCheckSession1 database not initialized, skipping tests")
+	if !webconfig.PasswordProtected() {
+		return
+	}
+	ctx := context.Background()
+	a, err := NewAuthenticator(ctx)
+	if err != nil {
+		t.Errorf("TestCheckSession1 authenticator not initialized, %v", err)
 		return
 	}
 	sessionid := NewSessionId()
-	session := CheckSession(sessionid)
+	session := a.CheckSession(ctx, sessionid)
 	if session.Valid {
 		t.Error("TestCheckSession1: session.Valid, sessionid: ",
 			sessionid)
@@ -90,8 +106,13 @@ func TestCheckSession1(t *testing.T) {
 
 // Test CheckSession function with session that does exist
 func TestCheckSession2(t *testing.T) {
-	if (authenticator == nil) || !authenticator.DatabaseInitialized() {
-		fmt.Println("TestCheckSession2 database not initialized, skipping tests")
+	if !webconfig.PasswordProtected() {
+		return
+	}
+	ctx := context.Background()
+	a, err := NewAuthenticator(ctx)
+	if err != nil {
+		t.Errorf("TestCheckSession2 authenticator not initialized, %v", err)
 		return
 	}
 	sessionid := NewSessionId()
@@ -102,8 +123,8 @@ func TestCheckSession2(t *testing.T) {
 		FullName: "",
 		Role: "",
 	}
-	SaveSession(sessionid, userInfo, 1)
-	session := CheckSession(sessionid)
+	a.SaveSession(ctx, sessionid, userInfo, 1)
+	session := a.CheckSession(ctx, sessionid)
 	if (session.Authenticated != 1) {
 		t.Error("TestCheckSession2: session.Authenticated != 1, SessionID: ",
 			sessionid)
@@ -112,8 +133,13 @@ func TestCheckSession2(t *testing.T) {
 
 // Test CheckSession function with session that does exist
 func TestCheckSession3(t *testing.T) {
-	if (authenticator == nil) || !authenticator.DatabaseInitialized() {
-		fmt.Println("TestCheckSession3 database not initialized, skipping tests")
+	if !webconfig.PasswordProtected() {
+		return
+	}
+	ctx := context.Background()
+	a, err := NewAuthenticator(ctx)
+	if err != nil {
+		t.Errorf("TestCheckSession3 authenticator not initialized, %v", err)
 		return
 	}
 	sessionid := NewSessionId()
@@ -124,8 +150,8 @@ func TestCheckSession3(t *testing.T) {
 		FullName: "",
 		Role: "",
 	}
-	SaveSession(sessionid, userInfo, 1)
-	session := CheckSession(sessionid)
+	a.SaveSession(ctx, sessionid, userInfo, 1)
+	session := a.CheckSession(ctx, sessionid)
 	if session.Authenticated != 1 {
 		t.Error("TestCheckSession3: session.Authenticated != 1, SessionID: ",
 			sessionid)
@@ -133,12 +159,17 @@ func TestCheckSession3(t *testing.T) {
 }
 
 func TestGetUser(t *testing.T) {
-	if (authenticator == nil) || !authenticator.DatabaseInitialized() {
-		fmt.Println("TestGetUser database not initialized, skipping tests")
+	if !webconfig.PasswordProtected() {
+		return
+	}
+	ctx := context.Background()
+	a, err := NewAuthenticator(ctx)
+	if err != nil {
+		t.Errorf("TestGetUser authenticator not initialized, %v", err)
 		return
 	}
 	username := "guest"
-	users, err := GetUser(username)
+	users, err := a.GetUser(ctx, username)
 	if err != nil {
 		t.Error("TestGetUser: error: ", err)
 		return
@@ -150,10 +181,6 @@ func TestGetUser(t *testing.T) {
 
 // Test check login method
 func TestNewSessionId(t *testing.T) {
-	if (authenticator == nil) || !authenticator.DatabaseInitialized() {
-		fmt.Println("TestNewSessionId database not initialized, skipping tests")
-		return
-	}
 	sessionid := NewSessionId()
 	if sessionid == "invalid" {
 		t.Error("TestNewSessionId: ", sessionid)
@@ -162,39 +189,59 @@ func TestNewSessionId(t *testing.T) {
 
 // Test Logout method
 func TestLogout(t *testing.T) {
-	if (authenticator == nil) || !authenticator.DatabaseInitialized() {
-		fmt.Println("TestLogout database not initialized, skipping tests")
+	if !webconfig.PasswordProtected() {
+		return
+	}
+	ctx := context.Background()
+	a, err := NewAuthenticator(ctx)
+	if err != nil {
+		t.Errorf("TestGetUser authenticator not initialized, %v", err)
 		return
 	}
 	sessionid := NewSessionId()
-	Logout(sessionid)
+	a.Logout(ctx, sessionid)
 }
 
 func TestRequestPasswordReset(t *testing.T) {
-	if (authenticator == nil) || !authenticator.DatabaseInitialized() {
-		fmt.Println("TestRequestPasswordReset database not initialized, skipping tests")
+	if !webconfig.PasswordProtected() {
 		return
 	}
-	result := RequestPasswordReset("mail.example.com")
+	ctx := context.Background()
+	a, err := NewAuthenticator(ctx)
+	if err != nil {
+		t.Errorf("TestGetUser authenticator not initialized, %v", err)
+		return
+	}
+	result := a.RequestPasswordReset(ctx, "mail.example.com")
 	if result.EmailValid {
 		t.Error("TestRequestPasswordReset: result.EmailValid not expected")
 	}
 }
 
 func TestPasswordReset(t *testing.T) {
-	if (authenticator == nil) || !authenticator.DatabaseInitialized() {
-		fmt.Println("TestPasswordReset database not initialized, skipping tests")
+	if !webconfig.PasswordProtected() {
 		return
 	}
-	result := ResetPassword("invalid token", "mail.example.com")
+	ctx := context.Background()
+	a, err := NewAuthenticator(ctx)
+	if err != nil {
+		t.Errorf("TestGetUser authenticator not initialized, %v", err)
+		return
+	}
+	result := a.ResetPassword(ctx, "invalid token", "mail.example.com")
 	if result {
 		t.Error("TestPasswordReset: result true not expected")
 	}
 }
 
 func TestSaveSession(t *testing.T) {
-	if (authenticator == nil) || !authenticator.DatabaseInitialized() {
-		fmt.Println("TestSaveSession database not initialized, skipping tests")
+	if !webconfig.PasswordProtected() {
+		return
+	}
+	ctx := context.Background()
+	a, err := NewAuthenticator(ctx)
+	if err != nil {
+		t.Errorf("TestGetUser authenticator not initialized, %v", err)
 		return
 	}
 	sessionid := NewSessionId()
@@ -205,5 +252,5 @@ func TestSaveSession(t *testing.T) {
 		FullName: "",
 		Role: "",
 	}
-	SaveSession(sessionid, userInfo, 1)
+	a.SaveSession(ctx, sessionid, userInfo, 1)
 }
