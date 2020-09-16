@@ -30,6 +30,7 @@ var (
 	wdict map[string]dicttypes.Word
 	dictSearcher *dictionary.Searcher
 	tmSearcher *transmemory.Searcher
+	df find.DocFinder
 	authenticator *identity.Authenticator
 )
 
@@ -51,6 +52,7 @@ func init() {
 	if err != nil {
 		applog.Errorf("main.init() unable to create new TM searcher: \n%v\n", err)
 	}
+	df = find.NewDocFinder(ctx, database)
 	if webconfig.PasswordProtected() {
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
@@ -157,17 +159,24 @@ func displayPage(w http.ResponseWriter, templateName string, content interface{}
 	}	
 }
 
-// HTML redirect to the index.html page, for healthchecks used by the load balancer.
-// Do not expect a user to hit this.
+// displayHome shows a simple page, for healthchecks and testing.
+// End users are not expected to see this.
 func displayHome(w http.ResponseWriter, r *http.Request) {
-	applog.Error("displayHome: r.URL", r.URL)
+	applog.Infof("displayHome: url %s\n", r.URL.Path)
 	page := `<!DOCTYPE html>
 <html>
   <head>
-   <meta http-equiv='refresh' content='0; url=index.html'>
+   <title>Chinese Notes</title>
   </head>
   <body>
-   <p>Redirect to main page</p>
+    <h1>Chinese Notes</h1>
+    <form name="findForm" method="post" action="/find/">
+      <div>
+        <label for="findInput">Search for</label>
+        <input type="text" name="query" size="40" required/>
+        <button type="submit">Find</button>
+      </div>
+    </form>
   </body>
 </html>
 `
@@ -213,8 +222,19 @@ func findAdvanced(response http.ResponseWriter, request *http.Request) {
 	findDocs(response, request, true)
 }
 
-// Finds documents matching the given query
+// findDocs finds documents matching the given query.
 func findDocs(response http.ResponseWriter, request *http.Request, advanced bool) {
+	ctx := context.Background()
+	var err error
+	if !df.Inititialized() {
+		err = df.Inititialize(ctx, database)
+		if err != nil {
+			applog.Errorf("main.findDocs Error searching docs, %v", err)
+			http.Error(response, "Internal error", http.StatusInternalServerError)
+			return
+		}
+	}
+
 	url := request.URL
 	queryString := url.Query()
 	query := queryString["query"]
@@ -229,9 +249,7 @@ func findDocs(response http.ResponseWriter, request *http.Request, advanced bool
 	}
 
 	var results *find.QueryResults
-	var err error
 	c := queryString["collection"]
-	ctx := context.Background()
 	if dictSearcher == nil || !dictSearcher.DatabaseInitialized() {
 		applog.Info("cnweb.findDocs Re-initializing cnweb")
 		database, err = dictionary.InitDBCon()
@@ -241,9 +259,9 @@ func findDocs(response http.ResponseWriter, request *http.Request, advanced bool
 		dictSearcher = dictionary.NewSearcher(ctx, database)
 	}
 	if (len(c) > 0) && (c[0] != "") {
-		results, err = find.FindDocumentsInCol(ctx, dictSearcher, parser, q, c[0])
+		results, err = df.FindDocumentsInCol(ctx, dictSearcher, parser, q, c[0])
 	} else {
-		results, err = find.FindDocuments(ctx, dictSearcher, parser, q, advanced)
+		results, err = df.FindDocuments(ctx, dictSearcher, parser, q, advanced)
 	}
 
 	if err != nil {
@@ -251,6 +269,28 @@ func findDocs(response http.ResponseWriter, request *http.Request, advanced bool
 		http.Error(response, "Internal error", http.StatusInternalServerError)
 		return
 	}
+
+	// Return HTML if method is post
+	if request.Method == http.MethodPost {
+		tmpl, err := template.New("find_results.html").ParseFiles("templates/find_results.html")
+		if err != nil {
+			applog.Errorf("findDocs: error parsing template %v", err)
+		}
+		if tmpl == nil {
+			applog.Error("findDocs: Template is nil")
+		}
+		if err != nil {
+			applog.Errorf("findDocs: error parsing template %v", err)
+		}
+		vars := map[string]string{}
+		err = tmpl.Execute(response, vars)
+		if err != nil {
+			applog.Errorf("findDocs: error rendering template %v", err)
+		}
+    return
+	}
+
+	// Return JSON
 	resultsJson, err := json.Marshal(results)
 	if err != nil {
 		applog.Errorf("main.findDocs error marshalling JSON, %v", err)
@@ -265,13 +305,13 @@ func findDocs(response http.ResponseWriter, request *http.Request, advanced bool
 	}
 }
 
-// Finds documents matching the given query
+// findHandler finds documents matching the given query.
 func findHandler(response http.ResponseWriter, request *http.Request) {
-	applog.Info("main.findHandler, enter")
+	applog.Infof("findHandler: url %s\n", request.URL.Path)
 	findDocs(response, request, false)
 }
 
-// Finds terms matching the given query with a substring match
+// findSubstring finds terms matching the given query with a substring match.
 func findSubstring(response http.ResponseWriter, request *http.Request) {
 	applog.Info("main.findSubstring, enter")
 	url := request.URL
@@ -711,6 +751,6 @@ func main() {
 	http.HandleFunc("/loggedin/submitcpwd", changePasswordHandler)
 	http.HandleFunc("/", displayHome)
 	portStr := ":" + strconv.Itoa(webconfig.GetPort())
-	applog.Infof("cnweb.main Starting http server on port %s", portStr)
+	applog.Infof("cnweb.main Starting http server on port %s\n", portStr)
 	http.ListenAndServe(portStr, nil)
 }

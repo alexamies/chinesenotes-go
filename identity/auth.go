@@ -24,7 +24,7 @@ import (
 	"github.com/alexamies/chinesenotes-go/webconfig"
 )
 
-// Encapsulates translation memory searcher
+// Authenticator holds stateful items needed for user authentication.
 type Authenticator struct {
 	database *sql.DB
 	domain *string

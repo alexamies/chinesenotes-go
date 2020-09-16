@@ -19,12 +19,63 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
-// Test getChars function
+// TestDisplayHome tests the default HTTP handler.
+func TestDisplayHome(t *testing.T) {
+	log.Printf("TestDisplayHome: Begin unit tests\n")
+	type test struct {
+		name string
+		expectContains string
+  }
+  tests := []test{
+		{
+			name: "Show home",
+			expectContains: "Chinese Notes",
+		},
+  }
+  for _, tc := range tests {
+  	url := "/"
+		r := httptest.NewRequest(http.MethodGet, url, nil)
+		w := httptest.NewRecorder()
+		displayHome(w, r)
+		result := w.Body.String()
+		if !strings.Contains(result, tc.expectContains) {
+			t.Errorf("%s: expectContains %q, got %q", tc.name, tc.expectContains, result)
+ 		}
+ 	}
+}
+
+// TestFindHandler tests finding a word.
+func TestFindHandler(t *testing.T) {
+	type test struct {
+		name string
+		query string
+		expectContains string
+  }
+  tests := []test{
+		{
+			name: "Find a word",
+			query: "你好",
+			expectContains: "hello",
+		},
+  }
+  for _, tc := range tests {
+  	url := "/find/?query=你好"
+		r := httptest.NewRequest(http.MethodGet, url, nil)
+		w := httptest.NewRecorder()
+		findHandler(w, r)
+		result := w.Body.String()
+		if !strings.Contains(result, tc.expectContains) {
+			t.Errorf("%s: expectContains %q, got %q", tc.name, tc.expectContains, result)
+ 		}
+ 	}
+}
+
+// TestTranslationMemory tests translationMemory function.
 func TestTranslationMemory(t *testing.T) {
-	log.Printf("TestTranslationMemory: Begin unit tests\n")
 	type test struct {
 		name string
 		query string
@@ -64,7 +115,7 @@ func TestTranslationMemory(t *testing.T) {
   }
   for _, tc := range tests {
   	url := fmt.Sprintf("/translation_memory?query=%s", tc.query)
-		r := httptest.NewRequest(http.MethodPost, url, nil)
+		r := httptest.NewRequest(http.MethodGet, url, nil)
 		w := httptest.NewRecorder()
 		if (tmSearcher == nil) || !tmSearcher.DatabaseInitialized() {
 			fmt.Println("cnweb_test database not initialized, skippining unit tests")
