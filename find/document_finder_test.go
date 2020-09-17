@@ -16,21 +16,44 @@ package find
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/dictionary"
 	"github.com/alexamies/chinesenotes-go/fulltext"
+	"github.com/alexamies/chinesenotes-go/webconfig"
 	"testing"
 )
 
-// Test package initialization, which requires a database connection
-func TestInit(t *testing.T) {
-	fmt.Printf("TestInit: Begin unit tests\n")
+func initDBCon() (*sql.DB, error) {
+	if !webconfig.UseDatabase() {
+		return nil, nil
+	}
+	conString := webconfig.DBConfig()
+	return sql.Open("mysql", conString)
 }
 
 // Test package initialization, which requires a database connection
 func TestCacheColDetails(t *testing.T) {
-	cMap := cacheColDetails()
+	database, err := initDBCon()
+	if err != nil {
+		t.Errorf("TestCacheColDetails, Error: %v", err)
+		return
+	}
+	if database == nil {
+		fmt.Println("TestCacheColDetails, no database skipping")
+		return
+	}
+	df := DatabaseDocFinder {
+		database: database,
+	}
+	ctx := context.Background()
+	err = df.initFind(ctx)
+	if err != nil {
+		t.Errorf("TestCacheColDetails, Error: %v", err)
+		return
+	}
+	cMap := df.cacheColDetails(ctx)
 	title := cMap["wenxuan.html"]
 	if title == "" {
 		fmt.Print("TestCacheColDetails: got empty title, map size, ",
@@ -67,359 +90,385 @@ func TestCombineByWeight(t *testing.T) {
 	}
 }
 
-func TestFindDocuments1(t *testing.T) {
-	ctx := context.Background()
-	database, err := dictionary.InitDBCon()
-	if err != nil {
-		fmt.Printf("TestFindDocuments1: cannot connect to database: %v", err)
-		return
-	}
-	dictSearcher := dictionary.NewSearcher(ctx, database)
-	if !dictSearcher.DatabaseInitialized() {
-		fmt.Printf("TestFindDocuments1: cannot create dictSearcher: %v", err)
-		return
-	}
-	dict := map[string]dicttypes.Word{}
-	parser := MakeQueryParser(dict)
-	qr, err := FindDocuments(ctx, dictSearcher, parser, "Assembly", false)
-	if err != nil {
-		t.Error("TestFindDocuments1: got error, ", err)
-	}
-	if len(qr.Terms) != 1 {
-		t.Error("TestFindDocuments1: len(qr.Terms) != 1, ", qr)
-	}
-}
+func TestFindDocuments(t *testing.T) {
 
-func TestFindDocuments2(t *testing.T) {
-	ctx := context.Background()
-	database, err := dictionary.InitDBCon()
+	// Setup
+	database, err := initDBCon()
 	if err != nil {
-		fmt.Printf("TestFindDocuments2: cannot connect to database: %v", err)
+		t.Errorf("TestFindDocuments, Error: %v", err)
+		return
+	}
+	if database == nil {
+		fmt.Println("TestFindDocuments, not connected to db, skipping")
+		return
+	}
+	df := DatabaseDocFinder {}
+	ctx := context.Background()
+	err = df.initFind(ctx)
+	if err != nil {
+		t.Errorf("TestFindDocuments, Error: %v", err)
 		return
 	}
 	dictSearcher := dictionary.NewSearcher(ctx, database)
-	if !dictSearcher.DatabaseInitialized() {
-		fmt.Printf("TestFindDocuments2: cannot create dictSearcher: %v", err)
+	if !dictSearcher.Initialized() {
+		fmt.Printf("TestFindDocuments: cannot create dictSearcher: %v", err)
 		return
 	}
 	dict := map[string]dicttypes.Word{}
 	parser := MakeQueryParser(dict)
-	_, err = FindDocuments(ctx, dictSearcher, parser, "", false)
-	if err == nil {
-		t.Error("TestFindDocuments2: expected error for empty string")
-	}
-}
 
-func TestFindDocuments3(t *testing.T) {
-	ctx := context.Background()
-	database, err := dictionary.InitDBCon()
-	if err != nil {
-		fmt.Printf("TestFindDocuments3: cannot connect to database: %v", err)
-		return
-	}
-	dictSearcher := dictionary.NewSearcher(ctx, database)
-	if !dictSearcher.DatabaseInitialized() {
-		fmt.Printf("TestFindDocuments3: cannot create dictSearcher: %v", err)
-		return
-	}
-	dict := map[string]dicttypes.Word{}
-	parser := MakeQueryParser(dict)
-	qr, err := FindDocuments(ctx, dictSearcher, parser, "hello", false)
-	if err != nil {
-		fmt.Printf("TestFindDocuments3: got error, %v", err)
-		return
-	}
-	if len(qr.Terms) != 1 {
-		fmt.Printf("TestFindDocuments3: len(qr.Terms) != 1, %v", qr)
-		return
-	}
-	if len(qr.Terms[0].Senses) == 0 {
-		fmt.Printf("TestFindDocuments3: len(qr.Terms.Senses) == 0, %v", qr)
+	// Test data
+	type test struct {
+		name string
+		query string
+		expectError bool
+		expectNoTerms int
+		expectNoSenses int
+  }
+  tests := []test{
+		{
+			name: "Happy pass",
+			query: "Assembly",
+			expectError: false,
+			expectNoTerms: 1,
+			expectNoSenses: 1,
+		},
+		{
+			name: "Empty query",
+			query: "",
+			expectError: true,
+			expectNoTerms: 0,
+			expectNoSenses: 1,
+		},
+		{
+			name: "No word senses",
+			query: "hello",
+			expectError: false,
+			expectNoTerms: 0,
+			expectNoSenses: 1,
+		},
+  }
+
+  for _, tc := range tests {
+		qr, err := df.FindDocuments(ctx, dictSearcher, parser, tc.query, false)
+		gotError := (err != nil)
+		if tc.expectError != gotError {
+			t.Errorf("TestFindDocuments, %s: expectError: %t vs got %t",
+					tc.name, tc.expectError, gotError)
+			if gotError {
+				t.Errorf("TestFindDocuments, %s: unexpected error: %v", tc.name, err)
+			}
+			continue
+		}
+		if gotError {
+			continue
+		}
+		gotNoTerms := len(qr.Terms)
+		if tc.expectNoTerms != gotNoTerms {
+			t.Errorf("TestFindDocuments, %s: expectNum: %d vs got %d",
+					tc.name, tc.expectNoTerms, gotNoTerms)
+		}
 	}
 }
 
 func testFindBodyBM25(terms []string, t *testing.T) {
-	docs, err := findBodyBM25(terms)
+	database, err := initDBCon()
 	if err != nil {
-		fmt.Printf("testFindBodyBM25: %s got an error, %v\n", terms, err)
-	}
-	fmt.Printf("testFindBodyBM25, len(docs) = %d\n", len(docs))
-	if len(docs) > 0 {
-		fmt.Printf("testFindBodyBM25, docs[0] = %v\n", docs[0])
-	}
-}
-
-func TestFindBodyBM251(t *testing.T) {
-	terms := []string{"后妃"}
-	testFindBodyBM25(terms, t)
-}
-
-func TestFindBodyBM252(t *testing.T) {
-	terms := []string{"后妃", "之"}
-	testFindBodyBM25(terms, t)
-}
-
-func TestFindBodyBM253(t *testing.T) {
-	terms := []string{"后妃", "之", "德"}
-	docSimilarity, err := findBodyBM25(terms)
-	if err != nil {
-		fmt.Printf("TestfindBodyBM251: got error, %v", err)
+		t.Errorf("testFindBodyBM25, Error: %v", err)
 		return
 	}
-	fmt.Printf("TestfindBodyBM251, len(docSimilarity) = %d", len(docSimilarity))
-}
-
-func TestFindBodyBM254(t *testing.T) {
-	terms := []string{"后妃", "之", "德", "也"}
-	docSimilarity, err := findBodyBM25(terms)
-	if err != nil {
-		fmt.Printf("TestfindBodyBM254: got error, %v", err)
+	if database == nil {
+		fmt.Println("testFindBodyBM25, no database skipping")
 		return
 	}
-	fmt.Printf("TestfindBodyBM254, len(docSimilarity) = %d",
-		len(docSimilarity))
-}
-
-func TestFindBodyBigram1(t *testing.T) {
-	terms := []string{"后妃"}
-	docSimilarity, err := findBodyBigram(terms)
-	if err == nil {
-		fmt.Printf("TestFindBodyBigram1: expected an error")
-		return
+	df := DatabaseDocFinder {
+		database: database,
 	}
-	fmt.Printf("TestFindBodyBigram1, len(docSimilarity) = %d",
-		len(docSimilarity))
-}
-
-func TestFindBodyBigram2(t *testing.T) {
-	terms := []string{"后妃", "之"}
-	docSimilarity, err := findBodyBigram(terms)
-	if err != nil {
-		t.Error("TestFindBodyBigram2: got error, ", err)
-	}
-	fmt.Printf("TestFindBodyBigram2, len(docSimilarity) = %d",
-		len(docSimilarity))
-}
-
-func TestFindBodyBigram3(t *testing.T) {
-	terms := []string{"后妃", "之", "德"}
-	docSimilarity, err := findBodyBigram(terms)
-	if err != nil {
-		t.Error("TestFindBodyBigram2: got error, ", err)
-	}
-	fmt.Printf("TestFindBodyBigram2, len(docSimilarity) = %d",
-		len(docSimilarity))
-}
-
-func TestFindBodyBigram4(t *testing.T) {
-	terms := []string{"后妃", "之", "德", "也"}
-	docSimilarity, err := findBodyBigram(terms)
-	if err != nil {
-		t.Error("TestFindBodyBigram4: got error, ", err)
-	}
-	fmt.Printf("TestFindBodyBigram4, len(docSimilarity) = %d",
-		len(docSimilarity))
-}
-
-func TestFindBodyBigram5(t *testing.T) {
-	terms := []string{"箴", "也", "所以", "攻", "疾"}
-	docSimilarity, err := findBodyBigram(terms)
-	if err != nil {
-		t.Error("TestFindBodyBigram5: got error, ", err)
-	}
-	fmt.Printf("TestFindBodyBigram5, len(docSimilarity) = %d",
-		len(docSimilarity))
-}
-
-func TestFindBodyBigram6(t *testing.T) {
-	terms := []string{"箴", "也", "所以", "攻", "疾", "防患"}
-	docSimilarity, err := findBodyBigram(terms)
-	if err != nil {
-		t.Error("TestFindBodyBigram6: got error, ", err)
-	}
-	fmt.Printf("TestFindBodyBigram6, len(docSimilarity) = %d",
-		len(docSimilarity))
-}
-
-func TestFindDocumentsInCol0(t *testing.T) {
 	ctx := context.Background()
-	database, err := dictionary.InitDBCon()
+	err = df.initFind(ctx)
 	if err != nil {
-		fmt.Printf("TestFindDocumentsInCol0: cannot connect to database: %v", err)
+		t.Errorf("testFindBodyBM25, Error: %v", err)
+		return
+	}
+
+	// Test data
+	type test struct {
+		name string
+		terms []string
+  }
+  tests := []test{
+		{
+			name: "Happy pass",
+			terms: []string{"后妃"},
+		},
+		{
+			name: "Two terms",
+			terms: []string{"后妃", "之"},
+		},
+		{
+			name: "Three terms",
+			terms: []string{"后妃", "之", "德"},
+		},
+		{
+			name: "Four terms",
+			terms: []string{"后妃", "之", "德", "也"},
+		},
+  }
+
+  for _, tc := range tests {
+		docs, err := df.findBodyBM25(ctx, terms)
+		if err != nil {
+			t.Errorf("testFindBodyBM25: %s got an error, %v\n", tc.name, err)
+		}
+		fmt.Printf("testFindBodyBM25, len(docs) = %d\n", len(docs))
+		if len(docs) > 0 {
+			fmt.Printf("testFindBodyBM25, docs[0] = %v\n", docs[0])
+		}
+	}
+}
+
+func TestFindBodyBigram(t *testing.T) {
+	database, err := initDBCon()
+	if err != nil {
+		t.Errorf("TestFindBodyBigram, Error: %v", err)
+		return
+	}
+	if database == nil {
+		fmt.Println("TestFindBodyBigram, no database skipping")
+		return
+	}
+	df := DatabaseDocFinder {
+		database: database,
+	}
+	ctx := context.Background()
+	err = df.initFind(ctx)
+	if err != nil {
+		t.Errorf("TestFindBodyBigram, Error: %v", err)
+		return
+	}
+	// Test data
+	type test struct {
+		name string
+		terms []string
+  }
+  tests := []test{
+		{
+			name: "Happy pass",
+			terms: []string{"后妃"},
+		},
+		{
+			name: "Two terms",
+			terms: []string{"后妃", "之"},
+		},
+		{
+			name: "Three terms",
+			terms: []string{"后妃", "之", "德"},
+		},
+		{
+			name: "Four terms",
+			terms: []string{"后妃", "之", "德", "也"},
+		},
+		{
+			name: "Five terms",
+			terms: []string{"箴", "也", "所以", "攻", "疾"},
+		},
+		{
+			name: "Six terms",
+			terms: []string{"箴", "也", "所以", "攻", "疾", "防患"},
+		},
+  }
+
+  for _, tc := range tests {
+		docs, err := df.findBodyBigram(ctx, tc.terms)
+		if err != nil {
+			t.Errorf("TestFindBodyBigram, %s: unexpected error: %v", tc.name, err)
+			continue
+		}
+		fmt.Printf("TestFindBodyBigram, len(docSimilarity) = %d", len(docs))
+	}
+}
+
+func TestFindDocumentsInCol(t *testing.T) {
+	database, err := initDBCon()
+	if err != nil {
+		t.Errorf("TestFindDocumentsInCol, Error: %v", err)
+		return
+	}
+	if database == nil {
+		fmt.Println("TestFindDocumentsInCol, no database skipping")
+		return
+	}
+	df := DatabaseDocFinder {
+		database: database,
+	}
+	ctx := context.Background()
+	err = df.initFind(ctx)
+	if err != nil {
+		t.Errorf("TestFindDocumentsInCol, Error: %v", err)
 		return
 	}
 	dictSearcher := dictionary.NewSearcher(ctx, database)
-	if !dictSearcher.DatabaseInitialized() {
-		fmt.Printf("TestFindDocumentsInCol0: cannot create dictSearcher: %v", err)
+	if !dictSearcher.Initialized() {
+		fmt.Printf("TestFindDocumentsInCol: cannot create dictSearcher: %v", err)
 		return
 	}
 	dict := map[string]dicttypes.Word{}
 	parser := MakeQueryParser(dict)
-	_, err = FindDocumentsInCol(ctx, dictSearcher, parser, "", "wenxuan.html")
-	if err == nil {
-		t.Error("TestFindDocumentsInCol0: expected error for empty string")
+
+	// Test data
+	type test struct {
+		name string
+		query string
+		collection string
+		expectError bool
+		expectNumTerms int
+  }
+  tests := []test{
+		{
+			name: "empty query",
+			query: "",
+			collection: "wenxuan.html",
+			expectError: true,
+			expectNumTerms: 0,
+		},
+		{
+			name: "One term",
+			query: "箴",
+			collection: "wenxuan.html",
+			expectError: false,
+			expectNumTerms: 1,
+		},
+		{
+			name: "Two terms",
+			query: "箴也",
+			collection: "wenxuan.html",
+			expectError: false,
+			expectNumTerms: 2,
+		},
+		{
+			name: "Three terms",
+			query: "箴也所",
+			collection: "wenxuan.html",
+			expectError: false,
+			expectNumTerms: 3,
+		},
+		{
+			name: "Four terms",
+			query: "箴也所以",
+			collection: "wenxuan.html",
+			expectError: false,
+			expectNumTerms: 4,
+		},
+		{
+			name: "Five terms",
+			query: "箴也所以攻",
+			collection: "wenxuan.html",
+			expectError: false,
+			expectNumTerms: 5,
+		},
+		{
+			name: "Six terms",
+			query: "箴也所以攻疾",
+			collection: "wenxuan.html",
+			expectError: false,
+			expectNumTerms: 6,
+		},
+  }
+
+  for _, tc := range tests {
+		qr, err := df.FindDocumentsInCol(ctx, dictSearcher, parser, tc.query, tc.collection)
+		gotError := (err == nil)
+		if tc.expectError != gotError {
+			t.Errorf("TestFindDocumentsInCol, %s: expected error %t vs got error: %t",
+					tc.name, tc.expectError, gotError)
+			if gotError {
+				t.Errorf("TestFindDocumentsInCol, %s: unexpected error: %v", tc.name, err)
+			}
+			continue
+		}
+		if gotError {
+			continue
+		}
+		if tc.expectNumTerms != len(qr.Terms) {
+			t.Errorf("TestFindDocumentsInCol %s:  expected num terms %d vs got %d",
+					tc.name, tc.expectNumTerms, len(qr.Terms))
+		}
 	}
 }
 
-func TestFindDocumentsInCol1(t *testing.T) {
+func TestFindWords(t *testing.T) {
+	database, err := initDBCon()
+	if err != nil {
+		t.Errorf("TestFindWords, Error: %v", err)
+		return
+	}
+	if database == nil {
+		fmt.Println("TestFindWords, no database skipping")
+		return
+	}
+	df := DatabaseDocFinder {
+		database: database,
+	}
 	ctx := context.Background()
-	database, err := dictionary.InitDBCon()
+	err = df.initFind(ctx)
 	if err != nil {
-		fmt.Printf("TestFindDocumentsInCol1: cannot connect to database: %v", err)
+		t.Errorf("TestFindWords, Error: %v", err)
 		return
 	}
-	dictSearcher := dictionary.NewSearcher(ctx, database)
-	if !dictSearcher.DatabaseInitialized() {
-		fmt.Printf("TestFindDocumentsInCol1: cannot create dictSearcher: %v", err)
-		return
-	}
-	dict := map[string]dicttypes.Word{}
-	parser := MakeQueryParser(dict)
-	qr, err := FindDocumentsInCol(ctx, dictSearcher, parser, "箴", "wenxuan.html")
-	if err != nil {
-		t.Error("TestFindDocumentsInCol1: got error, ", err)
-	}
-	if len(qr.Terms) != 1 {
-		t.Error("TestFindDocumentsInCol1: len(qr.Terms) != 1, ", qr)
+
+	// Test data
+	type test struct {
+		name string
+		query string
+		expectNumWords int
+		expectError bool
+		expectNumTerms int
+  }
+  tests := []test{
+		{
+			name: "Basic query",
+			query: "Assembly",
+			expectNumWords: 1,
+		},
+		{
+			name: "Simple query",
+			query: "金剛",
+			expectNumWords: 1,
+		},
+  }
+
+  for _, tc := range tests {
+		words, err := df.findWords(ctx, tc.query)
+		if err != nil {
+			t.Errorf("TestFindWords, %s: got error, %v", tc.name, err)
+		}
+		if tc.expectNumWords != len(words) {
+			t.Errorf("TestFindWords %s: tc.expectNumWords %d vs got %d",
+					tc.name, tc.expectNumWords, len(words))
+		}
 	}
 }
 
-func TestFindDocumentsInCol2(t *testing.T) {
+func TestMergeDocList(t *testing.T) {
+	database, err := initDBCon()
+	if err != nil {
+		t.Errorf("TestMergeDocList, Error: %v", err)
+		return
+	}
+	if database == nil {
+		fmt.Println("TestMergeDocList, no database skipping")
+		return
+	}
+	df := DatabaseDocFinder {
+		database: database,
+	}
 	ctx := context.Background()
-	database, err := dictionary.InitDBCon()
+	err = df.initFind(ctx)
 	if err != nil {
-		fmt.Printf("TestFindDocumentsInCol2: cannot connect to database: %v", err)
+		t.Errorf("TestMergeDocList, Error: %v", err)
 		return
 	}
-	dictSearcher := dictionary.NewSearcher(ctx, database)
-	if !dictSearcher.DatabaseInitialized() {
-		fmt.Printf("TestFindDocumentsInCol2: cannot create dictSearcher: %v", err)
-		return
-	}
-	dict := map[string]dicttypes.Word{}
-	parser := MakeQueryParser(dict)
-	qr, err := FindDocumentsInCol(ctx, dictSearcher, parser, "箴也", "wenxuan.html")
-	if err != nil {
-		t.Error("TestFindDocumentsInCol2: got error, ", err)
-	}
-	if len(qr.Terms) != 2 {
-		t.Error("TestFindDocumentsInCol2: len(qr.Terms) != 2, ", qr)
-	}
-}
 
-func TestFindDocumentsInCol3(t *testing.T) {
-	ctx := context.Background()
-	database, err := dictionary.InitDBCon()
-	if err != nil {
-		fmt.Printf("TestFindDocumentsInCol3: cannot connect to database: %v", err)
-		return
-	}
-	dictSearcher := dictionary.NewSearcher(ctx, database)
-	if !dictSearcher.DatabaseInitialized() {
-		fmt.Printf("TestFindDocumentsInCol3: cannot create dictSearcher: %v", err)
-		return
-	}
-	dict := map[string]dicttypes.Word{}
-	parser := MakeQueryParser(dict)
-	qr, err := FindDocumentsInCol(ctx, dictSearcher, parser, "箴也所", "wenxuan.html")
-	if err != nil {
-		t.Error("TestFindDocumentsInCol3: got error, ", err)
-	}
-	if len(qr.Terms) != 3 {
-		t.Error("TestFindDocumentsInCol3: len(qr.Terms) != 3, ", qr)
-	}
-}
-
-func TestFindDocumentsInCol4(t *testing.T) {
-	ctx := context.Background()
-	database, err := dictionary.InitDBCon()
-	if err != nil {
-		fmt.Printf("TestFindDocumentsInCol4: cannot connect to database: %v", err)
-		return
-	}
-	dictSearcher:= dictionary.NewSearcher(ctx, database)
-	if !dictSearcher.DatabaseInitialized() {
-		fmt.Printf("TestFindDocumentsInCol4: cannot create dictSearcher: %v", err)
-		return
-	}
-	dict := map[string]dicttypes.Word{}
-	parser := MakeQueryParser(dict)
-	qr, err := FindDocumentsInCol(ctx, dictSearcher, parser, "箴也所以", "wenxuan.html")
-	if err != nil {
-		t.Error("TestFindDocumentsInCol4: got error, ", err)
-	}
-	if len(qr.Terms) != 4 {
-		t.Error("TestFindDocumentsInCol4: len(qr.Terms) != 4, ", qr)
-	}
-}
-
-func TestFindDocumentsInCol5(t *testing.T) {
-	ctx := context.Background()
-	database, err := dictionary.InitDBCon()
-	if err != nil {
-		fmt.Printf("TestFindDocumentsInCol5: cannot connect to database: %v", err)
-		return
-	}
-	dictSearcher := dictionary.NewSearcher(ctx, database)
-	if !dictSearcher.DatabaseInitialized() {
-		fmt.Printf("TestFindDocumentsInCol5: cannot create dictSearcher: %v", err)
-		return
-	}
-	dict := map[string]dicttypes.Word{}
-	parser := MakeQueryParser(dict) // 箴也所以攻疾防患
-	qr, err := FindDocumentsInCol(ctx, dictSearcher, parser, "箴也所以攻", "wenxuan.html")
-	if err != nil {
-		t.Error("TestFindDocumentsInCol5: got error, ", err)
-	}
-	if len(qr.Terms) != 5 {
-		t.Error("TestFindDocumentsInCol5: len(qr.Terms) != 4, ", qr)
-	}
-}
-
-func TestFindDocumentsInCol6(t *testing.T) {
-	ctx := context.Background()
-	database, err := dictionary.InitDBCon()
-	if err != nil {
-		fmt.Printf("TestFindDocumentsInCol6: cannot connect to database: %v", err)
-		return
-	}
-	dictSearcher := dictionary.NewSearcher(ctx, database)
-	if !dictSearcher.DatabaseInitialized() {
-		fmt.Printf("TestFindDocumentsInCol6: cannot create dictSearcher: %v", err)
-		return
-	}
-	dict := map[string]dicttypes.Word{}
-	parser := MakeQueryParser(dict)
-	qr, err := FindDocumentsInCol(ctx, dictSearcher, parser, "箴也所以攻疾", "wenxuan.html")
-	if err != nil {
-		t.Error("TestFindDocumentsInCol6: got error, ", err)
-	}
-	if len(qr.Terms) != 6 {
-		t.Error("TestFindDocumentsInCol6: len(qr.Terms) != 6, ", qr)
-	}
-}
-
-func TestFindWords1(t *testing.T) {
-	words, err := findWords("Assembly")
-	if err != nil {
-		t.Error("TestFindWords1: got error, ", err)
-	}
-	if len(words) != 0 {
-		t.Error("TestFindWords1: len(words) != 0, ", len(words))
-	}
-}
-
-func TestFindWords2(t *testing.T) {
-	words, err := findWords("金剛")
-	if err != nil {
-		fmt.Print("TestFindWords2: got error, ", err)
-	}
-	if len(words) != 1 {
-		fmt.Print("TestFindWords2: len(words) != 1, ", len(words))
-	}
-}
-
-func TestMergeDocList1(t *testing.T) {
 	simDocMap := map[string]Document{}
 	docList := []Document{}
 	doc1 := Document{
@@ -435,59 +484,76 @@ func TestMergeDocList1(t *testing.T) {
 		SimBigram: 1.5,
 	}
 	docList = append(docList, doc2)
-	mergeDocList(simDocMap, docList)
-	if len(simDocMap) != 2 {
-		t.Error("TestMergeDocList1: len(simDocMap) != 2, ", len(simDocMap))
-		return
-	}
-	docs := toSortedDocList(simDocMap)
-	if len(docs) != 2 {
-		t.Error("TestMergeDocList1: len(docs) != 2, ", len(docs))
-		return
-	}
-	expected := doc2.GlossFile
-	result := docs[0]
-	if result.GlossFile != expected {
-		t.Errorf("TestMergeDocList1: expected %s, got, %v, docs: %v", expected,
-			result, docs)
-	}
-}
 
-func TestMergeDocList2(t *testing.T) {
-	simDocMap := map[string]Document{}
-	docList := []Document{}
-	doc1 := Document{
+	simDocMap2 := map[string]Document{}
+	docList2 := []Document{}
+	doc3 := Document{
 		GlossFile: "f1.html",
 		Title: "SAme Very Good doc",
 		SimTitle: 1.0,
 	}
-	simDocMap[doc1.GlossFile] = doc1
-	doc2 := Document{
+	simDocMap2[doc3.GlossFile] = doc3
+	doc4 := Document{
 		GlossFile: "f2.html",
 		Title: "Reasonable by word frequ",
 		SimWords: 1.6,
 	}
-	doc3 := Document{
+	doc5 := Document{
 		GlossFile: "f1.html",
 		Title: "Same Very Good doc",
 		SimWords: 1.5,
 		SimBigram: 1.5,
 	}
-	docList = append(docList, doc2)
-	docList = append(docList, doc3)
-	mergeDocList(simDocMap, docList)
-	if len(simDocMap) != 2 {
-		t.Error("TestMergeDocList2: len(simDocMap) != 2, ", len(simDocMap))
-	}
-	docs := toSortedDocList(simDocMap)
-	if len(docs) != 2 {
-		t.Error("TestMergeDocList2: len(docs) != 2, ", len(docs))
-	}
-	expected := doc1.GlossFile
-	result := docs[0]
-	if result.GlossFile != expected {
-		t.Errorf("TestMergeDocList2: expected %s, got, %v, docs: %v", expected,
-			result, docs)
+	docList2 = append(docList2, doc4)
+	docList2 = append(docList2, doc5)
+
+
+	// Test data
+	type test struct {
+		name string
+		simDocMap map[string]Document
+		docList []Document
+		expectNum int
+		expectNumDocs int
+		expectGlossFile string
+  }
+  tests := []test{
+		{
+			name: "Basic test",
+			simDocMap: simDocMap,
+			docList: docList,
+			expectNum: 2,
+			expectNumDocs: 2,
+			expectGlossFile: doc2.GlossFile,
+		},
+		{
+			name: "Harder test",
+			simDocMap: simDocMap2,
+			docList: docList2,
+			expectNum: 2,
+			expectNumDocs: 2,
+			expectGlossFile: doc3.GlossFile,
+		},
+  }
+
+  for _, tc := range tests {
+		mergeDocList(df, tc.simDocMap, tc.docList)
+		if tc.expectNum != len(simDocMap) {
+			t.Errorf("TestMergeDocList, %s: expected %d vs got %d",
+					tc.name, tc.expectNum, len(simDocMap))
+			continue
+		}
+		docs := toSortedDocList(simDocMap)
+		if tc.expectNumDocs != len(docs)  {
+			t.Errorf("TestMergeDocList, %s: expected docs %d vs got %d",
+					tc.name, tc.expectNumDocs, len(docs))
+			continue
+		}
+		result := docs[0]
+		if tc.expectGlossFile != result.GlossFile {
+			t.Errorf("TestMergeDocList: expected %s, got, %v, docs: %v",
+					tc.name, tc.expectGlossFile, result.GlossFile)
+		}
 	}
 }
 
@@ -682,6 +748,25 @@ func TestSortMatchingSubstr3(t *testing.T) {
 }
 
 func TestToRelevantDocList(t *testing.T) {
+	database, err := initDBCon()
+	if err != nil {
+		t.Errorf("TestMergeDocList, Error: %v", err)
+		return
+	}
+	if database == nil {
+		fmt.Println("TestMergeDocList, no database skipping")
+		return
+	}
+	df := DatabaseDocFinder {
+		database: database,
+	}
+	ctx := context.Background()
+	err = df.initFind(ctx)
+	if err != nil {
+		t.Errorf("TestMergeDocList, Error: %v", err)
+		return
+	}
+
 	similarDocMap := map[string]Document{}
 	doc1 := Document{
 		GlossFile: "f1.html",
@@ -703,7 +788,7 @@ func TestToRelevantDocList(t *testing.T) {
 	similarDocMap[doc3.GlossFile] = doc3
 	docs := toSortedDocList(similarDocMap)
 	queryTerms := []string{}
-	docs = toRelevantDocList(docs, queryTerms)
+	docs = toRelevantDocList(df, docs, queryTerms)
 	expected := 2
 	result := len(docs)
 	if result == expected {

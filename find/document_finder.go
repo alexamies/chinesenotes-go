@@ -51,7 +51,6 @@ type DocFinder interface {
 	GetColMap() map[string]string
 	GetDocMap() map[string]Document
 	GetDocFileMap() map[string]string
-	Inititialize(ctx context.Context, database *sql.DB) error
 	Inititialized() bool
 }
 
@@ -102,26 +101,18 @@ func NewDocFinder(ctx context.Context, database *sql.DB) DocFinder {
 		database: database,
 		initialized: false,
 	}
-	err := df.initFind(ctx)
-	if err != nil {
-		applog.Errorf("NewDocFinder, Error: %v", err)
-		return &df
+	if database != nil {
+		err := df.initFind(ctx)
+		if err != nil {
+			applog.Errorf("NewDocFinder, Error: %v", err)
+			return &df
+		}
 	}
 	df.initialized = true
 	return &df
 }
 
-func (df *DatabaseDocFinder) Inititialize(ctx context.Context, database *sql.DB) error {
-	df.database = database
-	err := df.initFind(ctx)
-	if err != nil {
-		return err
-	}
-	df.initialized = true
-	return nil
-}
-
-func (df *DatabaseDocFinder) Inititialized() bool {
+func (df DatabaseDocFinder) Inititialized() bool {
 	return df.initialized
 }
 
@@ -157,7 +148,7 @@ func (df *DatabaseDocFinder) cacheColDetails(ctx context.Context) map[string]str
 	return df.colMap
 }
 
-func (df *DatabaseDocFinder) GetColMap() map[string]string {
+func (df DatabaseDocFinder) GetColMap() map[string]string {
 	return df.colMap 
 }
 
@@ -180,7 +171,7 @@ func (df *DatabaseDocFinder) cacheDocDetails(ctx context.Context) (map[string]Do
 	return df.docMap, nil
 }
 
-func (df *DatabaseDocFinder) GetDocMap() map[string]Document {
+func (df DatabaseDocFinder) GetDocMap() map[string]Document {
 	return df.docMap
 }
 
@@ -203,7 +194,7 @@ func (df *DatabaseDocFinder) cacheDocFileMap(ctx context.Context) map[string]str
 	return df.docFileMap
 }
 
-func (df *DatabaseDocFinder) GetDocFileMap() map[string]string {
+func (df DatabaseDocFinder) GetDocFileMap() map[string]string {
 	return df.docFileMap
 }
 
@@ -607,7 +598,7 @@ func (df *DatabaseDocFinder) findDocumentsInCol(ctx context.Context, query strin
 // Chinese words in the dictionary. If there are no Chinese words in the query
 // then the Chinese word senses matching the English or Pinyin will be included
 // in the TextSegment.Senses field.
-func (df *DatabaseDocFinder) FindDocuments(ctx context.Context,
+func (df DatabaseDocFinder) FindDocuments(ctx context.Context,
 		dictSearcher *dictionary.Searcher,
 		parser QueryParser, query string,
 		advanced bool) (*QueryResults, error) {
@@ -626,6 +617,11 @@ func (df *DatabaseDocFinder) FindDocuments(ctx context.Context,
 			terms[0].Senses = senses
 		}
 	}
+
+	if df.database == nil {
+		return &QueryResults{query, "", 0, 0, nil, nil, terms}, nil
+	}
+
 	nCol, err := df.countCollections(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("FindDocuments, error from countCollections: %v", err)
@@ -649,7 +645,7 @@ func (df *DatabaseDocFinder) FindDocuments(ctx context.Context,
 // Chinese words in the dictionary. If there are no Chinese words in the query
 // then the Chinese word senses matching the English or Pinyin will be included
 // in the TextSegment.Senses field.
-func (df *DatabaseDocFinder) FindDocumentsInCol(ctx context.Context,
+func (df DatabaseDocFinder) FindDocumentsInCol(ctx context.Context,
 		dictSearcher *dictionary.Searcher, parser QueryParser, query,
 		col_gloss_file string) (*QueryResults, error) {
 	if query == "" {

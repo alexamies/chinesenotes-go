@@ -45,8 +45,7 @@ Run the web server
 Navigate to http://localhost:8080
 
 This project contains sufficient data to do minimal integration testing, even if
-you have not set up a database or cloned the related dictionary or corpus. To
-get a full dictionary and corpus clone the chinesenotes.com repo 
+you have not set up a database or cloned the related dictionary or corpus.
 
 ```shell
 cd ..
@@ -63,6 +62,10 @@ export CNWEB_HOME=$PWD
 ```
 
 Navigate back to http://localhost:8080
+
+The HTML interface is very basic, just enough for minimal testing. For a real
+web site you should use HTML templates with JavaScript line at 
+https://github.com/alexamies/chinesenotes.com
 
 ## Integration testing with minimal data
 

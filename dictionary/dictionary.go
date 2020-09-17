@@ -25,7 +25,6 @@ import (
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/fileloader"
-	"github.com/alexamies/chinesenotes-go/webconfig"
 	"time"
 )
 
@@ -38,36 +37,27 @@ type Searcher struct {
 	database *sql.DB
 	findEnglishStmt *sql.Stmt
 	findSubstrStmt *sql.Stmt
-	databaseInitialized bool
+	initialized bool
 }
 
 // Initialize SQL statements
 func NewSearcher(ctx context.Context, database *sql.DB) *Searcher {
-	stmt, err := initEnglishQuery(ctx, database)
-	if err != nil {
-		applog.Infof("NewSearcher, database initializaton error %v", err)
-		return &Searcher{
-			databaseInitialized: false,
+	s := Searcher{}
+	if database != nil {
+		var err error
+		s.findEnglishStmt, err = initEnglishQuery(ctx, database)
+		if err != nil {
+			applog.Infof("NewSearcher, database statement initializaton error %v", err)
+			return &s
+		}
+		s.findSubstrStmt, err = initSubtrQuery(ctx, database)
+		if err != nil {
+			applog.Infof("NewSearcher, substr query initializaton error \n%v\n", err)
+			return &s
 		}
 	}
-	substStmt, err := initSubtrQuery(ctx, database)
-	if err != nil {
-		applog.Infof("NewSearcher, query initializaton error %v", err)
-		return &Searcher{
-			databaseInitialized: false,
-		}
-	}
-	return &Searcher{
-		database: database,
-		findEnglishStmt: stmt,
-		findSubstrStmt: substStmt,
-		databaseInitialized: true,
-	}
-}
-
-func InitDBCon() (*sql.DB, error) {
-	conString := webconfig.DBConfig()
-	return sql.Open("mysql", conString)
+	s.initialized = true
+	return &s
 }
 
 func initEnglishQuery(ctx context.Context, database *sql.DB) (*sql.Stmt, error) {
@@ -78,12 +68,12 @@ WHERE pinyin = ? OR english LIKE ?
 LIMIT 20`)
 }
 
-// Returns the word senses with English approximate or Pinyin exact match
-func (searcher *Searcher) DatabaseInitialized() bool {
-	return searcher.databaseInitialized
+// Initialized returns true if there were no error in initialization.
+func (s *Searcher) Initialized() bool {
+	return s.initialized
 }
 
-// Returns the word senses with English approximate or Pinyin exact match
+// FindWordsByEnglish returns the word senses with English approximate or Pinyin exact match
 func (searcher *Searcher) FindWordsByEnglish(ctx context.Context,
 		query string) ([]dicttypes.WordSense, error) {
 	applog.Infof("findWordsByEnglish, query = %s", query)
@@ -134,18 +124,22 @@ func (searcher *Searcher) FindWordsByEnglish(ctx context.Context,
 // Loads all words from the database
 func LoadDict(ctx context.Context, database *sql.DB) (map[string]dicttypes.Word, error) {
 	start := time.Now()
+	if database == nil {
+		applog.Error("LoadDict, database nil, loading from file")
+    return loadDictFile()
+	}
 	wdict := map[string]dicttypes.Word{}
 	avoidSub := config.AvoidSubDomains()
 	stmt, err := database.PrepareContext(ctx, 
 		"SELECT id, simplified, traditional, pinyin, english, parent_en, notes, headword FROM words")
     if err != nil {
-        applog.Error("find.load_dict Error preparing stmt: ", err)
+        applog.Error("LoadDict Error preparing stmt: ", err)
         return loadDictFile()
     }
 	results, err := stmt.QueryContext(ctx)
 	if err != nil {
-		applog.Error("find.load_dict, Error for query: ", err)
-        return loadDictFile()
+		applog.Errorf("LoadDict, Error for query, loading from file: \n%v\n", err)
+    return loadDictFile()
 	}
 	for results.Next() {
 		ws := dicttypes.WordSense{}

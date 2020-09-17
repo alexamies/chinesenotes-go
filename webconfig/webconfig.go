@@ -198,12 +198,20 @@ func readConfig() map[string]string {
 	return vars
 }
 
-
 // PasswordProtected gets whether the web site is password projected.
 func PasswordProtected() bool {
 	protected := os.Getenv("PROTECTED")
 	if len(protected) > 0 {
 		return strings.ToLower(protected) == "true"
+	}
+	return false
+}
+
+// PasswordProtected gets whether the web site is password projected.
+func UseDatabase() bool {
+	database := os.Getenv("DATABASE")
+	if len(database) > 0 {
+		return true
 	}
 	return false
 }

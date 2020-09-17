@@ -8,6 +8,22 @@
   </head>
   <body>
     <h1>Chinese Notes</h1>
-    <p>Results</p>
+    <p><a href="/">Home</a></p>
+    <h4>Results</h4>
+    <ul>
+      {{ range $term := .Terms }}
+      <li>
+        {{ $term.QueryText}} {{ $term.DictEntry.Pinyin}}
+        Senses
+        <ul>
+        {{ range $ws := $term.DictEntry.Senses }}
+        <li>
+          {{if ne $ws.English "\\N"}}{{ $ws.English }}{{end}}
+        </li>
+        {{ end }}
+        </ul>
+      </li>
+      {{ end }}
+    </ul>
   </body>
 </html>

@@ -37,29 +37,41 @@ var (
 func init() {
 	applog.Info("cnweb.main.init Initializing cnweb")
 	ctx := context.Background()
-	var err error
-	database, err = dictionary.InitDBCon()
+	err := initApp(ctx)
 	if err != nil {
-		applog.Errorf("main.init() unable to connect to database: \n%v\n", err)
+		applog.Errorf("main.init() error: \n%v\n", err)
+	}
+}
+
+func initApp(ctx context.Context) error {
+	applog.Info("initApp Initializing cnweb")
+	var err error
+	if webconfig.UseDatabase() {
+		database, err = initDBCon()
+		if err != nil {
+			return fmt.Errorf("initApp unable to connect to database: \n%v\n", err)
+		}
 	}
 	dictSearcher = dictionary.NewSearcher(ctx, database)
 	wdict, err = dictionary.LoadDict(ctx, database)
 	if err != nil {
-		applog.Errorf("main.init() unable to load dictionary: \n%v", err)
+		return fmt.Errorf("main.init() unable to load dictionary: \n%v", err)
 	}
 	parser = find.MakeQueryParser(wdict)
-	tmSearcher, err = transmemory.NewSearcher(ctx, database)
-	if err != nil {
-		applog.Errorf("main.init() unable to create new TM searcher: \n%v\n", err)
+	if database != nil {
+		tmSearcher, err = transmemory.NewSearcher(ctx, database)
+		if err != nil {
+			return fmt.Errorf("main.init() unable to create new TM searcher: \n%v\n", err)
+		}
 	}
 	df = find.NewDocFinder(ctx, database)
 	if webconfig.PasswordProtected() {
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			applog.Errorf("init authenticator not initialized, \n%v", err)
-			return
+			return fmt.Errorf("init authenticator not initialized, \n%v", err)
 		}
 	}
+	return nil
 }
 
 // Starting point for the Administration Portal
@@ -224,42 +236,25 @@ func findAdvanced(response http.ResponseWriter, request *http.Request) {
 
 // findDocs finds documents matching the given query.
 func findDocs(response http.ResponseWriter, request *http.Request, advanced bool) {
+	q := getSingleValue(request, "query")
+	if len(q) == 0 {
+		q = getSingleValue(request, "text")
+	}
+
+	var results *find.QueryResults
+	c := getSingleValue(request, "collection")
 	ctx := context.Background()
-	var err error
-	if !df.Inititialized() {
-		err = df.Inititialize(ctx, database)
+	if !df.Inititialized() || !dictSearcher.Initialized() {
+		err := initApp(ctx)
 		if err != nil {
-			applog.Errorf("main.findDocs Error searching docs, %v", err)
+			applog.Errorf("findDocs error: \n%v\n", err)
 			http.Error(response, "Internal error", http.StatusInternalServerError)
 			return
 		}
 	}
-
-	url := request.URL
-	queryString := url.Query()
-	query := queryString["query"]
-	q := "No Query"
-	if len(query) > 0 {
-		q = query[0]
-	} else {
-		query := queryString["text"]
-		if len(query) > 0 {
-			q = query[0]
-		}
-	}
-
-	var results *find.QueryResults
-	c := queryString["collection"]
-	if dictSearcher == nil || !dictSearcher.DatabaseInitialized() {
-		applog.Info("cnweb.findDocs Re-initializing cnweb")
-		database, err = dictionary.InitDBCon()
-		if err != nil {
-			applog.Errorf("main.finddocs unable to connect to database: %v", err)
-		}
-		dictSearcher = dictionary.NewSearcher(ctx, database)
-	}
-	if (len(c) > 0) && (c[0] != "") {
-		results, err = df.FindDocumentsInCol(ctx, dictSearcher, parser, q, c[0])
+	var err error
+	if len(c) > 0 {
+		results, err = df.FindDocumentsInCol(ctx, dictSearcher, parser, q, c)
 	} else {
 		results, err = df.FindDocuments(ctx, dictSearcher, parser, q, advanced)
 	}
@@ -272,21 +267,7 @@ func findDocs(response http.ResponseWriter, request *http.Request, advanced bool
 
 	// Return HTML if method is post
 	if request.Method == http.MethodPost {
-		tmpl, err := template.New("find_results.html").ParseFiles("templates/find_results.html")
-		if err != nil {
-			applog.Errorf("findDocs: error parsing template %v", err)
-		}
-		if tmpl == nil {
-			applog.Error("findDocs: Template is nil")
-		}
-		if err != nil {
-			applog.Errorf("findDocs: error parsing template %v", err)
-		}
-		vars := map[string]string{}
-		err = tmpl.Execute(response, vars)
-		if err != nil {
-			applog.Errorf("findDocs: error rendering template %v", err)
-		}
+		showQueryResults(response, results)
     return
 	}
 
@@ -302,6 +283,43 @@ func findDocs(response http.ResponseWriter, request *http.Request, advanced bool
 		}
 		response.Header().Set("Content-Type", "application/json; charset=utf-8")
 		fmt.Fprintf(response, string(resultsJson))
+	}
+}
+
+func getSingleValue(r *http.Request, key string) string {
+	var q string
+	if r.Method == http.MethodPost {
+		q = r.FormValue(key)
+	} else {
+		url := r.URL
+		queryString := url.Query()
+		query := queryString[key]
+		if len(query) > 0 {
+			q = query[0]
+		}
+	}
+	return q
+}
+
+// showQueryResults displays query results on a HTML page
+func showQueryResults(w http.ResponseWriter, results *find.QueryResults) {
+	tmpl, err := template.New("find_results.html").ParseFiles("templates/find_results.html")
+	if err != nil {
+		applog.Errorf("findDocs: error parsing template %v", err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+	}
+	if tmpl == nil {
+		applog.Error("findDocs: Template is nil")
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+	}
+	if err != nil {
+		applog.Errorf("findDocs: error parsing template %v", err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+	}
+	err = tmpl.Execute(w, results)
+	if err != nil {
+		applog.Errorf("findDocs: error rendering template %v", err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
 	}
 }
 
@@ -353,6 +371,11 @@ func findSubstring(response http.ResponseWriter, request *http.Request) {
 // Health check for monitoring or load balancing system, checks reachability
 func healthcheck(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "healthcheck ok")
+}
+
+func initDBCon() (*sql.DB, error) {
+	conString := webconfig.DBConfig()
+	return sql.Open("mysql", conString)
 }
 
 // Display login form for the Translation Portal
@@ -695,18 +718,10 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 	applog.Infof("main.translationMemory Query: %s, domain: %s", q, d)
 	ctx := context.Background()
 	if tmSearcher == nil {
-		applog.Info("cnweb.translationMemory, re-initializing tmSearcher")
-		var err error
-		database, err = dictionary.InitDBCon()
+		err := initApp(ctx)
 		if err != nil {
-			applog.Errorf("main.translationMemory unable to connect to database: %v", err)
-			http.Error(w, "Internal Error", http.StatusInternalServerError)
-		return
-		}
-		tmSearcher, err = transmemory.NewSearcher(ctx, database)
-		if err != nil {
-			applog.Errorf("main.translationMemory unable to create TM searcher: %v", err)
-			http.Error(w, "Internal Error", http.StatusInternalServerError)
+			applog.Errorf("findDocs error: \n%v\n", err)
+			http.Error(w, "Internal error", http.StatusInternalServerError)
 			return
 		}
 	}

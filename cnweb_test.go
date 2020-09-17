@@ -58,12 +58,12 @@ func TestFindHandler(t *testing.T) {
   tests := []test{
 		{
 			name: "Find a word",
-			query: "你好",
-			expectContains: "hello",
+			query: "邃古",
+			expectContains: "remote antiquity",
 		},
   }
   for _, tc := range tests {
-  	url := "/find/?query=你好"
+  	url := "/find/?query=" + tc.query
 		r := httptest.NewRequest(http.MethodGet, url, nil)
 		w := httptest.NewRecorder()
 		findHandler(w, r)
@@ -118,7 +118,7 @@ func TestTranslationMemory(t *testing.T) {
 		r := httptest.NewRequest(http.MethodGet, url, nil)
 		w := httptest.NewRecorder()
 		if (tmSearcher == nil) || !tmSearcher.DatabaseInitialized() {
-			fmt.Println("cnweb_test database not initialized, skippining unit tests")
+			fmt.Println("TestTranslationMemory: database not initialized, skippining unit tests")
 			return
 		}
 		translationMemory(w, r)
