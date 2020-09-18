@@ -162,6 +162,15 @@ func GetVar(key string) string {
 	return val
 }
 
+// Gets a configuration value with given default
+func GetVarWithDefault(key, defaultVal string) string {
+	val, ok := configVars[key]
+	if !ok {
+		return defaultVal
+	}
+	return val
+}
+
 // Reads the configuration file with project variables
 func readConfig() map[string]string {
 	vars := make(map[string]string)

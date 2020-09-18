@@ -1,5 +1,8 @@
 # Configuration file for web application
 
+# Title for Go generated HTML pages
+Title: Chinese Notes Translation Portal
+
 # The ID of the Google Sheet for new vocabulary
 NewVocabSheetID: xx
 

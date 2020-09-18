@@ -2,23 +2,30 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>Chinese Notes</title>
+    <title>{{.Title}}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
   </head>
   <body>
-    <h1>Chinese Notes</h1>
+    <h1>{{.Title}}</h1>
     <p><a href="/">Home</a></p>
+    <form name="findForm" method="post" action="/find/">
+      <div>
+        <label for="findInput">Search for</label>
+        <input type="text" name="query" size="40" required/>
+        <button type="submit">Find</button>
+      </div>
+    </form>
     <h4>Results</h4>
     <ul>
-      {{ range $term := .Terms }}
+      {{ range $term := .Results.Terms }}
       <li>
         {{ $term.QueryText}} {{ $term.DictEntry.Pinyin}}
-        Senses
         <ul>
         {{ range $ws := $term.DictEntry.Senses }}
         <li>
           {{if ne $ws.English "\\N"}}{{ $ws.English }}{{end}}
+          {{if ne $ws.Notes "\\N"}}<div>{{ $ws.Notes }}</div>{{end}}
         </li>
         {{ end }}
         </ul>

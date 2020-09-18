@@ -47,3 +47,12 @@ func TestGetCnWebHome(t *testing.T) {
 		t.Error("TestGetCnWebHome: cnwebHome is empty")
 	}
 }
+
+// TestGetVarWithDefault tests the GetVarWithDefault function
+func TestGetVarWithDefault(t *testing.T) {
+	const expect = "My Title"
+	val := GetVarWithDefault("TITLE", expect)
+	if expect != val {
+		t.Errorf("TestGetVarWithDefault: expect %s vs got %s", expect, val)
+	}
+}

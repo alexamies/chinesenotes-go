@@ -39,6 +39,7 @@ go build
 Run the web server
 
 ```shell
+export CNWEB_HOME=.
 ./chinesenotes-go
 ```
 
@@ -63,9 +64,10 @@ export CNWEB_HOME=$PWD
 
 Navigate back to http://localhost:8080
 
-The HTML interface is very basic, just enough for minimal testing. For a real
-web site you should use HTML templates with JavaScript line at 
-https://github.com/alexamies/chinesenotes.com
+The webconfig.yaml file and HTML tempates in /templates allow some additional
+customization. The HTML interface is very basic, just enough for minimal
+testing. For a real web site you should use HTML templates with JavaScript line
+at https://github.com/alexamies/chinesenotes.com
 
 ## Integration testing with minimal data
 

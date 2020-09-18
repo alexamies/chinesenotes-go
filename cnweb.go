@@ -34,6 +34,12 @@ var (
 	authenticator *identity.Authenticator
 )
 
+// Content for HTML template
+type HTMLContent struct {
+	Title string
+	Results *find.QueryResults
+}
+
 func init() {
 	applog.Info("cnweb.main.init Initializing cnweb")
 	ctx := context.Background()
@@ -175,13 +181,18 @@ func displayPage(w http.ResponseWriter, templateName string, content interface{}
 // End users are not expected to see this.
 func displayHome(w http.ResponseWriter, r *http.Request) {
 	applog.Infof("displayHome: url %s\n", r.URL.Path)
+	const defTitle = "Chinese Notes Translation Portal"
+	title := webconfig.GetVarWithDefault("Title", defTitle)
+	content := HTMLContent{
+		Title: title,
+	}
 	page := `<!DOCTYPE html>
 <html>
   <head>
-   <title>Chinese Notes</title>
+   <title>{{.Title}}</title>
   </head>
   <body>
-    <h1>Chinese Notes</h1>
+    <h1>{{.Title}}</h1>
     <form name="findForm" method="post" action="/find/">
       <div>
         <label for="findInput">Search for</label>
@@ -192,7 +203,20 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
   </body>
 </html>
 `
-	fmt.Fprintf(w, page)
+	tmpl, err := template.New("index.html").Parse(page)
+	if err != nil {
+		applog.Errorf("displayHome: error parsing template %v", err)
+		fmt.Fprintf(w, page)
+	}
+	if tmpl == nil {
+		applog.Error("displayHome: Template is nil")
+		fmt.Fprintf(w, page)
+	}
+	err = tmpl.Execute(w, content)
+	if err != nil {
+		applog.Errorf("findDocs: error rendering template %v", err)
+		fmt.Fprintf(w, page)
+	}
 }
 
 // Displays the translation portal home page
@@ -303,6 +327,12 @@ func getSingleValue(r *http.Request, key string) string {
 
 // showQueryResults displays query results on a HTML page
 func showQueryResults(w http.ResponseWriter, results *find.QueryResults) {
+	const defTitle = "Chinese Notes Translation Portal"
+	title := webconfig.GetVarWithDefault("Title", defTitle)
+	content := HTMLContent{
+		Title: title,
+		Results: results,
+	}
 	tmpl, err := template.New("find_results.html").ParseFiles("templates/find_results.html")
 	if err != nil {
 		applog.Errorf("findDocs: error parsing template %v", err)
@@ -312,11 +342,7 @@ func showQueryResults(w http.ResponseWriter, results *find.QueryResults) {
 		applog.Error("findDocs: Template is nil")
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 	}
-	if err != nil {
-		applog.Errorf("findDocs: error parsing template %v", err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-	}
-	err = tmpl.Execute(w, results)
+	err = tmpl.Execute(w, content)
 	if err != nil {
 		applog.Errorf("findDocs: error rendering template %v", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
