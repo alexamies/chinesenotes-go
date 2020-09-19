@@ -108,6 +108,7 @@ func NewDocFinder(ctx context.Context, database *sql.DB) DocFinder {
 			return &df
 		}
 	}
+	applog.Info("NewDocFinder initialized")
 	df.initialized = true
 	return &df
 }
@@ -706,9 +707,7 @@ func (df *DatabaseDocFinder) initFind(ctx context.Context) error {
 	err := df.initStatements(ctx)
 	if err != nil {
 		conString := webconfig.DBConfig()
-		applog.Errorf("find.initFind: got error with conString %v", conString, err)
-		return fmt.Errorf("find.initFind: error preparing database statements, %v",
-			err)
+		return fmt.Errorf("find.initFind: got error with conString %s: \n%v\n", conString, err)
 	}
 	df.docMap, err = df.cacheDocDetails(ctx)
 	if err != nil {
@@ -721,7 +720,7 @@ func (df *DatabaseDocFinder) initFind(ctx context.Context) error {
 
 func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 	var err error
-	if df.database != nil {
+	if df.database == nil {
 		return fmt.Errorf("initStatements, database is nil")
 	}
 
