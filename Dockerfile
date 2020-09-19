@@ -6,4 +6,7 @@ COPY . .
 RUN go build
 RUN apt-get update
 RUN apt-get install -y ca-certificates
+COPY webconfig.yaml /webconfig.yaml
+COPY config.yaml /config.yaml
+COPY data/*.tsv /data/
 CMD ["./chinesenotes-go"]

@@ -267,34 +267,151 @@ You should see JSON returned.
 
 ## Password protecting
 
-To password protect the translation portal set the environment variable
-PROTECTED before starting the web server:
+To set up the translation portal with password protection, first configure
+the database:
+
+```shell
+docker exec -it mariadb bash
+```
+
+In the container command line
+
+```shell
+mysql --local-infile=1 -h localhost -u root -p
+```
+
+In the mysql client give the app runtime permission to update and add an admin
+user
+
+```sql
+USE mysql;
+GRANT SELECT, INSERT, UPDATE ON cnotest_test.* TO 'app_user'@'%';
+
+use cnotest_test;
+
+INSERT INTO 
+  user (UserID, UserName, Email, FullName, Role, PasswordNeedsReset, Organization, Position, Location) 
+VALUES (1, 'admin', "admin@email.com", "Privileged User", "admin", 0, "Test", "Developer", "Home");
+
+INSERT INTO passwd (UserID, Password) 
+VALUES (1, '[your hashed password]');
+```
+
+Note that the password needs to be SHA-256 hashed before inserting. If the user
+forgets their password, there is a password recovery function. This requires
+setup of a SendGrid account.
+
+Set the environment variable PROTECTED and the SITEDOMAIN variable for cookies
+before starting the web server:
 
 ```shell
 export PROTECTED=true
+SITEDOMAIN=localhost
 ./chinesenotes-go
 ```
+
+Note that you need to have HTTPS enabled for cookies to be sent with most
+browsers. You can create a self-signed certificate and run locally or deploy to
+a managed service like [Cloud Run](https://cloud.google.com/run).
+Keep reading for deployment to Cloud Run.
 
 You will need to add the users manually using SQL statements. There is no
 user interface to add users yet.
 
+## Deploy to Cloud Run with a Cloud SQL databsae
+
+The steps here describe how to deploy and run on Google Cloud with Cloud Run,
+Cloud SQL, and Cloud Storage. This assumes that you have a Google Cloud project. 
+
+### Set up a Cloud SQL Database
+New: Replacing management of the Mariadb database in a Kubernetes cluster
+Follow instructions in 
+[Cloud SQL Quickstart](https://cloud.google.com/sql/docs/mysql/quickstart)
+using the Cloud Console.
+
+Create a Cloud SQL instance with the Cloud Console user interface. Then log into
+it in the Cloud Shell with the command
+
+```shell
+DB_INSTANCE=[your instance]
+gcloud sql connect $DB_INSTANCE --user=root
+```
+
+In the MySQL client create a database and add an app user with the commands in
+data/firt_time_setup.sql. Create the tables with the commands in
+chinesenotes.ddl, and add test data as needed. You can clone this Git project
+to get the same data files.
+
+### Cloud Storage
+If you are using full text search, create a GCS bucket and copy your corpus
+files to it. You the environment variable TEXT_BUCKET inform the web app of
+the bucket name.
+
+```shell
+TEXT_BUCKET=[Your GCS bucket name]
+gsutil mb gs://$TEXT_BUCKET
+gsutil -m rsync -d -r corpus gs://$TEXT_BUCKET
+```
+
+### Cloud Run
+
+Use
+[Cloud Build](https://cloud.google.com/cloud-build)
+to build the Docker image and upload it to the Google Container Registry:
+
+```shell
+export PROJECT_ID=[Your project]
+BUILD_ID=r001
+gcloud builds submit --config cloudbuild.yaml . \
+  --substitutions=_IMAGE_TAG="$BUILD_ID"
+```
+
+Then deploy to Cloud Run with the command
+
+```shell
+IMAGE=gcr.io/${PROJECT_ID}/cn-portal-image:${BUILD_ID}
+SERVICE=cn-portal
+REGION=us-central1
+INSTANCE_CONNECTION_NAME=[Your connection]
+DBUSER=[Your database user]
+DBPASSWORD=[Your database password]
+DATABASE=[Your database name]
+MEMORY=400Mi
+TEXT_BUCKET=[Your GCS bucket name for text files]
+CNWEB_HOME=.
+gcloud run deploy --platform=managed $SERVICE \
+--image $IMAGE \
+--region=$REGION \
+--memory="$MEMORY" \
+--add-cloudsql-instances $INSTANCE_CONNECTION_NAME \
+--set-env-vars INSTANCE_CONNECTION_NAME="$INSTANCE_CONNECTION_NAME" \
+--set-env-vars DBUSER="$DBUSER" \
+--set-env-vars DBPASSWORD="$DBPASSWORD" \
+--set-env-vars DATABASE="$DATABASE" \
+--set-env-vars TEXT_BUCKET="$TEXT_BUCKET" \
+--set-env-vars CNWEB_HOME="/" \
+--set-env-vars CNREADER_HOME="/"
+```
+
 ## Containerize the app and run against a databsae
 
-Build the Docker image for the Go application:
+If you are not using Google Cloud, you can follow these instructions to
+build the Docker image for the Go application and run locally:
 
-```
-sudo docker build -t cn-app-image .
+```shell
+sudo docker build -t cn-portal-image .
 ```
 
 Run it locally with minimal features (C-E dictionary lookp only) enabled
 
-```
-sudo docker run -it --rm -p 8080:8080 --name cn-app \
-  cn-app-image
+```shell
+sudo docker run -it --rm -p 8080:8080 --name cn-portal \
+  cn-portal-image
 ```
 
 Test basic lookup with curl
-```
+
+```shell
 curl http://localhost:8080/find/?query=你好
 ```
 

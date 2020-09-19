@@ -183,6 +183,32 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 	applog.Infof("displayHome: url %s\n", r.URL.Path)
 	const defTitle = "Chinese Notes Translation Portal"
 	title := webconfig.GetVarWithDefault("Title", defTitle)
+	if webconfig.PasswordProtected() {
+		ctx := context.Background()
+		if authenticator == nil {
+			var err error
+			authenticator, err = identity.NewAuthenticator(ctx)
+			if err != nil {
+				applog.Errorf("displayHome: authenticator not initialized, \n%v\n", err)
+				http.Error(w, "Server error", http.StatusInternalServerError)
+			}
+		}
+		sessionInfo := identity.InvalidSession()
+		cookie, err := r.Cookie("session")
+		if err == nil {
+			sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
+		} else {
+			applog.Info("displayHome error getting cookie: %v", err)
+			http.Error(w, "Server error", http.StatusInternalServerError)
+			return
+		}
+		user := sessionInfo.User
+		if !identity.IsAuthorized(user, "translation_portal") {
+			displayPage(w, "login_form.html", nil)
+			return
+		}
+	}
+
 	content := HTMLContent{
 		Title: title,
 	}
@@ -268,7 +294,7 @@ func findDocs(response http.ResponseWriter, request *http.Request, advanced bool
 	var results *find.QueryResults
 	c := getSingleValue(request, "collection")
 	ctx := context.Background()
-	if !df.Inititialized() || !dictSearcher.Initialized() {
+	if df == nil || !df.Inititialized() || dictSearcher == nil || !dictSearcher.Initialized() {
 		err := initApp(ctx)
 		if err != nil {
 			applog.Errorf("findDocs error: \n%v\n", err)
@@ -529,7 +555,7 @@ func portalHandler(w http.ResponseWriter, r *http.Request) {
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
 			applog.Errorf("portalHandler: authenticator not initialized, \n%v\n", err)
-			http.Error(w, "Not authorized", http.StatusForbidden)
+			http.Error(w, "Server error", http.StatusInternalServerError)
 		}
 	}
 	sessionInfo := identity.InvalidSession()
