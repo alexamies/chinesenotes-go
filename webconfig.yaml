@@ -4,16 +4,16 @@
 Title: Chinese Notes Translation Portal
 
 # The ID of the Google Sheet for new vocabulary
-NewVocabSheetID: xx
+NewVocabSheetID: 
 
 # The ID of the Google Sheet for library users
-UsersSheetID: xx
+UsersSheetID: 
 
 # The ID of the Google Sheet for collection titles
-TitlesSheetID: xx
+TitlesSheetID: 
 
 # The ID of a user to send mail from
-FromEmail: do_not_reply@chinesenotes.com
+FromEmail: do_not_reply@example.com
 
 # The URL to do a password reset
 PasswordResetURL: http://localhost/loggedin/reset_password

@@ -183,6 +183,9 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 	applog.Infof("displayHome: url %s\n", r.URL.Path)
 	const defTitle = "Chinese Notes Translation Portal"
 	title := webconfig.GetVarWithDefault("Title", defTitle)
+	content := HTMLContent{
+		Title: title,
+	}
 	if webconfig.PasswordProtected() {
 		ctx := context.Background()
 		if authenticator == nil {
@@ -191,6 +194,7 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				applog.Errorf("displayHome: authenticator not initialized, \n%v\n", err)
 				http.Error(w, "Server error", http.StatusInternalServerError)
+				return
 			}
 		}
 		sessionInfo := identity.InvalidSession()
@@ -199,23 +203,21 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 			sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
 		} else {
 			applog.Info("displayHome error getting cookie: %v", err)
-			http.Error(w, "Server error", http.StatusInternalServerError)
+			displayPage(w, "login_form.html", content)
 			return
 		}
 		user := sessionInfo.User
 		if !identity.IsAuthorized(user, "translation_portal") {
-			displayPage(w, "login_form.html", nil)
+			displayPage(w, "login_form.html", content)
 			return
 		}
 	}
 
-	content := HTMLContent{
-		Title: title,
-	}
 	page := `<!DOCTYPE html>
 <html>
   <head>
    <title>{{.Title}}</title>
+   <link rel="stylesheet" href="/static/styles.css">
   </head>
   <body>
     <h1>{{.Title}}</h1>
@@ -816,6 +818,8 @@ func main() {
 	http.HandleFunc("/loggedin/reset_password", resetPasswordFormHandler)
 	http.HandleFunc("/loggedin/reset_password_submit", resetPasswordHandler)
 	http.HandleFunc("/loggedin/submitcpwd", changePasswordHandler)
+	fs := http.FileServer(http.Dir("./static"))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
 	http.HandleFunc("/", displayHome)
 	portStr := ":" + strconv.Itoa(webconfig.GetPort())
 	applog.Infof("cnweb.main Starting http server on port %s\n", portStr)

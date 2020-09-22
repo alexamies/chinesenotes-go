@@ -2,12 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>Translation Portal Login</title>
+    <title>{{.Title}}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link rel="stylesheet" href="/static/styles.css">
   </head>
   <body>
-    <h1>Translation Portal Login</h1>
+    <h1>{{.Title}}</h1>
+    <h2>Login</h2>
     <div id="LoginBar">
       <form id="LoginForm" name="login" action="/loggedin/login"
             method="post">

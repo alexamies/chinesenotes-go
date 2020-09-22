@@ -265,59 +265,6 @@ curl http://localhost:8080/find/?query=antiquity
 
 You should see JSON returned.
 
-## Password protecting
-
-To set up the translation portal with password protection, first configure
-the database:
-
-```shell
-docker exec -it mariadb bash
-```
-
-In the container command line
-
-```shell
-mysql --local-infile=1 -h localhost -u root -p
-```
-
-In the mysql client give the app runtime permission to update and add an admin
-user
-
-```sql
-USE mysql;
-GRANT SELECT, INSERT, UPDATE ON cnotest_test.* TO 'app_user'@'%';
-
-use cnotest_test;
-
-INSERT INTO 
-  user (UserID, UserName, Email, FullName, Role, PasswordNeedsReset, Organization, Position, Location) 
-VALUES (1, 'admin', "admin@email.com", "Privileged User", "admin", 0, "Test", "Developer", "Home");
-
-INSERT INTO passwd (UserID, Password) 
-VALUES (1, '[your hashed password]');
-```
-
-Note that the password needs to be SHA-256 hashed before inserting. If the user
-forgets their password, there is a password recovery function. This requires
-setup of a SendGrid account.
-
-Set the environment variable PROTECTED and the SITEDOMAIN variable for cookies
-before starting the web server:
-
-```shell
-export PROTECTED=true
-SITEDOMAIN=localhost
-./chinesenotes-go
-```
-
-Note that you need to have HTTPS enabled for cookies to be sent with most
-browsers. You can create a self-signed certificate and run locally or deploy to
-a managed service like [Cloud Run](https://cloud.google.com/run).
-Keep reading for deployment to Cloud Run.
-
-You will need to add the users manually using SQL statements. There is no
-user interface to add users yet.
-
 ## Deploy to Cloud Run with a Cloud SQL databsae
 
 The steps here describe how to deploy and run on Google Cloud with Cloud Run,
@@ -393,7 +340,89 @@ gcloud run deploy --platform=managed $SERVICE \
 --set-env-vars CNREADER_HOME="/"
 ```
 
-## Containerize the app and run against a databsae
+## Password protecting
+
+To set up the translation portal with password protection, first configure
+the database:
+
+```shell
+docker exec -it mariadb bash
+```
+
+In the container command line
+
+```shell
+mysql --local-infile=1 -h localhost -u root -p
+```
+
+In the mysql client give the app runtime permission to update and add an admin
+user
+
+```sql
+USE mysql;
+GRANT SELECT, INSERT, UPDATE ON cnotest_test.* TO 'app_user'@'%';
+
+use cnotest_test;
+
+INSERT INTO 
+  user (UserID, UserName, Email, FullName, Role, PasswordNeedsReset, Organization, Position, Location) 
+VALUES (1, 'admin', "admin@email.com", "Privileged User", "admin", 0, "Test", "Developer", "Home");
+
+INSERT INTO passwd (UserID, Password) 
+VALUES (1, '[your hashed password]');
+```
+
+Note that the password needs to be SHA-256 hashed before inserting. If the user
+forgets their password, there is a password recovery function. This requires
+setup of a SendGrid account.
+
+Set the environment variable PROTECTED and the SITEDOMAIN variable for cookies
+before starting the web server:
+
+```shell
+export PROTECTED=true
+SITEDOMAIN=localhost
+./chinesenotes-go
+```
+
+Note that you need to have HTTPS enabled for cookies to be sent with most
+browsers. You can create a self-signed certificate, run locally without one,
+or deploy to a managed service like [Cloud Run](https://cloud.google.com/run).
+For deployment to Cloud Run use the command
+
+```shell
+PROTECTED=true
+SITEDOMAIN=[your domain]
+IMAGE=gcr.io/${PROJECT_ID}/cn-portal-image:${BUILD_ID}
+SERVICE=cn-portal
+REGION=us-central1
+INSTANCE_CONNECTION_NAME=[Your connection]
+DBUSER=[Your database user]
+DBPASSWORD=[Your database password]
+DATABASE=[Your database name]
+MEMORY=400Mi
+TEXT_BUCKET=[Your GCS bucket name for text files]
+CNWEB_HOME=.
+gcloud run deploy --platform=managed $SERVICE \
+--image $IMAGE \
+--region=$REGION \
+--memory="$MEMORY" \
+--add-cloudsql-instances $INSTANCE_CONNECTION_NAME \
+--set-env-vars INSTANCE_CONNECTION_NAME="$INSTANCE_CONNECTION_NAME" \
+--set-env-vars DBUSER="$DBUSER" \
+--set-env-vars DBPASSWORD="$DBPASSWORD" \
+--set-env-vars DATABASE="$DATABASE" \
+--set-env-vars TEXT_BUCKET="$TEXT_BUCKET" \
+--set-env-vars CNWEB_HOME="/" \
+--set-env-vars CNREADER_HOME="/" \
+--set-env-vars PROTECTED="$PROTECTED" \
+--set-env-vars SITEDOMAIN="$SITEDOMAIN"
+```
+
+You will need to add the users manually using SQL statements. There is no
+user interface to add users yet.
+
+## Containerize the app and run locally against a databsae
 
 If you are not using Google Cloud, you can follow these instructions to
 build the Docker image for the Go application and run locally:
