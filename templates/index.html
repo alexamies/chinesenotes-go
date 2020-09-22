@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!--Home page for logged in users-->
 <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -9,7 +10,9 @@
   </head>
   <body>
     <h1>{{.Title}}</h1>
-    <p><a href="/">Home</a></p>
+    <p><a href="/loggedin/logout_form">Logout</a></p>
+    <p><a href="/loggedin/changepassword">Change password</a></p>
+    <p><a href="/loggedin/portal_library/portal_library.html">Library</a></p>
     <form name="findForm" method="post" action="/find/">
       <div>
         <label for="findInput">Search for</label>
@@ -17,21 +20,5 @@
         <button type="submit">Find</button>
       </div>
     </form>
-    <h4>Results</h4>
-    <ul>
-      {{ range $term := .Results.Terms }}
-      <li>
-        {{ $term.QueryText}} {{ $term.DictEntry.Pinyin}}
-        <ul>
-        {{ range $ws := $term.DictEntry.Senses }}
-        <li>
-          {{if ne $ws.English "\\N"}}{{ $ws.English }}{{end}}
-          {{if ne $ws.Notes "\\N"}}<div>{{ $ws.Notes }}</div>{{end}}
-        </li>
-        {{ end }}
-        </ul>
-      </li>
-      {{ end }}
-    </ul>
   </body>
 </html>

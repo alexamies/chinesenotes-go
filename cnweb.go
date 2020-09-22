@@ -24,6 +24,8 @@ import (
 	"strings"
 )
 
+const defTitle = "Chinese Notes Translation Portal"
+
 var (
 	database *sql.DB
 	parser find.QueryParser
@@ -181,7 +183,6 @@ func displayPage(w http.ResponseWriter, templateName string, content interface{}
 // End users are not expected to see this.
 func displayHome(w http.ResponseWriter, r *http.Request) {
 	applog.Infof("displayHome: url %s\n", r.URL.Path)
-	const defTitle = "Chinese Notes Translation Portal"
 	title := webconfig.GetVarWithDefault("Title", defTitle)
 	content := HTMLContent{
 		Title: title,
@@ -206,9 +207,11 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 			displayPage(w, "login_form.html", content)
 			return
 		}
-		user := sessionInfo.User
-		if !identity.IsAuthorized(user, "translation_portal") {
+		if !sessionInfo.Valid {
 			displayPage(w, "login_form.html", content)
+			return
+		} else {
+			displayPage(w, "index.html", content)
 			return
 		}
 	}
@@ -355,7 +358,6 @@ func getSingleValue(r *http.Request, key string) string {
 
 // showQueryResults displays query results on a HTML page
 func showQueryResults(w http.ResponseWriter, results *find.QueryResults) {
-	const defTitle = "Chinese Notes Translation Portal"
 	title := webconfig.GetVarWithDefault("Title", defTitle)
 	content := HTMLContent{
 		Title: title,
@@ -499,7 +501,19 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// logoutForm displays a form button to logout the user
+func logoutForm(w http.ResponseWriter, r *http.Request) {
+	applog.Infof("logoutForm: display form")
+	title := webconfig.GetVarWithDefault("Title", defTitle)
+	content := HTMLContent{
+		Title: title,
+	}
+	displayPage(w, "logout.html", content)
+}
+
+// logoutHandler logs the user out of their session
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	applog.Infof("logoutHandler: process form")
 	ctx := context.Background()
 	if authenticator == nil {
 		var err error
@@ -515,7 +529,20 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		applog.Error("logoutHandler: no cookie")
 	} else {
 		authenticator.Logout(ctx, cookie.Value)
+		cookie.MaxAge = -1
+		http.SetCookie(w, cookie)
 	}
+
+	// Return HTML if method is post
+	if r.Method == http.MethodPost {
+		title := webconfig.GetVarWithDefault("Title", defTitle)
+		content := HTMLContent{
+			Title: title,
+		}
+    displayPage(w, "logged_out.html", content)
+    return
+	}
+
 	message := "Please come back again"
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	fmt.Fprintf(w, "{\"message\" :\"%s\"}", message)
@@ -809,6 +836,7 @@ func main() {
 	http.HandleFunc("/loggedin/changepassword", changePasswordFormHandler)
 	http.HandleFunc("/loggedin/login", loginHandler)
 	http.HandleFunc("/loggedin/login_form", loginFormHandler)
+	http.HandleFunc("/loggedin/logout_form", logoutForm)
 	http.HandleFunc("/loggedin/logout", logoutHandler)
 	http.HandleFunc("/loggedin/session", sessionHandler)
 	http.HandleFunc("/loggedin/portal", portalHandler)

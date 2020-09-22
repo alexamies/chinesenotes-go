@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<!--Home page for logged in users-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>{{.Title}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <h1>{{.Title}}</h1>
+    <h2>Logout</h2>
+    <p>If you log out then you will have to log back in again to use the portal.</p>
+    <form name="logoutForm" method="post" action="/loggedin/logout">
+      <div>
+        <button type="submit">Logout</button>
+      </div>
+    </form>
+    <p>No, go <a href="/">Home</a> instead.</p>
+  </body>
+</html>

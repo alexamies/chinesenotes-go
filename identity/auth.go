@@ -284,8 +284,10 @@ func (a *Authenticator) checkSessionStore(ctx context.Context,
 		results.Scan(&user.UserID, &user.UserName, &user.Email, &user.FullName,
 			&user.Role, &session.Authenticated)
 		session.User = user
-		session.Valid = true
-		sessions = append(sessions, session)
+		if session.Authenticated == 1 {
+			session.Valid = true
+			sessions = append(sessions, session)
+		}
 	}
 	applog.Infof("checkSessionStore, sessions found: %d\n", len(sessions))
 	return sessions
