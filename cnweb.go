@@ -245,7 +245,7 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 	}
 	err = tmpl.Execute(w, content)
 	if err != nil {
-		applog.Errorf("findDocs: error rendering template %v", err)
+		applog.Errorf("displayHome: error rendering template %v", err)
 		fmt.Fprintf(w, page)
 	}
 }
@@ -321,7 +321,7 @@ func findDocs(response http.ResponseWriter, request *http.Request, advanced bool
 	}
 
 	// Return HTML if method is post
-	if request.Method == http.MethodPost {
+	if acceptHTML(request) {
 		showQueryResults(response, results)
     return
 	}
@@ -339,6 +339,14 @@ func findDocs(response http.ResponseWriter, request *http.Request, advanced bool
 		response.Header().Set("Content-Type", "application/json; charset=utf-8")
 		fmt.Fprintf(response, string(resultsJson))
 	}
+}
+
+func acceptHTML(r *http.Request) bool {
+	acceptEnc := r.Header.Get("Accept")
+	if len(acceptEnc) > 0 && strings.Contains(acceptEnc, "text/html") {
+		return true
+	}
+	return false
 }
 
 func getSingleValue(r *http.Request, key string) string {
@@ -534,7 +542,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Return HTML if method is post
-	if r.Method == http.MethodPost {
+	if acceptHTML(r) {
 		title := webconfig.GetVarWithDefault("Title", defTitle)
 		content := HTMLContent{
 			Title: title,

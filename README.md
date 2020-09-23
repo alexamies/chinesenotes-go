@@ -376,18 +376,24 @@ Note that the password needs to be SHA-256 hashed before inserting. If the user
 forgets their password, there is a password recovery function. This requires
 setup of a SendGrid account.
 
-Set the environment variable PROTECTED and the SITEDOMAIN variable for cookies
-before starting the web server:
+Set the environment variable PROTECTED, the SITEDOMAIN variable for cookies,
+and PORTAL_LIB_HOME before starting the web server:
 
 ```shell
 export PROTECTED=true
-SITEDOMAIN=localhost
+export SITEDOMAIN=localhost
+export PORTAL_LIB_HOME=translation_portal
 ./chinesenotes-go
 ```
 
 Note that you need to have HTTPS enabled for cookies to be sent with most
 browsers. You can create a self-signed certificate, run locally without one,
 or deploy to a managed service like [Cloud Run](https://cloud.google.com/run).
+
+The PORTAL_LIB_HOME environment variable tells the server where to find the
+source documents for translation. You can place your own HTML files in this 
+directory.
+
 For deployment to Cloud Run use the command
 
 ```shell
@@ -421,6 +427,11 @@ gcloud run deploy --platform=managed $SERVICE \
 
 You will need to add the users manually using SQL statements. There is no
 user interface to add users yet.
+
+For additional customization you can change the title of the portal with the
+`Title` variable in the webconfig.yaml file and edit the `styles.css` sheet.
+For the even more customization, just use the portal server JSON API to driver
+a JavaScript client.
 
 ## Containerize the app and run locally against a databsae
 
