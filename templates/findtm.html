@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!--Home page for logged in users-->
 <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -10,7 +11,9 @@
   <body>
     <h1>{{.Title}}</h1>
     <p><a href="/">Home</a></p>
-    <form name="findForm" method="post" action="/find/">
+    <h2>Translation Memory</h2>
+    <p>Enter Chinese text into to the most closely related names and phrases</p>
+    <form name="findForm" method="post" action="/findtm">
       <div>
         <label for="findInput">Search for</label>
         <input type="text" name="query" size="40" required/>
@@ -19,11 +22,12 @@
     </form>
     <h4>Results</h4>
     <ul>
-      {{ range $term := .Results.Terms }}
+      {{if .TMResults}}
+      {{ range $term := .TMResults.Words }}
       <li>
-        {{ $term.QueryText}} {{ $term.DictEntry.Pinyin}}
+        {{ $term.Traditional}} {{ $term.Pinyin}}
         <ul>
-        {{ range $ws := $term.DictEntry.Senses }}
+        {{ range $ws := $term.Senses }}
         <li>
           {{if ne $ws.English "\\N"}}{{ $ws.English }}{{end}}
           {{if ne $ws.Notes "\\N"}}<div>{{ $ws.Notes }}</div>{{end}}
@@ -31,6 +35,7 @@
         {{ end }}
         </ul>
       </li>
+      {{ end }}
       {{ end }}
     </ul>
     <footer>

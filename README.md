@@ -1,7 +1,15 @@
 # Chinese Notes Translation Portal
 
 A Go web application and text processing library for translation from Chinese to
-English that is adaptable to different dictionaries and corpora, featuring:
+English that is adaptable to different dictionaries and corpora, powering
+these use cases
+
+1. A web site for Chinese-English dictionary lookup and language tools for
+   language learning and reference
+2. A password protected translation portal for a team of translators
+3. A software library for Chinese text processing
+
+Features include:
 
 1. Chinese-English dictionary word lookup
 2. Chinese text segmentation
@@ -10,7 +18,8 @@ English that is adaptable to different dictionaries and corpora, featuring:
 5. Password proection (optional)
 6. Integration with a rich JavaScript web client (optional)
 7. Integration with a backend SQL databsae (optional)
-8. Go module for Chinese text processing
+8. Go module with Go and JSON APIs for interactive Chinese text processing
+   - as opposed to batch processing of a corpus for indexing
 
 The web app drives the https://chinesenotes.com, https://ntireader.org, and
 https://hbreader.org web site and a private translation portal
@@ -422,14 +431,16 @@ gcloud run deploy --platform=managed $SERVICE \
 --set-env-vars CNWEB_HOME="/" \
 --set-env-vars CNREADER_HOME="/" \
 --set-env-vars PROTECTED="$PROTECTED" \
---set-env-vars SITEDOMAIN="$SITEDOMAIN"
+--set-env-vars SITEDOMAIN="$SITEDOMAIN" \
+--set-env-vars PORTAL_LIB_HOME="$PORTAL_LIB_HOME"
 ```
 
 You will need to add the users manually using SQL statements. There is no
 user interface to add users yet.
 
 For additional customization you can change the title of the portal with the
-`Title` variable in the webconfig.yaml file and edit the `styles.css` sheet.
+`Title` variable in the webconfig.yaml file, edit the `styles.css` sheet, or
+edit the templates under the /templates directory.
 For the even more customization, just use the portal server JSON API to driver
 a JavaScript client.
 
@@ -502,7 +513,60 @@ docker tag cn-app-image gcr.io/$PROJECT/cn-app-image:$TAG
 docker -- push gcr.io/$PROJECT/cn-app-image:$TAG
 ```
 
-### Go module for Chinese text processing
+## Translation Memory Setup
+
+Translation memory search identifies nearly matching terms based on a
+combination of similarity measures. It requires the translation memory index to
+be loaded into the database. To compile the index install the `cnreader` command
+line tool
+https://github.com/alexamies/chinesenotes.com/tree/master/go/src/cnreader
+
+To compile the index, use the command
+
+```shell
+./cnreader -tmindex
+```
+
+This will write the index files into the `index` directory. Some sample files
+with a very small dataset are provided for testing purposes. Then load those
+into the database with the commands
+
+```sql
+use [your database];
+LOAD DATA LOCAL INFILE 'index/tmindex_uni_domain.tsv' INTO TABLE tmindex_uni_domain CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
+LOAD DATA LOCAL INFILE 'index/tmindex_unigram.tsv' INTO TABLE tmindex_unigram CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
+```
+
+## Corpus content and full text search
+
+To generates the corpus files and full text index install the `cnreader` command
+line tool
+https://github.com/alexamies/chinesenotes.com/tree/master/go/src/cnreader
+
+Run the command with no flags
+
+```shell
+./cnreader 
+```
+
+This will write the full text index files into the `index` directory. Load those
+into the database with the commands
+
+```sql
+use [your database];
+LOAD DATA LOCAL INFILE 'index/word_freq_doc.txt' INTO TABLE word_freq_doc CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
+LOAD DATA LOCAL INFILE 'index/bigram_freq_doc.txt' INTO TABLE bigram_freq_doc CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
+```
+
+If the site is password protected then copy the generated HTML files to the
+`translation_portal` directory. If the site is open then copy the HTML files
+to GCS with a load balancer in front, as per the instructions at
+https://github.com/alexamies/chinesenotes.com
+
+Copy the plain text files to the GCS text directory with environment variable
+`TEXT_BUCKET`.
+
+## Go module for Chinese text processing
 
 This GitHub project is a Go module. You can install it with the instructions at
 the [Go module reference](https://golang.org/ref/mod), which just involves

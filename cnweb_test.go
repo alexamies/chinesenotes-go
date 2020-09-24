@@ -19,6 +19,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -26,6 +27,7 @@ import (
 // TestDisplayHome tests the default HTTP handler.
 func TestDisplayHome(t *testing.T) {
 	log.Printf("TestDisplayHome: Begin unit tests\n")
+	os.Unsetenv("PROTECTED")
 	type test struct {
 		name string
 		expectContains string
@@ -33,7 +35,7 @@ func TestDisplayHome(t *testing.T) {
   tests := []test{
 		{
 			name: "Show home",
-			expectContains: "Chinese Notes",
+			expectContains: "OK",
 		},
   }
   for _, tc := range tests {
@@ -118,7 +120,7 @@ func TestTranslationMemory(t *testing.T) {
 		r := httptest.NewRequest(http.MethodGet, url, nil)
 		w := httptest.NewRecorder()
 		if (tmSearcher == nil) || !tmSearcher.DatabaseInitialized() {
-			fmt.Println("TestTranslationMemory: database not initialized, skippining unit tests")
+			t.Skip("TestTranslationMemory: database not initialized, skippining unit test")
 			return
 		}
 		translationMemory(w, r)

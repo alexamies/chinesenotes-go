@@ -40,6 +40,7 @@ var (
 type HTMLContent struct {
 	Title string
 	Results *find.QueryResults
+	TMResults *transmemory.Results
 }
 
 func init() {
@@ -180,9 +181,16 @@ func displayPage(w http.ResponseWriter, templateName string, content interface{}
 }
 
 // displayHome shows a simple page, for healthchecks and testing.
-// End users are not expected to see this.
+// End users may also to see this when accessing direct from the browser
 func displayHome(w http.ResponseWriter, r *http.Request) {
 	applog.Infof("displayHome: url %s\n", r.URL.Path)
+
+	// Tell healthcheck probes that we are alive
+	if !acceptHTML(r) {
+		fmt.Fprintf(w, "OK")
+    return
+	}
+
 	title := webconfig.GetVarWithDefault("Title", defTitle)
 	content := HTMLContent{
 		Title: title,
@@ -211,46 +219,15 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 			displayPage(w, "login_form.html", content)
 			return
 		} else {
-			displayPage(w, "index.html", content)
+			displayPage(w, "index_auth.html", content)
 			return
 		}
 	}
 
-	page := `<!DOCTYPE html>
-<html>
-  <head>
-   <title>{{.Title}}</title>
-   <link rel="stylesheet" href="/static/styles.css">
-  </head>
-  <body>
-    <h1>{{.Title}}</h1>
-    <form name="findForm" method="post" action="/find/">
-      <div>
-        <label for="findInput">Search for</label>
-        <input type="text" name="query" size="40" required/>
-        <button type="submit">Find</button>
-      </div>
-    </form>
-  </body>
-</html>
-`
-	tmpl, err := template.New("index.html").Parse(page)
-	if err != nil {
-		applog.Errorf("displayHome: error parsing template %v", err)
-		fmt.Fprintf(w, page)
-	}
-	if tmpl == nil {
-		applog.Error("displayHome: Template is nil")
-		fmt.Fprintf(w, page)
-	}
-	err = tmpl.Execute(w, content)
-	if err != nil {
-		applog.Errorf("displayHome: error rendering template %v", err)
-		fmt.Fprintf(w, page)
-	}
+	displayPage(w, "index.html", content)
 }
 
-// Displays the translation portal home page
+// displayPortalHome shows the translation portal home page
 func displayPortalHome(w http.ResponseWriter) {
 	vars := webconfig.GetAll()
 	displayPage(w, "translation_portal.html", vars)
@@ -318,6 +295,13 @@ func findDocs(response http.ResponseWriter, request *http.Request, advanced bool
 		applog.Errorf("main.findDocs Error searching docs, %v", err)
 		http.Error(response, "Internal error", http.StatusInternalServerError)
 		return
+	}
+
+	if webconfig.PasswordProtected() {
+		sessionInfo := enforceValidSession(response, request)
+		if !sessionInfo.Valid {
+			return
+		}
 	}
 
 	// Return HTML if method is post
@@ -738,6 +722,7 @@ func sendJSON(w http.ResponseWriter, obj interface{}) {
 }
 
 // sessionHandler checks to see if the user has a session.
+// It is used by a JavaScript client to maintain a session.
 func sessionHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	if authenticator == nil {
@@ -779,31 +764,23 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, string(resultsJson))
 }
 
-// Handler for translation memory search request
+// translationMemory handles requests for for translation memory searches
 func translationMemory(w http.ResponseWriter, r *http.Request) {
-	url := r.URL
-	queryString := url.Query()
-	query := queryString["query"]
-	if len(query) == 0 {
-		applog.Error("main.translationMemory Search query string has no value")
-		http.Error(w, "Search query string has no value",
-			http.StatusInternalServerError)
-		return
-	}
-	q := ""
-	if len(query) > 0 {
-		q = query[0]
-	}
+	q := getSingleValue(r, "query")
+	title := webconfig.GetVarWithDefault("Title", defTitle)
 	if len(q) == 0 {
+		if acceptHTML(r) {
+			content := HTMLContent{
+				Title: title,
+			}
+			displayPage(w, "findtm.html", content)
+			return
+		}
 		applog.Error("main.translationMemory Search query string is empty")
 		http.Error(w, "Query string is empty", http.StatusInternalServerError)
 		return
 	}
-	domain := queryString["domain"]
-	var d string
-	if len(domain) > 0 {
-		d = domain[0]
-	}
+	d := getSingleValue(r, "domain")
 	applog.Infof("main.translationMemory Query: %s, domain: %s", q, d)
 	ctx := context.Background()
 	if tmSearcher == nil {
@@ -818,6 +795,14 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		applog.Errorf("main.translationMemory error searching, %v", err)
 		http.Error(w, "Internal Error", http.StatusInternalServerError)
+		return
+	}
+	if acceptHTML(r) {
+		content := HTMLContent{
+			Title: title,
+			TMResults: results,
+		}
+		displayPage(w, "findtm.html", content)
 		return
 	}
 	resultsJson, err := json.Marshal(results)
