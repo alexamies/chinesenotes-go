@@ -1,0 +1,4 @@
+A Book 一本書
+
+Colophon with metadata for the collection, such as author, date, and publication
+status.

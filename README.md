@@ -444,6 +444,86 @@ edit the templates under the /templates directory.
 For the even more customization, just use the portal server JSON API to driver
 a JavaScript client.
 
+## Translation Memory Setup
+
+Translation memory search identifies nearly matching terms based on a
+combination of similarity measures. It requires the translation memory index to
+be loaded into the database. To compile the index install the `cnreader` command
+line tool
+https://github.com/alexamies/chinesenotes.com/tree/master/go/src/cnreader
+
+To compile the index, use the command
+
+```shell
+./cnreader -tmindex
+```
+
+This will write the index files into the `index` directory. Some sample files
+with a very small dataset are provided for testing purposes. Then load those
+into the database with the commands
+
+```sql
+use [your database];
+LOAD DATA LOCAL INFILE 'index/tmindex_uni_domain.tsv' INTO TABLE tmindex_uni_domain CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
+LOAD DATA LOCAL INFILE 'index/tmindex_unigram.tsv' INTO TABLE tmindex_unigram CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
+```
+
+## Corpus content and full text search
+
+Full text search requires an forward and reverse indexes: The forward index
+is like a table of contents describing the titles and files of the text
+documents. There is a three level structure:
+
+```
+corpus
+-- collection
+  -- document
+```
+
+This gives a way of organizing a corpus of documents in a book library like
+structure with, say, one book per collection, one chapter per document. The
+structure also provides a way to construct links for users to navigate search
+results.
+
+There are sample forward index files in the `data/corpus` directory which can
+be used for testing. Load them into the databsae with the SQL commands
+
+```sql
+use [your database];
+
+LOAD DATA LOCAL INFILE 'data/corpus/example_corpus.tsv' INTO TABLE collection CHARACTER SET utf8mb4 LINES TERMINATED BY '\n' IGNORE 1 LINES;
+LOAD DATA LOCAL INFILE 'data/corpus/example_collection.tsv' INTO TABLE document CHARACTER SET utf8mb4 LINES TERMINATED BY '\n'  IGNORE 1 LINES;;
+```
+
+The reverse index is based on unigrams and bigrams with a BM25 formula to give
+the most relevant documents for a given text search.
+To generates the reverse index install the `cnreader` command
+line tool
+https://github.com/alexamies/chinesenotes.com/tree/master/go/src/cnreader
+
+Run the command with no flags
+
+```shell
+./cnreader 
+```
+
+This will write the full text index files into the `index` directory. Load those
+into the database with the commands
+
+```sql
+use [your database];
+LOAD DATA LOCAL INFILE 'index/word_freq_doc.txt' INTO TABLE word_freq_doc CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
+LOAD DATA LOCAL INFILE 'index/bigram_freq_doc.txt' INTO TABLE bigram_freq_doc CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
+```
+
+If the site is password protected then copy the generated HTML files to the
+`translation_portal` directory. If the site is open then copy the HTML files
+to GCS with a load balancer in front, as per the instructions at
+https://github.com/alexamies/chinesenotes.com
+
+Copy the plain text files to the GCS text directory with environment variable
+`TEXT_BUCKET`.
+
 ## Containerize the app and run locally against a databsae
 
 If you are not using Google Cloud, you can follow these instructions to
@@ -512,59 +592,6 @@ Push to Google Container Registry
 docker tag cn-app-image gcr.io/$PROJECT/cn-app-image:$TAG
 docker -- push gcr.io/$PROJECT/cn-app-image:$TAG
 ```
-
-## Translation Memory Setup
-
-Translation memory search identifies nearly matching terms based on a
-combination of similarity measures. It requires the translation memory index to
-be loaded into the database. To compile the index install the `cnreader` command
-line tool
-https://github.com/alexamies/chinesenotes.com/tree/master/go/src/cnreader
-
-To compile the index, use the command
-
-```shell
-./cnreader -tmindex
-```
-
-This will write the index files into the `index` directory. Some sample files
-with a very small dataset are provided for testing purposes. Then load those
-into the database with the commands
-
-```sql
-use [your database];
-LOAD DATA LOCAL INFILE 'index/tmindex_uni_domain.tsv' INTO TABLE tmindex_uni_domain CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
-LOAD DATA LOCAL INFILE 'index/tmindex_unigram.tsv' INTO TABLE tmindex_unigram CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
-```
-
-## Corpus content and full text search
-
-To generates the corpus files and full text index install the `cnreader` command
-line tool
-https://github.com/alexamies/chinesenotes.com/tree/master/go/src/cnreader
-
-Run the command with no flags
-
-```shell
-./cnreader 
-```
-
-This will write the full text index files into the `index` directory. Load those
-into the database with the commands
-
-```sql
-use [your database];
-LOAD DATA LOCAL INFILE 'index/word_freq_doc.txt' INTO TABLE word_freq_doc CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
-LOAD DATA LOCAL INFILE 'index/bigram_freq_doc.txt' INTO TABLE bigram_freq_doc CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
-```
-
-If the site is password protected then copy the generated HTML files to the
-`translation_portal` directory. If the site is open then copy the HTML files
-to GCS with a load balancer in front, as per the instructions at
-https://github.com/alexamies/chinesenotes.com
-
-Copy the plain text files to the GCS text directory with environment variable
-`TEXT_BUCKET`.
 
 ## Go module for Chinese text processing
 

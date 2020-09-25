@@ -263,11 +263,25 @@ func enforceValidSession(w http.ResponseWriter, r *http.Request) identity.Sessio
 // Finds documents matching the given query with search in text body
 func findAdvanced(response http.ResponseWriter, request *http.Request) {
 	applog.Info("main.findAdvanced, enter")
+	q := getSingleValue(request, "query")
+	if len(q) == 0 {
+		q = getSingleValue(request, "text")
+	}
+	if len(q) == 0 {
+		if acceptHTML(request) {
+			title := webconfig.GetVarWithDefault("Title", defTitle)
+			content := HTMLContent{
+				Title: title,
+			}
+			displayPage(response, "full_text_search.html", content)
+			return
+		}
+	}
 	findDocs(response, request, true)
 }
 
 // findDocs finds documents matching the given query.
-func findDocs(response http.ResponseWriter, request *http.Request, advanced bool) {
+func findDocs(response http.ResponseWriter, request *http.Request, fullText bool) {
 	q := getSingleValue(request, "query")
 	if len(q) == 0 {
 		q = getSingleValue(request, "text")
@@ -288,7 +302,7 @@ func findDocs(response http.ResponseWriter, request *http.Request, advanced bool
 	if len(c) > 0 {
 		results, err = df.FindDocumentsInCol(ctx, dictSearcher, parser, q, c)
 	} else {
-		results, err = df.FindDocuments(ctx, dictSearcher, parser, q, advanced)
+		results, err = df.FindDocuments(ctx, dictSearcher, parser, q, fullText)
 	}
 
 	if err != nil {
@@ -306,7 +320,7 @@ func findDocs(response http.ResponseWriter, request *http.Request, advanced bool
 
 	// Return HTML if method is post
 	if acceptHTML(request) {
-		showQueryResults(response, results)
+		showQueryResults(response, results, fullText)
     return
 	}
 
@@ -349,13 +363,17 @@ func getSingleValue(r *http.Request, key string) string {
 }
 
 // showQueryResults displays query results on a HTML page
-func showQueryResults(w http.ResponseWriter, results *find.QueryResults) {
+func showQueryResults(w http.ResponseWriter, results *find.QueryResults, fullText bool) {
 	title := webconfig.GetVarWithDefault("Title", defTitle)
 	content := HTMLContent{
 		Title: title,
 		Results: results,
 	}
-	tmpl, err := template.New("find_results.html").ParseFiles("templates/find_results.html")
+	fileName := "templates/find_results.html"
+	if fullText {
+		fileName = "templates/full_text_search.html"
+	}
+	tmpl, err := template.New("find_results.html").ParseFiles(fileName)
 	if err != nil {
 		applog.Errorf("findDocs: error parsing template %v", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)

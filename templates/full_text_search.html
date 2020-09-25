@@ -10,16 +10,34 @@
   </head>
   <body>
     <h1>{{.Title}}</h1>
-    <p>Enter Chinese text into the input field below to find each word and its meaning. </p>
-    <form name="findForm" method="post" action="/find/">
+    <p><a href="/">Home</a></p>
+    <h2>Full Text Search</h2>
+    <p>Enter Chinese text into to the most relevant documents</p>
+    <form name="findForm" method="post" action="/findadvanced/">
       <div>
         <label for="findInput">Search for</label>
         <input type="text" name="query" size="40" required/>
         <button type="submit">Find</button>
       </div>
     </form>
-    <p><a href="/findtm">Translation Memory</a></p>
-    <p><a href="/findadvanced/">Full Text Search</a></p>
+    <h4>Results</h4>
+    <ul>
+      {{if .Results}}
+      {{ range $term := .Results.Words }}
+      <li>
+        {{ $term.Traditional}} {{ $term.Pinyin}}
+        <ul>
+        {{ range $ws := $term.Senses }}
+        <li>
+          {{if ne $ws.English "\\N"}}{{ $ws.English }}{{end}}
+          {{if ne $ws.Notes "\\N"}}<div>{{ $ws.Notes }}</div>{{end}}
+        </li>
+        {{ end }}
+        </ul>
+      </li>
+      {{ end }}
+      {{ end }}
+    </ul>
     <footer>
       <p>
         Copyright Fo Guang Shan 佛光山 2020.
