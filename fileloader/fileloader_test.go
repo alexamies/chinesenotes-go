@@ -15,13 +15,12 @@
 package fileloader
 
 import (
-	"log"
 	"testing"
 )
 
 // With no files
 func TestLoadDictFile0(t *testing.T) {
-	log.Printf("TestLoadDictFile0: Begin unit tests\n")
+	t.Log("TestLoadDictFile0: Begin unit tests")
 	fnames := []string{}
 	dict, err := LoadDictFile(fnames)
 	if err != nil {
@@ -34,7 +33,7 @@ func TestLoadDictFile0(t *testing.T) {
 
 // With one file, 3 entries, 3 simplified + 1 traditional
 func TestLoadDictFile1(t *testing.T) {
-	fnames := []string{"../testdata/testdict.tsv"}
+	fnames := []string{"../data/testdict.tsv"}
 	dict, err := LoadDictFile(fnames)
 	if err != nil {
 		t.Fatalf("TestLoadDictFile1: Got an error: %v", err)

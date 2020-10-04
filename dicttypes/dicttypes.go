@@ -26,5 +26,30 @@ type Word struct {
 // Defines a single sense of a Chinese word
 type WordSense struct {
 	Id, HeadwordId int
-	Simplified, Traditional, Pinyin, English, Domain, Subdomain, Notes string
+	Simplified, Traditional, Pinyin, English, Grammar, Concept, ConceptCN, Domain,
+			DomainCN, Subdomain, SubdomainCN, Image, MP3, Notes string
+}
+
+// Clones the headword definition without the attached array of word senses
+func CloneWord(w Word) Word {
+	return Word{
+		HeadwordId: w.HeadwordId,
+		Simplified: w.Simplified,
+		Traditional: w.Traditional,
+		Pinyin: w.Pinyin,
+		Senses: w.Senses,
+	}
+}
+
+// IsProperNoun tests whether the word is a proper noun.
+// If the majority of word senses are proper nouns, then the word is marked
+// as a proper noun.
+func IsProperNoun(w *Word) bool {
+	count := 0
+	for _, ws := range w.Senses {
+		if ws.Grammar == "proper noun" {
+			count++
+		}
+	}
+	return float64(count) / float64(len(w.Senses)) > 0.5
 }

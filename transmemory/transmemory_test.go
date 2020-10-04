@@ -16,11 +16,17 @@ package transmemory
 
 import (
 	"context"
-	"github.com/alexamies/chinesenotes-go/dictionary"
-	"github.com/alexamies/chinesenotes-go/dicttypes"
-	"log"
+	"database/sql"
 	"testing"
+
+	"github.com/alexamies/chinesenotes-go/dicttypes"
+	"github.com/alexamies/chinesenotes-go/webconfig"
 )
+
+func initDBCon() (*sql.DB, error) {
+	conString := webconfig.DBConfig()
+	return sql.Open("mysql", conString)
+}
 
 func mockDict() map[string]dicttypes.Word {
 	w1 := dicttypes.Word{
@@ -240,13 +246,13 @@ func TestCombineScores(t *testing.T) {
 
 // Test getChars function
 func TestGetChars(t *testing.T) {
-	log.Printf("TestGetChars: Begin unit tests\n")
+	t.Log("TestGetChars: Begin unit tests")
 	type test struct {
 		query string
 		expect []string
   }
 	trad := []string{"結", "實"}
-	log.Printf("TestGetChars: trad: %s", "結實")
+	t.Logf("TestGetChars: trad: %s", "結實")
   tests := []test{
 		{query: "結實", expect: trad},
   }
@@ -318,13 +324,13 @@ func TestHamming(t *testing.T) {
 // Test getChars function
 func TestQueryPinyin(t *testing.T) {
 	ctx := context.Background()
-	database, err := dictionary.InitDBCon()
+	database, err := initDBCon()
 	if err != nil {
-		t.Fatalf("cannot connect to database: %v", err)
+		t.Skipf("cannot connect to database: %v", err)
 	}
 	searcher, err := NewSearcher(ctx, database)
 	if err != nil {
-		t.Fatalf("cannot create a searcher: %v", err)
+		t.Skipf("cannot create a searcher: %v", err)
 	}
 	wdict := mockDict()
 	matches, err := searcher.queryPinyin(ctx, "結實", "", wdict)
@@ -339,13 +345,13 @@ func TestQueryPinyin(t *testing.T) {
 // Test getChars function
 func TestSearch(t *testing.T) {
 	ctx := context.Background()
-	database, err := dictionary.InitDBCon()
+	database, err := initDBCon()
 	if err != nil {
-		t.Fatalf("cannot connect to database: %v", err)
+		t.Skipf("cannot connect to database: %v", err)
 	}
 	searcher, err := NewSearcher(ctx, database)
 	if err != nil {
-		t.Fatalf("cannot create a searcher: %v", err)
+		t.Skipf("cannot create a searcher: %v", err)
 	}
 	w1 := dicttypes.Word{
 		Simplified: "结实",

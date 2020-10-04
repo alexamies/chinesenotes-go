@@ -114,11 +114,12 @@ func getLoader() TextLoader {
 		return LocalTextLoader{corpusDir}
 	}
 	applog.Info("fulltext.getLoader, using LocalTextLoader,default corpusDir")
-	return LocalTextLoader{"../../../corpus"}
+	return LocalTextLoader{"../corpus"}
 }
 
 // Given the already retrieved text body, find the best match
 func getMatch(txt string, queryTerms []string) MatchingText {
+	// applog.Infof("fulltext.getMatch, txt = %s, query: %v", txt, queryTerms)
 	if len(queryTerms) == 0 {
 		return MatchingText{}
 	}
@@ -180,6 +181,7 @@ func getMatch(txt string, queryTerms []string) MatchingText {
     	}
 		snippet = txt[start:end]
 	}
+	// applog.Infof("fulltext.getMatch, snippet = %s", snippet)
 	mt := MatchingText{
 		Snippet: 		snippet,
 		LongestMatch:	longest,

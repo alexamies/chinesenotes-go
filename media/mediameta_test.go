@@ -15,17 +15,33 @@
 package media
 
 import (
-	"log"
+	"context"
+	"database/sql"
 	"testing"
+
+	"github.com/alexamies/chinesenotes-go/webconfig"	
 )
+
+func initDBCon() (*sql.DB, error) {
+	conString := webconfig.DBConfig()
+	return sql.Open("mysql", conString)
+}
 
 // Test trivial query
 func TestFindMedia(t *testing.T) {
-	log.Printf("TestFindMedia: Begin unit tests\n")
-	metadata, err := FindMedia("hello")
+	database, err := initDBCon()
+	if err != nil {
+		t.Skipf("TestFindWordsByEnglish: cannot connect to database: %v", err)
+	}
+	ctx := context.Background()
+	mediaSearcher := NewMediaSearcher(database, ctx)
+	if !mediaSearcher.Initialized() {
+		t.Skip("TestFindMedia: mediaSearcher cannot be initialized")
+	}
+	metadata, err := mediaSearcher.FindMedia("hello", ctx)
 	if err != nil {
 		t.Error("TestFindMedia: encountered error: ", err)
 		return
 	}
-	log.Printf("TestFindMedia: metadata.ObjectId: %v", metadata.ObjectId)
+	t.Logf("TestFindMedia: metadata.ObjectId: %v", metadata.ObjectId)
 }

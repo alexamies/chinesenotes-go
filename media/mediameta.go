@@ -17,14 +17,10 @@ package media
 import (
 	"context"
 	"database/sql"
+	"fmt"
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/alexamies/chinesenotes-go/applog"
-	"github.com/alexamies/chinesenotes-go/webconfig"
-	"time"
-)
-
-var (
-	findMediaStmt *sql.Stmt
 )
 
 // A media object structure for media metadata
@@ -32,57 +28,55 @@ type MediaMetadata struct {
 	ObjectId, TitleZhCn, TitleEn, Author, License string
 }
 
-// Open database connection and prepare query
-func init() {
-	applog.Info("media.init Initializing mediameta")
-	err := initQuery()
-	if err != nil {
-		applog.Error("media/init: error preparing database statements, running " +
-			"in degraded mode", err)
-	}
+// MediaSearcher looks up media objects.
+type MediaSearcher struct {
+	database *sql.DB
+	findMediaStmt *sql.Stmt
+	initialized bool
 }
 
-func initQuery() error {
-	conString := webconfig.DBConfig()
-	db, err := sql.Open("mysql", conString)
+// Open database connection and prepare query
+func NewMediaSearcher(database *sql.DB, ctx context.Context) *MediaSearcher {
+	applog.Info("media.init Initializing mediameta")
+	ms := MediaSearcher{database: database}
+	err := ms.InitQuery(ctx)
 	if err != nil {
-		return err
+		applog.Errorf("media/NewMediaSearcher: error preparing database statement ", err)
+		return &ms
 	}
-	ctx := context.Background()
-	fwstmt, err := db.PrepareContext(ctx, 
+	ms.initialized = true
+	return &ms
+}
+
+func (ms *MediaSearcher) InitQuery(ctx context.Context) error {
+	var err error
+	ms.findMediaStmt, err = ms.database.PrepareContext(ctx, 
 `SELECT medium_resolution, title_zh_cn, title_en, author, license
 FROM illustrations
 WHERE medium_resolution = ?
 LIMIT 1`)
-    if err != nil {
-        applog.Error("media.initQuery() Error preparing fwstmt: ", err)
-        return err
-    }
-    findMediaStmt = fwstmt
-    return nil
+  if err != nil {
+  	return fmt.Errorf("media.initQuery Error preparing fwstmt: %v", err)
+  }
+  return nil
 }
 
 // Looks up media metadata by object ID
-func FindMedia(objectId string) (MediaMetadata, error) {
+func (ms *MediaSearcher) Initialized() bool {
+	return ms.initialized
+}
+
+// Looks up media metadata by object ID
+func (ms *MediaSearcher) FindMedia(objectId string, ctx context.Context) (*MediaMetadata, error) {
 	applog.Info("FindMedia: objectId (len) ", objectId, len(objectId))
 	mediaMeta := MediaMetadata{}
-	ctx := context.Background()
-	results, err := findMediaStmt.QueryContext(ctx, objectId)
+	results, err := ms.findMediaStmt.QueryContext(ctx, objectId)
+  if err != nil {
+  	return nil, fmt.Errorf("media.FindMedia Error executing query: %v", err)
+  }
 	results.Next()
 	var medium, titleZhCn, titleEn, author, license sql.NullString
 	results.Scan(&medium, &titleZhCn, &titleEn, &author, &license)
-	if err != nil {
-		applog.Error("FindMedia: Error for query: ", objectId, err)
-		// Retry
-		time.Sleep(200 * time.Millisecond)
-		initQuery()
-		results, err = findMediaStmt.QueryContext(ctx, objectId)
-		results.Next()
-		results.Scan(&medium, &titleZhCn, &titleEn, &author, &license)
-		if err != nil {
-			applog.Error("FindMedia: Retry failed: ", objectId, err)
-		}
-	}
 	results.Close()
 	if medium.Valid {
 		mediaMeta.ObjectId = medium.String
@@ -103,5 +97,5 @@ func FindMedia(objectId string) (MediaMetadata, error) {
 		mediaMeta.License = license.String
 	}
 	applog.Info("FindMedia: mediaMeta ", mediaMeta)
-	return mediaMeta, nil
+	return &mediaMeta, nil
 }

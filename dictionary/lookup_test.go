@@ -44,13 +44,13 @@ func TestAddWordSense2Map(t *testing.T) {
 func TestLookupSubstr(t *testing.T) {
 	log.Printf("TestLookupSubstr: Begin unit tests\n")
 	ctx := context.Background()
-	database, err := InitDBCon()
+	database, err := initDBCon()
 	if err != nil {
 		fmt.Printf("TestLookupSubstr: cannot connect to database: %v", err)
 		return
 	}
 	dictSearcher := NewSearcher(ctx, database)
-	if !dictSearcher.DatabaseInitialized() {
+	if !dictSearcher.Initialized() {
 		fmt.Print("TestLookupSubstr: cannot init DB")
 		return
 	}

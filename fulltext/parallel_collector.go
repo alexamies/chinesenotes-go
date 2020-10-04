@@ -62,14 +62,14 @@ func addJobs(jobs chan<- Job, keys []string, results chan<- Result) {
 }
 
 func collectDocs(done <-chan struct{}, results chan Result, keys []string) map[string]DocMatch {
-	applog.Info("fulltext.collectDocs\n")
+	applog.Info("fulltext.collectDocs")
 	matches := map[string]DocMatch{}
 	workers := len(keys)
 	for working := workers; working > 0; {
 		select {
 		case result := <- results:
 			matches[result.key] = result.dm
-			applog.Info("fulltext.collectDocs", result.key, result.dm)
+			applog.Infof("fulltext.collectDocs: %s: %v", result.key, result.dm)
 		case <-done:
 			working--
 		}
@@ -79,7 +79,7 @@ DONE:
 		select {
 			case result := <- results:
 				matches[result.key] = result.dm
-				applog.Info("fulltext.collectDocs", result.key, result.dm)
+				applog.Infof("fulltext.collectDocs done, %s: %v", result.key, result.dm)
 			default:
 				break DONE 
 		}

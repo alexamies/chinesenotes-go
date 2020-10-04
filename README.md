@@ -172,6 +172,29 @@ Q: Can I use the Chinese Notes Translation Portal software for my own project?
 A: Yes, please do that. It is also adaptable to your own dictionary, glossary,
 and corpus of source text.
 
+## Architecture
+
+This project is designed to be easy to setup with minimal dependencies but
+also run in a production architecture like shown below.
+
+![Production architecture.png](doc/prod_architecture.png)
+
+Various flavors are possible depending on how it is configured. It can
+interoperate with the other components in the Chinese Notes family
+
+1. [cnreader](https://github.com/alexamies/cnreader) - Command line utility
+   for generating indexes and HTML files for the reader
+2. [chinesedict-js](https://github.com/alexamies/chinesedict-js) - JavaScript
+   package for browser module for the dictionary and text parser
+3. [chinesenotes-python](https://github.com/alexamies/chinesenotes-python) -
+   Pyhton utilities for Chinese text analysis
+4. [chinesenotes.com](https://github.com/alexamies/chinesenotes.com) -
+   Chinese-English dictionary and corpus of historic Chinese literature
+5. [buddhist-dictionary](https://github.com/alexamies/buddhist-dictionary) -
+   Buddhist dictionary extensions to the Chinese-English dictionary and
+   structure to present the Taisho Tripitaka as a digital library for
+   ntireader.org
+
 ## Database Setup
 
 The prepared statements in the Go code assuming a mysql driver. Maria
@@ -192,9 +215,13 @@ permanent Docker volume for the database files. In addition, mount volumes for
 the tabe separated data to be loaded into Mariadb. See 
 [Manage data in Docker](https://docs.docker.com/storage/) and 
 [Use volumes](https://docs.docker.com/storage/volumes/) for details on volume
-and mount management with Docker.
+and mount management with Docker. In another terminal, create a Maria DB
+database with the commands
 
 ```shell
+cd ..
+mkdir mariadb
+cd mariadb
 MYSQL_ROOT_PASSWORD=[your password]
 mkdir mariadb-data
 docker run --name mariadb -p 3306:3306 \
@@ -225,7 +252,7 @@ In the container command line
 mysql --local-infile=1 -h localhost -u root -p
 ```
 
-### Database setup
+### Load dictionary data into the database
 
 The first time you run this execute the commands in first_time_setup.sql.
 
@@ -239,9 +266,9 @@ Load sample data
 
 ```sql
 use cnotest_test;
-LOAD DATA LOCAL INFILE 'cndata/grammar.tsv' INTO TABLE grammar CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
-LOAD DATA LOCAL INFILE 'cndata/topics.tsv' INTO TABLE topics CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
-LOAD DATA LOCAL INFILE 'cndata/testdict.tsv' INTO TABLE words CHARACTER SET utf8mb4 LINES TERMINATED BY '\n' IGNORE 1 LINES;
+LOAD DATA LOCAL INFILE 'data/grammar.txt' INTO TABLE grammar CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
+LOAD DATA LOCAL INFILE 'data/topics.txt' INTO TABLE topics CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
+LOAD DATA LOCAL INFILE 'data/testdict.tsv' INTO TABLE words CHARACTER SET utf8mb4 LINES TERMINATED BY '\n' IGNORE 1 LINES;
 ```
 
 The word frequency and translation memory index files are in the index
@@ -448,14 +475,22 @@ a JavaScript client.
 
 Translation memory search identifies nearly matching terms based on a
 combination of similarity measures. It requires the translation memory index to
-be loaded into the database. To compile the index install the `cnreader` command
-line tool
-https://github.com/alexamies/chinesenotes.com/tree/master/go/src/cnreader
-
-To compile the index, use the command
+be loaded into the database. In a separate terminal cloone the cnreader repo
 
 ```shell
-./cnreader -tmindex
+git clone https://github.com/alexamies/cnreader.git
+```
+
+Build the Go command line app
+
+```shell
+go build
+```
+
+Back in the first terminal use the command
+
+```shell
+bin/buildindex.sh
 ```
 
 This will write the index files into the `index` directory. Some sample files

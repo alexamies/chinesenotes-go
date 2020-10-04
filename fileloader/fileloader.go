@@ -58,12 +58,17 @@ func LoadDictFile(fNames []string) (map[string]dicttypes.Word, error) {
 			pinyin := row[3]
 			english := row[4]
 			grammar := row[5]
+			conceptCN := row[6]
+			concept := row[7]
+			domainCN := row[8]
 			domain :=  row[9]
-			parent_en :=  row[11]
+			subdomain :=  row[11]
 			// If subdomain, aka parent, should be avoided, then skip
-			if _, ok := avoidSub[parent_en]; ok {
+			if _, ok := avoidSub[subdomain]; ok {
 				continue
 			}
+			image := row[12]
+			mp3 := row[13]
 			notes := row[14]
 			if notes == "\\N" {
 				notes = ""
@@ -93,7 +98,13 @@ func LoadDictFile(fNames []string) (map[string]dicttypes.Word, error) {
 			ws.Traditional = trad
 			ws.Pinyin = pinyin
 			ws.English = english
+			ws.Grammar = grammar
+			ws.ConceptCN = conceptCN
+			ws.Concept = concept
+			ws.DomainCN = domainCN
 			ws.Domain = domain
+			ws.Image = image
+			ws.MP3 = mp3
 			ws.Notes = notes
 			word, ok := wdict[ws.Simplified]
 			if ok {

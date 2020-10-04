@@ -16,24 +16,28 @@ package dictionary
 
 import (
 	"context"
-	"fmt"
-	"log"
+	"database/sql"
 	"testing"
+
+	"github.com/alexamies/chinesenotes-go/webconfig"
 )
+
+func initDBCon() (*sql.DB, error) {
+	conString := webconfig.DBConfig()
+	return sql.Open("mysql", conString)
+}
 
 // Test trivial query with empty dictionary
 func TestFindWordsByEnglish(t *testing.T) {
-	log.Printf("TestFindWordsByEnglish1: Begin unit tests\n")
+	t.Log("TestFindWordsByEnglish1: Begin unit tests")
 	ctx := context.Background()
-	database, err := InitDBCon()
+	database, err := initDBCon()
 	if err != nil {
-		fmt.Printf("TestFindWordsByEnglish: cannot connect to database: %v", err)
-		return
+		t.Skipf("TestFindWordsByEnglish: cannot connect to database: %v", err)
 	}
 	dictSearcher := NewSearcher(ctx, database)
-	if !dictSearcher.DatabaseInitialized() {
-		fmt.Print("TestFindWordsByEnglish: cannot iniitalize DB")
-		return
+	if !dictSearcher.Initialized() {
+		t.Skip("TestFindWordsByEnglish: cannot iniitalize DB")
 	}
 	senses, err := dictSearcher.FindWordsByEnglish(ctx, "hello")
 	if err != nil {
@@ -47,9 +51,9 @@ func TestFindWordsByEnglish(t *testing.T) {
 // Test trivial query with empty dictionary
 func TestLoadDict(t *testing.T) {
 	ctx := context.Background()
-	database, err := InitDBCon()
+	database, err := initDBCon()
 	if err != nil {
-		log.Printf("TestLoadDict: cannot connect to database: %v", err)
+		t.Skipf("TestLoadDict: cannot connect to database: %v", err)
 	}
 	wdict, err := LoadDict(ctx, database)
 	if err != nil {
@@ -58,7 +62,7 @@ func TestLoadDict(t *testing.T) {
 	if len(wdict) == 0 {
 		t.Fatalf("TestLoadDict: len(wdict) = %d", len(wdict))
 	}
-	log.Printf("TestLoadDict: len(wdict): %d", len(wdict))
+	t.Logf("TestLoadDict: len(wdict): %d", len(wdict))
 	trad := "煸"
 	w1, ok := wdict[trad]
 	if !ok {

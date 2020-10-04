@@ -34,11 +34,13 @@ var (
 	tmSearcher *transmemory.Searcher
 	df find.DocFinder
 	authenticator *identity.Authenticator
+	mediaSearcher *media.MediaSearcher
 )
 
 // Content for HTML template
 type HTMLContent struct {
 	Title string
+	ErrorMsg string
 	Results *find.QueryResults
 	TMResults *transmemory.Results
 }
@@ -180,14 +182,14 @@ func displayPage(w http.ResponseWriter, templateName string, content interface{}
 	}	
 }
 
-// displayHome shows a simple page, for healthchecks and testing.
+// displayHome shows a simple page, for health checks and testing.
 // End users may also to see this when accessing direct from the browser
 func displayHome(w http.ResponseWriter, r *http.Request) {
 	applog.Infof("displayHome: url %s\n", r.URL.Path)
 
-	// Tell healthcheck probes that we are alive
+	// Tell health check probes that we are alive
 	if !acceptHTML(r) {
-		fmt.Fprintf(w, "OK")
+		fmt.Fprintln(w, "OK")
     return
 	}
 
@@ -262,7 +264,7 @@ func enforceValidSession(w http.ResponseWriter, r *http.Request) identity.Sessio
 
 // Finds documents matching the given query with search in text body
 func findAdvanced(response http.ResponseWriter, request *http.Request) {
-	applog.Info("main.findAdvanced, enter")
+	applog.Info("findAdvanced, enter")
 	q := getSingleValue(request, "query")
 	if len(q) == 0 {
 		q = getSingleValue(request, "text")
@@ -272,6 +274,10 @@ func findAdvanced(response http.ResponseWriter, request *http.Request) {
 			title := webconfig.GetVarWithDefault("Title", defTitle)
 			content := HTMLContent{
 				Title: title,
+			}
+			if !webconfig.UseDatabase() {
+				applog.Error("findAdvanced database is needed for this feature")
+				content.ErrorMsg = "Full text search is not configured"
 			}
 			displayPage(response, "full_text_search.html", content)
 			return
@@ -369,18 +375,24 @@ func showQueryResults(w http.ResponseWriter, results *find.QueryResults, fullTex
 		Title: title,
 		Results: results,
 	}
-	fileName := "templates/find_results.html"
+	var tmpl *template.Template
+	var err error 
 	if fullText {
-		fileName = "templates/full_text_search.html"
+		const fileName = "templates/full_text_search.html"
+		tmpl, err = template.New("full_text_search.html").ParseFiles(fileName)
+	} else {
+		const fileName = "templates/find_results.html"
+		tmpl, err = template.New("find_results.html").ParseFiles(fileName)
 	}
-	tmpl, err := template.New("find_results.html").ParseFiles(fileName)
 	if err != nil {
 		applog.Errorf("findDocs: error parsing template %v", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
 	}
 	if tmpl == nil {
 		applog.Error("findDocs: Template is nil")
 		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
 	}
 	err = tmpl.Execute(w, content)
 	if err != nil {
@@ -436,7 +448,9 @@ func findSubstring(response http.ResponseWriter, request *http.Request) {
 
 // Health check for monitoring or load balancing system, checks reachability
 func healthcheck(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "healthcheck ok")
+	fmt.Fprintln(w, "OK")
+	fmt.Fprintf(w, "Using a database: %t\n", webconfig.UseDatabase())
+	fmt.Fprintf(w, "Password protected: %t\n", webconfig.PasswordProtected())
 }
 
 func initDBCon() (*sql.DB, error) {
@@ -560,6 +574,19 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 
 // Retrieves detail about media objects
 func mediaDetailHandler(response http.ResponseWriter, request *http.Request) {
+	ctx := context.Background()
+	if (mediaSearcher == nil) {
+		mediaSearcher = media.NewMediaSearcher(database, ctx)
+		if !mediaSearcher.Initialized() {
+			applog.Error("main.mediaDetailHandler initializing media searcher")
+			http.Error(response, "Error marshalling results",
+					http.StatusInternalServerError)
+			return
+		}
+	}
+	if !mediaSearcher.Initialized() {
+		mediaSearcher.InitQuery(ctx)
+	}
 	queryString := request.URL.Query()
 	query := queryString["mediumResolution"]
 	applog.Infof("mediaDetailHandler: query: %s", query)
@@ -567,7 +594,7 @@ func mediaDetailHandler(response http.ResponseWriter, request *http.Request) {
 	if len(query) > 0 {
 		q = query[0]
 	}
-	results, err := media.FindMedia(q)
+	results, err := mediaSearcher.FindMedia(q, ctx)
 	if err != nil {
 		applog.Error("main.mediaDetailHandler Error retrieving media detail, ",
 			err)
@@ -791,10 +818,14 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 			content := HTMLContent{
 				Title: title,
 			}
+			if !webconfig.UseDatabase() {
+				applog.Error("translationMemory database is needed for this feature")
+				content.ErrorMsg = "Translation memory not configured"
+			}
 			displayPage(w, "findtm.html", content)
 			return
 		}
-		applog.Error("main.translationMemory Search query string is empty")
+		applog.Error("translationMemory Search query string is empty")
 		http.Error(w, "Query string is empty", http.StatusInternalServerError)
 		return
 	}
@@ -842,7 +873,7 @@ func main() {
 	http.HandleFunc("/findmedia", mediaDetailHandler)
 	http.HandleFunc("/findsubstring", findSubstring)
 	http.HandleFunc("/findtm", translationMemory)
-	http.HandleFunc("/healthcheck/", healthcheck)
+	http.HandleFunc("/healthcheck", healthcheck)
 	http.HandleFunc("/loggedin/admin", adminHandler)
 	http.HandleFunc("/loggedin/changepassword", changePasswordFormHandler)
 	http.HandleFunc("/loggedin/login", loginHandler)

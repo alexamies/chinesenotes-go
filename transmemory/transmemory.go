@@ -401,7 +401,7 @@ func eitherSubstring(s1, s2 string) int {
 // Prints top search results
 func printTopResults(query string, matches []*tmResult) {
 	applog.Infof("transmemory.printTopResults, query: %s" +
-			", top results:\n", query)
+			", top results", query)
 	if len(matches) == 0 {
 		applog.Infof("transmemory.Search no results")
 		return

@@ -17,6 +17,7 @@
         <button type="submit">Find</button>
       </div>
     </form>
+    {{if .Results}}
     <h4>Results</h4>
     <ul>
       {{ range $term := .Results.Terms }}
@@ -33,6 +34,7 @@
       </li>
       {{ end }}
     </ul>
+    {{ end }}
     <footer>
       <p>
         Copyright Fo Guang Shan 佛光山 2020.

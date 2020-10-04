@@ -66,7 +66,7 @@ func DBConfig() string {
 			socketDir, instanceConnectionName, dbname)
 	}
 	// Connection via TCP
-	dbhost := "mariadb"
+	dbhost := "localhost"
 	host := os.Getenv("DBHOST")
 	if host != "" {
 		dbhost = host

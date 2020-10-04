@@ -16,54 +16,51 @@
 package fulltext
 
 import (
- 	"fmt"
 	"testing"
 )
 
 // Trival test
 func TestGetMatches0(t *testing.T) {
-	fmt.Printf("fulltext.TestGetMatches0: Begin unit test\n")
+	t.Log("fulltext.TestGetMatches0: Begin unit test")
 	queryTerms := []string{}
 	fileNames := []string{}
 	dm := GetMatches(fileNames, queryTerms)
-	fmt.Printf("fulltext.TestGetMatches0: match: %v\n", dm)
+	t.Logf("fulltext.TestGetMatches0: match: %v", dm)
 }
 
 // Trival test
 func TestGetMatches1(t *testing.T) {
-	fmt.Printf("fulltext.TestGetMatches1: Begin unit test\n")
+	t.Log("fulltext.TestGetMatches1: Begin unit test")
 	queryTerms := []string{"曰風"}
-	fn := "shijing/shijing001.txt"
+	fn := "example_collection/example_collection002.txt"
 	fileNames := []string{fn}
 	docMatches := GetMatches(fileNames, queryTerms)
 	if len(docMatches) == 0 {
-		t.Errorf("TestGetMatches1: docMatches empty\n")
+		t.Error("docMatches empty")
 		return
 	}
 	snippet := docMatches[fn].MT.Snippet
 	if len(snippet) == 0 {
-		t.Errorf("TestGetMatches1: snippet empty\n")
+		t.Error("Tsnippet empty")
 		return
 	}
-	fmt.Printf("fulltext.TestGetMatches1: match: %v\n", docMatches)
+	t.Logf("fulltext.TestGetMatches1: match: %v", docMatches)
 }
 
 // Trival test
 func TestGetMatches2(t *testing.T) {
-	fmt.Printf("fulltext.TestGetMatches1: Begin unit test\n")
 	queryTerms := []string{"曰風"}
-	fn0 := "shijing/shijing001.txt"
-	fn1 := "shijing/shijing002.txt"
+	fn0 := "example_collection/example_collection001.txt"
+	fn1 := "example_collection/example_collection002.txt"
 	fileNames := []string{fn0, fn1}
 	docMatches := GetMatches(fileNames, queryTerms)
 	if len(docMatches) == 0 {
-		t.Errorf("TestGetMatches2: docMatches empty\n")
+		t.Error("docMatches empty")
 		return
 	}
-	snippet := docMatches[fn0].MT.Snippet
+	snippet := docMatches[fn1].MT.Snippet
 	if len(snippet) == 0 {
-		t.Errorf("TestGetMatches2: snippet empty\n")
+		t.Error("snippet empty")
 		return
 	}
-	fmt.Printf("fulltext.TestGetMatches2: match: %v\n", docMatches)
 }
