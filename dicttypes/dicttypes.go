@@ -86,18 +86,18 @@ func IsProperNoun(w *Word) bool {
 }
 
 // May be sorted into descending order with most frequent bigram first
-type words []Word
+type Words []Word
 
 
-func (hwArr words) Len() int {
+func (hwArr Words) Len() int {
 	return len(hwArr)
 }
 
-func (hwArr words) Swap(i, j int) {
+func (hwArr Words) Swap(i, j int) {
 	hwArr[i], hwArr[j] = hwArr[j], hwArr[i]
 }
 
-func (hwArr words) Less(i, j int) bool {
+func (hwArr Words) Less(i, j int) bool {
 	noTones1 := normalizePinyin(hwArr[i].Pinyin)
 	noTones2 := normalizePinyin(hwArr[j].Pinyin)
 	return noTones1 < noTones2

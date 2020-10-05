@@ -11,18 +11,15 @@
 // limitations under the License.
 
 
-// Unit tests for lookup package
 package dictionary
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"testing"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
 
-// Query expecting empty list
+// TestAddWordSense2Map does a query expecting empty list
 func TestAddWordSense2Map(t *testing.T) {
 	wmap := map[string]dicttypes.Word{}
 	ws := dicttypes.WordSense{
@@ -42,17 +39,15 @@ func TestAddWordSense2Map(t *testing.T) {
 
 // Test trivial query with empty query, expect error
 func TestLookupSubstr(t *testing.T) {
-	log.Printf("TestLookupSubstr: Begin unit tests\n")
+	t.Log("TestLookupSubstr: Begin unit tests")
 	ctx := context.Background()
 	database, err := initDBCon()
 	if err != nil {
-		fmt.Printf("TestLookupSubstr: cannot connect to database: %v", err)
-		return
+		t.Skipf("TestLookupSubstr: cannot connect to database: %v", err)
 	}
 	dictSearcher := NewSearcher(ctx, database)
 	if !dictSearcher.Initialized() {
-		fmt.Print("TestLookupSubstr: cannot init DB")
-		return
+		t.Skip("TestLookupSubstr: cannot init DB")
 	}
 	type test struct {
 		name string
