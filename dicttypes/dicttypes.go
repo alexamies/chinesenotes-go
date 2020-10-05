@@ -75,7 +75,7 @@ func (ws *WordSense) IsFunctionWord() bool {
 // IsProperNoun tests whether the word is a proper noun.
 // If the majority of word senses are proper nouns, then the word is marked
 // as a proper noun.
-func IsProperNoun(w *Word) bool {
+func (w Word) IsProperNoun() bool {
 	count := 0
 	for _, ws := range w.Senses {
 		if ws.Grammar == "proper noun" {

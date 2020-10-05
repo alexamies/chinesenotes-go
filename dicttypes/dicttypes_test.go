@@ -31,3 +31,26 @@ func TestCloneWord(t *testing.T) {
 		t.Fatalf("not the same, expected %v, got %v", w1, w2)
 	}
 }
+
+// TestAddWordSense2Map does a query expecting empty list
+func TestIsProperNoun(t *testing.T) {
+	s := WordSense{
+		Simplified: "王",
+		Traditional: "\\N",
+		Pinyin: "wáng",
+		English: "Wang",
+		Grammar: "proper noun",
+	}
+	senses := []WordSense{s}
+	w := Word{
+		Simplified: "王",
+		Traditional: "\\N",
+		Pinyin: "wáng",
+		HeadwordId: 42,
+		Senses: senses,
+	}
+	got := w.IsProperNoun()
+	if !got {
+		t.Fatalf("not a proper noun, expected %t, got %t", true, got)
+	}
+}
