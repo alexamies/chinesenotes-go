@@ -34,6 +34,12 @@ type WordSense struct {
 			DomainCN, Subdomain, SubdomainCN, Image, MP3, Notes string
 }
 
+// May be sorted into descending order with most frequent bigram first
+type Words []Word
+
+// May be sorted into descending order with most frequent bigram first
+type WordSenses []WordSense
+
 // Clones the headword definition without the attached array of word senses
 func CloneWord(w Word) Word {
 	return Word{
@@ -85,10 +91,6 @@ func (w Word) IsProperNoun() bool {
 	return float64(count) / float64(len(w.Senses)) > 0.5
 }
 
-// May be sorted into descending order with most frequent bigram first
-type Words []Word
-
-
 func (hwArr Words) Len() int {
 	return len(hwArr)
 }
@@ -100,6 +102,20 @@ func (hwArr Words) Swap(i, j int) {
 func (hwArr Words) Less(i, j int) bool {
 	noTones1 := normalizePinyin(hwArr[i].Pinyin)
 	noTones2 := normalizePinyin(hwArr[j].Pinyin)
+	return noTones1 < noTones2
+}
+
+func (senses WordSenses) Len() int {
+	return len(senses)
+}
+
+func (senses WordSenses) Swap(i, j int) {
+	senses[i], senses[j] = senses[j], senses[i]
+}
+
+func (senses WordSenses) Less(i, j int) bool {
+	noTones1 := normalizePinyin(senses[i].Pinyin)
+	noTones2 := normalizePinyin(senses[j].Pinyin)
 	return noTones1 < noTones2
 }
 
