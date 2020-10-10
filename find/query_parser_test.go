@@ -15,32 +15,30 @@
 package find
 
 import (
-	"github.com/alexamies/chinesenotes-go/dicttypes"
-	"log"
 	"testing"
+
+	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
 
 // Test trivial query with empty dictionary
 func TestParseChinese0(t *testing.T) {
-	log.Printf("TestParseChinese: Begin unit tests\n")
+	t.Log("TestParseChinese: Begin unit tests\n")
 	dict := map[string]dicttypes.Word{}
 	parser := MakeQueryParser(dict)
 	s1 := "小"
 	query := s1
 	terms := parser.ParseQuery(query)
 	if len(terms) != 1 {
-		t.Error("TestParseChinese0: len(terms) != 1: ", terms)
-		return
+		t.Fatalf("TestParseChinese0: len(terms) != 1: %v", terms)
 	}
 	if terms[0].QueryText != s1 {
-		t.Error("TestParseChinese0: terms[0] != s1: ", s1, terms)
-		return
+		t.Fatalf("TestParseChinese0: terms[0] != s1: %v, %v", s1, terms)
 	}
 }
 
 // Test simple query with empty dictionary
 func TestParseChinese1(t *testing.T) {
-	log.Printf("TestParseChinese: Begin unit tests\n")
+	t.Log("TestParseChinese: Begin unit tests")
 	dict := map[string]dicttypes.Word{}
 	parser := MakeQueryParser(dict)
 	s1 := "小"
@@ -63,7 +61,7 @@ func TestParseChinese1(t *testing.T) {
 
 // Test simple query with non-empty dictionary
 func TestParseChinese2(t *testing.T) {
-	log.Printf("TestParseChinese: Begin unit tests\n")
+	t.Log("TestParseChinese: Begin unit tests")
 	dict := map[string]dicttypes.Word{}
 	s1 := "小"
 	w := dicttypes.Word{}
@@ -77,22 +75,19 @@ func TestParseChinese2(t *testing.T) {
 	query := s1 + s2
 	terms := parser.ParseQuery(query)
 	if len(terms) != 2 {
-		t.Error("TestParseChinese2: len(terms) != 2: ", terms)
-		return
+		t.Fatalf("TestParseChinese2: len(terms) != 2: %v", terms)
 	}
 	if terms[0].QueryText != s1 {
-		t.Error("TestParseChinese2: terms[0] != s1: ", s1, terms)
-		return
+		t.Fatalf("TestParseChinese2: terms[0] != s1: %v, %v", s1, terms)
 	}
 	if terms[1].QueryText != s2 {
-		t.Error("TestParseChinese2: terms[1] != s2: ", s2, terms)
-		return
+		t.Fatalf("TestParseChinese2: terms[1] != s2: %v, %v", s2, terms)
 	}
 }
 
 // Test less simple query with non-empty dictionary
 func TestParseChinese3(t *testing.T) {
-	log.Printf("TestParseChinese: Begin unit tests\n")
+	t.Log("TestParseChinese: Begin unit tests")
 	dict := map[string]dicttypes.Word{}
 	s1 := "你好"
 	w := dicttypes.Word{}
@@ -122,7 +117,7 @@ func TestParseChinese3(t *testing.T) {
 
 // Test less simple query, including punctuation, with non-empty dictionary
 func TestParseChinese4(t *testing.T) {
-	log.Printf("TestParseChinese: Begin unit tests\n")
+	t.Log("TestParseChinese: Begin unit tests")
 	dict := map[string]dicttypes.Word{}
 	s1 := "你好"
 	w := dicttypes.Word{}
@@ -139,16 +134,13 @@ func TestParseChinese4(t *testing.T) {
 	query := s1 + s2 + s3 + s4 + s5
 	terms := parser.ParseQuery(query)
 	if len(terms) != 5 {
-		t.Error("TestParseChinese2: len(terms) != 2: ", terms)
-		return
+		t.Fatalf("TestParseChinese2: len(terms) != 2: %v", terms)
 	}
 	if terms[0].QueryText != s1 {
-		t.Error("TestParseChinese2: terms[0] != s1: ", s1, terms)
-		return
+		t.Fatalf("TestParseChinese2: terms[0] != s1: %v, %v", s1, terms)
 	}
 	if terms[1].QueryText != s2 {
-		t.Error("TestParseChinese2: terms[1] != s2: ", s2, terms)
-		return
+		t.Fatalf("TestParseChinese2: terms[1] != s2: %v, %v", s2, terms)
 	}
 }
 
@@ -158,7 +150,7 @@ func TestParseQuery0(t *testing.T) {
 	parser := MakeQueryParser(dict)
 	terms := parser.ParseQuery("")
 	if len(terms) != 0 {
-		t.Error("TestParseQuery0: len(terms) != 0: ", len(terms))
+		t.Fatalf("TestParseQuery0: len(terms) != 0: %d", len(terms))
 	}
 }
 
@@ -169,12 +161,10 @@ func TestParseQuery1(t *testing.T) {
 	parser := MakeQueryParser(dict)
 	terms := parser.ParseQuery(query)
 	if len(terms) != 1 {
-		t.Error("TestParseQuery1: len(terms) != 1: ", len(terms))
-		return
+		t.Fatalf("TestParseQuery1: len(terms) != 1: %d", len(terms))
 	}
 	if terms[0].QueryText != query {
-		t.Error("TestParseQuery1: terms[0] != query: ", query, terms[0])
-		return
+		t.Fatalf("TestParseQuery1: terms[0] != query: %v, %v", query, terms[0])
 	}
 }
 
@@ -187,16 +177,13 @@ func TestParseQuery2(t *testing.T) {
 	parser := MakeQueryParser(dict)
 	terms := parser.ParseQuery(query)
 	if len(terms) != 2 {
-		t.Error("TestParseQuery2: len(terms) != 2: ", len(terms))
-		return
+		t.Fatalf("TestParseQuery2: len(terms) != 2: %d", len(terms))
 	}
 	if terms[0].QueryText != s1 {
-		t.Error("TestParseQuery2: terms[0] != s1: ", s1, terms)
-		return
+		t.Fatalf("TestParseQuery2: terms[0] != s1: %v, %v", s1, terms)
 	}
 	if terms[1].QueryText != s2 {
-		t.Error("TestParseQuery2: terms[1] != s2: ", s2, terms)
-		return
+		t.Fatalf("TestParseQuery2: terms[1] != s2: %v, %v", s2, terms)
 	}
 }
 
@@ -210,19 +197,15 @@ func TestParseQuery3(t *testing.T) {
 	parser := MakeQueryParser(dict)
 	terms := parser.ParseQuery(query)
 	if len(terms) != 3 {
-		t.Error("TestParseQuery3: len(terms) != 3: ", terms)
-		return
+		t.Fatalf("TestParseQuery3: len(terms) != 3: %v", terms)
 	}
 	if terms[0].QueryText != s1 {
-		t.Error("TestParseQuery3: terms[0] != s1: ", s1, terms[0])
-		return
+		t.Fatalf("TestParseQuery3: terms[0] != s1: %v, %v", s1, terms[0])
 	}
 	if terms[1].QueryText != s2 {
-		t.Error("TestParseQuery3: terms[1] != s2: ", s2, terms[1])
-		return
+		t.Fatalf("TestParseQuery3: terms[1] != s2: %v, %v", s2, terms[1])
 	}
 	if terms[2].QueryText != s3 {
-		t.Error("TestParseQuery3: terms[1] != s2: ", s2, terms[2])
-		return
+		t.Fatalf("TestParseQuery3: terms[1] != s2: %v, %v", s2, terms[2])
 	}
 }

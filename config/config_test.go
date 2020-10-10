@@ -15,14 +15,13 @@
 package config
 
 import (
-	"log"
 	"reflect"
 	"testing"
 )
 
 // Test trivial query with empty chunk
 func TestCorpusDataDir(t *testing.T) {
-	log.Printf("TestCorpusDataDir: Begin unit tests\n")
+	t.Logf("TestCorpusDataDir: Begin unit tests\n")
 	result := CorpusDataDir()
 	expect := "../data/corpus"
 	if expect != result {

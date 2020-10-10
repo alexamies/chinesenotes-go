@@ -15,14 +15,14 @@
 package tokenizer
 
 import (
-	"github.com/alexamies/chinesenotes-go/dicttypes"
-	"log"
 	"testing"
+
+	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
 
 // Test simple query with one character
 func TestGreedyLtoR(t *testing.T) {
-	log.Printf("TestGreedyLtoR: Begin unit tests\n")
+	t.Log("TestGreedyLtoR: Begin unit tests")
 	dict := map[string]dicttypes.Word{}
 	s1 := "你好"
 	w := dicttypes.Word{}

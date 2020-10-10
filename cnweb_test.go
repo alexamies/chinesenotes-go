@@ -11,12 +11,9 @@
 // limitations under the License.
 
 
-// Unit tests for main package
 package main
 
 import (
-	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -26,7 +23,7 @@ import (
 
 // TestDisplayHome tests the default HTTP handler.
 func TestDisplayHome(t *testing.T) {
-	log.Printf("TestDisplayHome: Begin unit tests\n")
+	t.Logf("TestDisplayHome: Begin unit tests\n")
 	os.Unsetenv("PROTECTED")
 	type test struct {
 		name string
@@ -116,7 +113,7 @@ func TestTranslationMemory(t *testing.T) {
 		},
   }
   for _, tc := range tests {
-  	url := fmt.Sprintf("/translation_memory?query=%s", tc.query)
+  	url := "/translation_memory?query=" + tc.query
 		r := httptest.NewRequest(http.MethodGet, url, nil)
 		w := httptest.NewRecorder()
 		if (tmSearcher == nil) || !tmSearcher.DatabaseInitialized() {

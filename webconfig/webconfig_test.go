@@ -15,13 +15,12 @@
 package webconfig
 
 import (
-	"log"
 	"testing"
 )
 
 // Test package initialization, which requires a database connection
 func TestInit(t *testing.T) {
-	log.Printf("TestInit: Begin unit tests\n")
+	t.Log("TestInit: Begin unit tests")
 }
 
 // Test default serving port

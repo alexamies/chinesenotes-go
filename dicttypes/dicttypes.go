@@ -40,6 +40,12 @@ type Words []Word
 // May be sorted into descending order with most frequent bigram first
 type WordSenses []WordSense
 
+// DictionaryConfig encapsulates parameters for dictionary configuration
+type DictionaryConfig struct {
+	AvoidSubDomains map[string]bool
+	DictionaryDir string
+}
+
 // Clones the headword definition without the attached array of word senses
 func CloneWord(w Word) Word {
 	return Word{

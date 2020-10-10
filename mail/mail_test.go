@@ -15,14 +15,14 @@
 package mail
 
 import (
-	"log"
 	"testing"
+
 	"github.com/alexamies/chinesenotes-go/identity"
 )
 
 // Test package initialization, which requires a database connection
 func TestSendPasswordReset(t *testing.T) {
-	log.Printf("TestSendPasswordReset: Begin unit tests\n")
+	t.Log("TestSendPasswordReset: Begin unit tests")
 	userInfo := identity.UserInfo{
 		UserID: 100,
 		UserName: "test",
@@ -32,6 +32,6 @@ func TestSendPasswordReset(t *testing.T) {
 	}
 	err := SendPasswordReset(userInfo, "")
 	if err != nil {
-		log.Println("TestSendPasswordReset: Error, ", err)
+		t.Fatalf("TestSendPasswordReset: Error, %v", err)
 	}
 }

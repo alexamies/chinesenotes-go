@@ -17,12 +17,12 @@ package find
 import (
 	"context"
 	"database/sql"
-	"fmt"
+	"testing"
+
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/dictionary"
 	"github.com/alexamies/chinesenotes-go/fulltext"
 	"github.com/alexamies/chinesenotes-go/webconfig"
-	"testing"
 )
 
 func initDBCon() (*sql.DB, error) {
@@ -41,8 +41,7 @@ func TestCacheColDetails(t *testing.T) {
 		return
 	}
 	if database == nil {
-		fmt.Println("TestCacheColDetails, no database skipping")
-		return
+		t.Skip("TestCacheColDetails, no database skipping")
 	}
 	df := DatabaseDocFinder {
 		database: database,
@@ -50,13 +49,12 @@ func TestCacheColDetails(t *testing.T) {
 	ctx := context.Background()
 	err = df.initFind(ctx)
 	if err != nil {
-		t.Errorf("TestCacheColDetails, Error: %v", err)
-		return
+		t.Fatalf("TestCacheColDetails, Error: %v", err)
 	}
 	cMap := df.cacheColDetails(ctx)
 	title := cMap["wenxuan.html"]
 	if title == "" {
-		fmt.Print("TestCacheColDetails: got empty title, map size, ",
+		t.Logf("TestCacheColDetails: got empty title, map size, %d",
 			len(cMap))
 	}
 }
@@ -76,7 +74,7 @@ func TestCombineByWeight(t *testing.T) {
 	if simDoc.Similarity == 0.0 {
 		t.Error("TestCombineByWeight: simDoc.Similarity == 0.0")
 	}
-	fmt.Printf("TestCacheColDetails: simDoc %v\n", simDoc)
+	t.Logf("TestCacheColDetails: simDoc %v\n", simDoc)
 	similarity := intercept + 
 		WEIGHT[0] * doc.SimWords / maxSimWords +
 		WEIGHT[1] * doc.SimBigram / maxBigram +
@@ -99,7 +97,7 @@ func TestFindDocuments(t *testing.T) {
 		return
 	}
 	if database == nil {
-		fmt.Println("TestFindDocuments, not connected to db, skipping")
+		t.Log("TestFindDocuments, not connected to db, skipping")
 		return
 	}
 	df := DatabaseDocFinder {}
@@ -111,8 +109,7 @@ func TestFindDocuments(t *testing.T) {
 	}
 	dictSearcher := dictionary.NewSearcher(ctx, database)
 	if !dictSearcher.Initialized() {
-		fmt.Printf("TestFindDocuments: cannot create dictSearcher: %v", err)
-		return
+		t.Skipf("TestFindDocuments: cannot create dictSearcher: %v", err)
 	}
 	dict := map[string]dicttypes.Word{}
 	parser := MakeQueryParser(dict)
@@ -178,8 +175,7 @@ func testFindBodyBM25(terms []string, t *testing.T) {
 		return
 	}
 	if database == nil {
-		fmt.Println("testFindBodyBM25, no database skipping")
-		return
+		t.Skip("testFindBodyBM25, no database skipping")
 	}
 	df := DatabaseDocFinder {
 		database: database,
@@ -187,8 +183,7 @@ func testFindBodyBM25(terms []string, t *testing.T) {
 	ctx := context.Background()
 	err = df.initFind(ctx)
 	if err != nil {
-		t.Errorf("testFindBodyBM25, Error: %v", err)
-		return
+		t.Fatalf("testFindBodyBM25, Error: %v", err)
 	}
 
 	// Test data
@@ -220,9 +215,9 @@ func testFindBodyBM25(terms []string, t *testing.T) {
 		if err != nil {
 			t.Errorf("testFindBodyBM25: %s got an error, %v\n", tc.name, err)
 		}
-		fmt.Printf("testFindBodyBM25, len(docs) = %d\n", len(docs))
+		t.Logf("testFindBodyBM25, len(docs) = %d\n", len(docs))
 		if len(docs) > 0 {
-			fmt.Printf("testFindBodyBM25, docs[0] = %v\n", docs[0])
+			t.Logf("testFindBodyBM25, docs[0] = %v\n", docs[0])
 		}
 	}
 }
@@ -234,7 +229,7 @@ func TestFindBodyBigram(t *testing.T) {
 		return
 	}
 	if database == nil {
-		fmt.Println("TestFindBodyBigram, no database skipping")
+		t.Log("TestFindBodyBigram, no database skipping")
 		return
 	}
 	df := DatabaseDocFinder {
@@ -284,7 +279,7 @@ func TestFindBodyBigram(t *testing.T) {
 			t.Errorf("TestFindBodyBigram, %s: unexpected error: %v", tc.name, err)
 			continue
 		}
-		fmt.Printf("TestFindBodyBigram, len(docSimilarity) = %d", len(docs))
+		t.Logf("TestFindBodyBigram, len(docSimilarity) = %d", len(docs))
 	}
 }
 
@@ -295,8 +290,7 @@ func TestFindDocumentsInCol(t *testing.T) {
 		return
 	}
 	if database == nil {
-		fmt.Println("TestFindDocumentsInCol, no database skipping")
-		return
+		t.Skip("TestFindDocumentsInCol, no database skipping")
 	}
 	df := DatabaseDocFinder {
 		database: database,
@@ -309,8 +303,7 @@ func TestFindDocumentsInCol(t *testing.T) {
 	}
 	dictSearcher := dictionary.NewSearcher(ctx, database)
 	if !dictSearcher.Initialized() {
-		fmt.Printf("TestFindDocumentsInCol: cannot create dictSearcher: %v", err)
-		return
+		t.Skipf("TestFindDocumentsInCol: cannot create dictSearcher: %v", err)
 	}
 	dict := map[string]dicttypes.Word{}
 	parser := MakeQueryParser(dict)
@@ -403,8 +396,7 @@ func TestFindWords(t *testing.T) {
 		return
 	}
 	if database == nil {
-		fmt.Println("TestFindWords, no database skipping")
-		return
+		t.Skip("TestFindWords, no database skipping")
 	}
 	df := DatabaseDocFinder {
 		database: database,
@@ -456,8 +448,7 @@ func TestMergeDocList(t *testing.T) {
 		return
 	}
 	if database == nil {
-		fmt.Println("TestMergeDocList, no database skipping")
-		return
+		t.Skip("TestMergeDocList, no database skipping")
 	}
 	df := DatabaseDocFinder {
 		database: database,
@@ -600,7 +591,7 @@ func TestSetContainsTerms2(t *testing.T) {
 		t.Errorf("TestSetContainsTerms2: expected1 %s, got, %s\n", expected1,
 			result[1])
 	}
-	fmt.Println("TestSetContainsTerms2: ", result)
+	t.Logf("TestSetContainsTerms2: %v", result)
 }
 
 func TestSetContainsTerms3(t *testing.T) {
@@ -622,7 +613,7 @@ func TestSetContainsTerms3(t *testing.T) {
 		t.Errorf("TestSetContainsTerms3: expected0 %s, got, %s\n", expected0,
 			result[0])
 	}
-	fmt.Println("TestSetContainsTerms3: ", result)
+	t.Logf("TestSetContainsTerms3: %v", result)
 }
 
 func TestSetContainsTerms4(t *testing.T) {
@@ -649,7 +640,7 @@ func TestSetContainsTerms4(t *testing.T) {
 		t.Errorf("TestSetContainsTerms4: expected0 %s, got, %s\n", expected1,
 			result[1])
 	}
-	fmt.Println("TestSetContainsTerms4: ", result)
+	t.Logf("TestSetContainsTerms4: %v", result)
 }
 
 // No substring, compare based on similarity
@@ -754,7 +745,7 @@ func TestToRelevantDocList(t *testing.T) {
 		return
 	}
 	if database == nil {
-		fmt.Println("TestMergeDocList, no database skipping")
+		t.Skip("TestMergeDocList, no database skipping")
 		return
 	}
 	df := DatabaseDocFinder {
@@ -763,8 +754,7 @@ func TestToRelevantDocList(t *testing.T) {
 	ctx := context.Background()
 	err = df.initFind(ctx)
 	if err != nil {
-		t.Errorf("TestMergeDocList, Error: %v", err)
-		return
+		t.Fatalf("TestMergeDocList, Error: %v", err)
 	}
 
 	similarDocMap := map[string]Document{}
