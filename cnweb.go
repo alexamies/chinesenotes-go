@@ -8,7 +8,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
+
 	"github.com/alexamies/chinesenotes-go/applog"
+	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dictionary"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/find"
@@ -18,10 +24,6 @@ import (
 	"github.com/alexamies/chinesenotes-go/transmemory"
 	"github.com/alexamies/chinesenotes-go/webconfig"
 	"html/template"
-	"net/http"
-	"os"
-	"strconv"
-	"strings"
 )
 
 const defTitle = "Chinese Notes Translation Portal"
@@ -45,18 +47,13 @@ type HTMLContent struct {
 	TMResults *transmemory.Results
 }
 
-func init() {
-	applog.Info("cnweb.main.init Initializing cnweb")
-	ctx := context.Background()
-	err := initApp(ctx)
-	if err != nil {
-		applog.Errorf("main.init() error: \n%v\n", err)
-	}
-}
-
 func initApp(ctx context.Context) error {
 	applog.Info("initApp Initializing cnweb")
-	var err error
+	config.InitConfig()
+	err := webconfig.InitWeb()
+	if err != nil {
+		return fmt.Errorf("initApp() error for InitWeb: \n%v\n", err)
+	}
 	if webconfig.UseDatabase() {
 		database, err = initDBCon()
 		if err != nil {
@@ -297,6 +294,7 @@ func findDocs(response http.ResponseWriter, request *http.Request, fullText bool
 	c := getSingleValue(request, "collection")
 	ctx := context.Background()
 	if df == nil || !df.Inititialized() || dictSearcher == nil || !dictSearcher.Initialized() {
+		applog.Info("main.findDocs re-initializing app")
 		err := initApp(ctx)
 		if err != nil {
 			applog.Errorf("findDocs error: \n%v\n", err)
@@ -867,6 +865,12 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 //Entry point for the web application
 func main() {
 	applog.Info("cnweb.main Iniitalizing cnweb")
+	ctx := context.Background()
+	err := initApp(ctx)
+	if err != nil {
+		applog.Errorf("main() error for initApp: \n%v\n", err)
+	}
+
 	http.HandleFunc("/#", findHandler)
 	http.HandleFunc("/find/", findHandler)
 	http.HandleFunc("/findadvanced/", findAdvanced)

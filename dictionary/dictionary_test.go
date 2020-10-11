@@ -19,6 +19,7 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/webconfig"
 )
 
@@ -50,6 +51,7 @@ func TestFindWordsByEnglish(t *testing.T) {
 
 // Test trivial query with empty dictionary
 func TestLoadDict(t *testing.T) {
+	config.InitConfig()
 	ctx := context.Background()
 	database, err := initDBCon()
 	if err != nil {

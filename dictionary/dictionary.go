@@ -133,7 +133,7 @@ func LoadDict(ctx context.Context, database *sql.DB) (map[string]dicttypes.Word,
 	stmt, err := database.PrepareContext(ctx, 
 		"SELECT id, simplified, traditional, pinyin, english, parent_en, notes, headword FROM words")
     if err != nil {
-        applog.Error("LoadDict Error preparing stmt: ", err)
+        applog.Errorf("LoadDict Error preparing stmt, load from file instead: %v\n", err)
         return loadDictFile()
     }
 	results, err := stmt.QueryContext(ctx)

@@ -19,11 +19,12 @@ package webconfig
 import (
 	"bufio"
 	"fmt"
-	"github.com/alexamies/chinesenotes-go/applog"
 	"io"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/alexamies/chinesenotes-go/applog"
 )
 
 var (
@@ -31,7 +32,7 @@ var (
 	domain *string
 )
 
-func init() {
+func InitWeb() error {
 	applog.Info("webconfig.init Initializing webconfig")
 	localhost := "localhost"
 	domain = &localhost
@@ -39,7 +40,13 @@ func init() {
 	if site_domain != "" {
 		domain = &site_domain
 	}
-	configVars = readConfig()
+	var err error
+	configVarsPtr, err := readConfig()
+	if err != nil {
+		return err
+	}
+	configVars = *configVarsPtr
+	return nil
 }
 
 // Get the configuration string to connect to the database
@@ -156,7 +163,7 @@ func GetSiteDomain() string {
 func GetVar(key string) string {
 	val, ok := configVars[key]
 	if !ok {
-		applog.Error("config.GetVar: could not find key: ", key)
+		applog.Errorf("config.GetVar: could not find key: %s", key)
 		val = ""
 	}
 	return val
@@ -172,14 +179,19 @@ func GetVarWithDefault(key, defaultVal string) string {
 }
 
 // Reads the configuration file with project variables
-func readConfig() map[string]string {
+func readConfig() (*map[string]string, error) {
 	vars := make(map[string]string)
 	cnwebHome := GetCnWebHome()
 	fileName := fmt.Sprintf("%s/webconfig.yaml", cnwebHome)
 	configFile, err := os.Open(fileName)
 	if err != nil {
-		applog.Error("config.init serious error, cannot load config: ", err)
-		return map[string]string{}
+		path, er := os.Getwd()
+		if er != nil {
+    	applog.Errorf("cannot find cwd: %v", er)
+			path = ""
+		}
+		return nil, fmt.Errorf("webconfig.readConfig error loading file '%s' (%s): %v",
+				fileName, path, err)
 	}
 	defer configFile.Close()
 	reader := bufio.NewReader(configFile)
@@ -191,7 +203,7 @@ func readConfig() map[string]string {
 			err = nil
 			eof = true
 		} else if err != nil {
-			applog.Fatal("config.readConfig: error reading config file", err)
+			return nil, fmt.Errorf("webconfig.readConfig: error reading file: %v", err)
 		}
 		// Ignore comments
 		if strings.HasPrefix(line, "#") {
@@ -204,7 +216,7 @@ func readConfig() map[string]string {
 			vars[varName] = val
 		}
 	}
-	return vars
+	return &vars, nil
 }
 
 // PasswordProtected gets whether the web site is password projected.

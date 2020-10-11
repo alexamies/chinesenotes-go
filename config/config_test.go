@@ -23,7 +23,7 @@ import (
 func TestCorpusDataDir(t *testing.T) {
 	t.Logf("TestCorpusDataDir: Begin unit tests\n")
 	result := CorpusDataDir()
-	expect := "../data/corpus"
+	expect := "/data/corpus"
 	if expect != result {
 		t.Errorf("expected: %s, got: %s", expect, result)
 	}

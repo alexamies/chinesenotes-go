@@ -18,16 +18,17 @@ package fileloader
 
 import (
 	"encoding/csv"
+	"os"
+	"strconv"
+
 	"github.com/alexamies/chinesenotes-go/applog"
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
-	"os"
-	"strconv"
 )
 
 // Loads all words from a static file included in the Docker image
 func LoadDictFile(fNames []string) (map[string]dicttypes.Word, error) {
-	applog.Info("LoadDictFile, enter")
+	applog.Infof("LoadDictFile, loading %d files\n", len(fNames))
 	wdict := map[string]dicttypes.Word{}
 	avoidSub := config.AvoidSubDomains()
 	for _, fName := range fNames {
@@ -136,6 +137,6 @@ func LoadDictFile(fNames []string) (map[string]dicttypes.Word, error) {
 			}
 		}
 	}
-	applog.Info("LoadDictFile, loaded")
+	applog.Infof("LoadDictFile, loaded %d entries", len(wdict))
 	return wdict, nil
 }

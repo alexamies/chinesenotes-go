@@ -18,24 +18,11 @@ import (
 	"testing"
 )
 
-// Test package initialization, which requires a database connection
-func TestInit(t *testing.T) {
-	t.Log("TestInit: Begin unit tests")
-}
-
 // Test default serving port
 func TestGetPort(t *testing.T) {
 	port := GetPort()
 	if port != 8080 {
 		t.Error("TestGetPort: port = ", port)
-	}
-}
-
-// Test site domain
-func TestGetSiteDomain(t *testing.T) {
-	domain := GetSiteDomain()
-	if domain != "localhost" {
-		t.Error("TestGetSiteDomain: domain = ", domain)
 	}
 }
 

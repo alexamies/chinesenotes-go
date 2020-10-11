@@ -19,10 +19,11 @@ package fulltext
 import (
 	"cloud.google.com/go/storage"
 	"context"
-	"github.com/alexamies/chinesenotes-go/applog"
 	"io/ioutil"
 	"os"
 	"strings"
+
+	"github.com/alexamies/chinesenotes-go/applog"
 )
 
 const (

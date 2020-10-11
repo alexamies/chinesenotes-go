@@ -17,9 +17,10 @@
 package find
 
 import (
+	"unicode"
+
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/tokenizer"
-	"unicode"
 )
 
 // Parses input queries into a slice of text segments

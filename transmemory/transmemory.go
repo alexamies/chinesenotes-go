@@ -21,10 +21,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/alexamies/chinesenotes-go/applog"
-	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"sort"
 	"strings"
+
+	"github.com/alexamies/chinesenotes-go/applog"
+	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
 
 const (

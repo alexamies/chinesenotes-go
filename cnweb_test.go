@@ -19,6 +19,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/alexamies/chinesenotes-go/webconfig"
 )
 
 // TestDisplayHome tests the default HTTP handler.
@@ -71,6 +73,18 @@ func TestFindHandler(t *testing.T) {
 			t.Errorf("%s: expectContains %q, got %q", tc.name, tc.expectContains, result)
  		}
  	}
+}
+
+// Test site domain
+func TestGetSiteDomain(t *testing.T) {
+	err := webconfig.InitWeb()
+	if err != nil {
+		t.Errorf("error: %v", err)
+	}
+	domain := webconfig.GetSiteDomain()
+	if domain != "localhost" {
+		t.Error("TestGetSiteDomain: domain = ", domain)
+	}
 }
 
 // TestTranslationMemory tests translationMemory function.
@@ -129,4 +143,12 @@ func TestTranslationMemory(t *testing.T) {
 			t.Errorf("%s: expectMany but got only %d chars", tc.name, len(result))
  		}
  	}
+}
+
+// Test package initialization, which requires a database connection
+func TestWebconfigInit(t *testing.T) {
+	err := webconfig.InitWeb()
+	if err != nil {
+		t.Errorf("error: %v", err)
+	}
 }

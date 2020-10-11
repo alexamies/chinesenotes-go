@@ -28,7 +28,7 @@ import (
 var projectHome, dictionaryDir string
 var configVars map[string]string
 
-func init() {
+func InitConfig() error {
 	projectHome = "."
 	cnReaderHome := os.Getenv("CNREADER_HOME")
 	if len(cnReaderHome) != 0 {
@@ -38,8 +38,9 @@ func init() {
 	var err error
 	configVars, err = readConfig()
 	if err != nil {
-		log.Printf("config.init: error reading config: %v\n", err)
+		return fmt.Errorf("config.InitConfig: error reading config: %v\n", err)
 	}
+	return nil
 }
 
 // Subdomains to avoid whne loading the dictionary, default: empty
