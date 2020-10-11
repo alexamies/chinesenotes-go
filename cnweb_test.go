@@ -77,10 +77,6 @@ func TestFindHandler(t *testing.T) {
 
 // Test site domain
 func TestGetSiteDomain(t *testing.T) {
-	err := webconfig.InitWeb()
-	if err != nil {
-		t.Errorf("error: %v", err)
-	}
 	domain := webconfig.GetSiteDomain()
 	if domain != "localhost" {
 		t.Error("TestGetSiteDomain: domain = ", domain)
@@ -143,12 +139,4 @@ func TestTranslationMemory(t *testing.T) {
 			t.Errorf("%s: expectMany but got only %d chars", tc.name, len(result))
  		}
  	}
-}
-
-// Test package initialization, which requires a database connection
-func TestWebconfigInit(t *testing.T) {
-	err := webconfig.InitWeb()
-	if err != nil {
-		t.Errorf("error: %v", err)
-	}
 }

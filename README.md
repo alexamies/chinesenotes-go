@@ -666,3 +666,16 @@ func main() {
   }
 }
 ```
+## Testing
+
+Run unit tests with the command
+
+```shell
+go test ./... -cover
+```
+
+Run an integration test with the command
+
+```shell
+go test -integration ./... -cover
+```

@@ -29,6 +29,8 @@ import (
 const defTitle = "Chinese Notes Translation Portal"
 
 var (
+	appConfig config.AppConfig
+	webConfig webconfig.WebAppConfig
 	database *sql.DB
 	parser find.QueryParser
 	wdict map[string]dicttypes.Word
@@ -49,11 +51,9 @@ type HTMLContent struct {
 
 func initApp(ctx context.Context) error {
 	applog.Info("initApp Initializing cnweb")
-	config.InitConfig()
-	err := webconfig.InitWeb()
-	if err != nil {
-		return fmt.Errorf("initApp() error for InitWeb: \n%v\n", err)
-	}
+	appConfig = config.InitConfig()
+	webConfig = webconfig.InitWeb()
+	var err error
 	if webconfig.UseDatabase() {
 		database, err = initDBCon()
 		if err != nil {
@@ -61,7 +61,7 @@ func initApp(ctx context.Context) error {
 		}
 	}
 	dictSearcher = dictionary.NewSearcher(ctx, database)
-	wdict, err = dictionary.LoadDict(ctx, database)
+	wdict, err = dictionary.LoadDict(ctx, database, appConfig)
 	if err != nil {
 		return fmt.Errorf("main.init() unable to load dictionary: \n%v", err)
 	}
@@ -99,7 +99,7 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 		sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
 	}
 	if identity.IsAuthorized(sessionInfo.User, "admin_portal") {
-		vars := webconfig.GetAll()
+		vars := webConfig.GetAll()
 		tmpl, err := template.New("admin_portal.html").ParseFiles("templates/admin_portal.html")
 		if err != nil {
 			applog.Errorf("main.adminHandler: error parsing template %v", err)
@@ -190,7 +190,7 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
     return
 	}
 
-	title := webconfig.GetVarWithDefault("Title", defTitle)
+	title := webConfig.GetVarWithDefault("Title", defTitle)
 	content := HTMLContent{
 		Title: title,
 	}
@@ -228,7 +228,7 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 
 // displayPortalHome shows the translation portal home page
 func displayPortalHome(w http.ResponseWriter) {
-	vars := webconfig.GetAll()
+	vars := webConfig.GetAll()
 	displayPage(w, "translation_portal.html", vars)
 }
 
@@ -268,7 +268,7 @@ func findAdvanced(response http.ResponseWriter, request *http.Request) {
 	}
 	if len(q) == 0 {
 		if acceptHTML(request) {
-			title := webconfig.GetVarWithDefault("Title", defTitle)
+			title := webConfig.GetVarWithDefault("Title", defTitle)
 			content := HTMLContent{
 				Title: title,
 			}
@@ -368,7 +368,7 @@ func getSingleValue(r *http.Request, key string) string {
 
 // showQueryResults displays query results on a HTML page
 func showQueryResults(w http.ResponseWriter, results *find.QueryResults, fullText bool) {
-	title := webconfig.GetVarWithDefault("Title", defTitle)
+	title := webConfig.GetVarWithDefault("Title", defTitle)
 	content := HTMLContent{
 		Title: title,
 		Results: results,
@@ -526,7 +526,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 // logoutForm displays a form button to logout the user
 func logoutForm(w http.ResponseWriter, r *http.Request) {
 	applog.Infof("logoutForm: display form")
-	title := webconfig.GetVarWithDefault("Title", defTitle)
+	title := webConfig.GetVarWithDefault("Title", defTitle)
 	content := HTMLContent{
 		Title: title,
 	}
@@ -557,7 +557,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Return HTML if method is post
 	if acceptHTML(r) {
-		title := webconfig.GetVarWithDefault("Title", defTitle)
+		title := webConfig.GetVarWithDefault("Title", defTitle)
 		content := HTMLContent{
 			Title: title,
 		}
@@ -704,7 +704,7 @@ func requestResetHandler(w http.ResponseWriter, r *http.Request) {
 	email := r.PostFormValue("Email")
 	result := authenticator.RequestPasswordReset(ctx, email)
 	if result.RequestResetSuccess {
-		err := mail.SendPasswordReset(result.User, result.Token)
+		err := mail.SendPasswordReset(result.User, result.Token, webConfig)
 		if err != nil {
 			result.RequestResetSuccess = false
 		}
@@ -810,7 +810,7 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 // translationMemory handles requests for for translation memory searches
 func translationMemory(w http.ResponseWriter, r *http.Request) {
 	q := getSingleValue(r, "query")
-	title := webconfig.GetVarWithDefault("Title", defTitle)
+	title := webConfig.GetVarWithDefault("Title", defTitle)
 	if len(q) == 0 {
 		if acceptHTML(r) {
 			content := HTMLContent{

@@ -19,11 +19,12 @@ import (
 	"testing"
 )
 
-// Test trivial query with empty chunk
+// TestCorpusDataDir is a trivial query with empty chunk
 func TestCorpusDataDir(t *testing.T) {
 	t.Logf("TestCorpusDataDir: Begin unit tests\n")
-	result := CorpusDataDir()
-	expect := "/data/corpus"
+	appConfig := InitConfig()
+	result := appConfig.CorpusDataDir()
+	expect := "./data/corpus"
 	if expect != result {
 		t.Errorf("expected: %s, got: %s", expect, result)
 	}
@@ -31,7 +32,8 @@ func TestCorpusDataDir(t *testing.T) {
 
 // Test AvoidSubDomains
 func TestAvoidSubDomains(t *testing.T) {
-	result := AvoidSubDomains()
+	appConfig := InitConfig()
+	result := appConfig.AvoidSubDomains()
 	expect := make(map[string]bool)
 	if !reflect.DeepEqual(expect, result) {
 		t.Errorf("expected: %v, got: %v", expect, result)

@@ -27,10 +27,11 @@ import (
 )
 
 // Loads all words from a static file included in the Docker image
-func LoadDictFile(fNames []string) (map[string]dicttypes.Word, error) {
+func LoadDictFile(appConfig config.AppConfig) (map[string]dicttypes.Word, error) {
+	fNames := appConfig.LUFileNames
 	applog.Infof("LoadDictFile, loading %d files\n", len(fNames))
 	wdict := map[string]dicttypes.Word{}
-	avoidSub := config.AvoidSubDomains()
+	avoidSub := appConfig.AvoidSubDomains()
 	for _, fName := range fNames {
 		applog.Infof("fileloader.LoadDictFile: fName: %s", fName)
 		wsfile, err := os.Open(fName)

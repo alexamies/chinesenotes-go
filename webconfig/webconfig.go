@@ -27,29 +27,70 @@ import (
 	"github.com/alexamies/chinesenotes-go/applog"
 )
 
-var (
-	configVars map[string]string
-	domain *string
-)
+// WebAppConfig holds application configuration data that is specific to the web app
+type WebAppConfig struct {
 
-func InitWeb() error {
-	applog.Info("webconfig.init Initializing webconfig")
-	localhost := "localhost"
-	domain = &localhost
-	site_domain := os.Getenv("SITEDOMAIN")
-	if site_domain != "" {
-		domain = &site_domain
-	}
-	var err error
-	configVarsPtr, err := readConfig()
-	if err != nil {
-		return err
-	}
-	configVars = *configVarsPtr
-	return nil
+	// A map of project configuration variables
+	ConfigVars map[string]string
 }
 
-// Get the configuration string to connect to the database
+// InitWeb loads the WebAppConfig data. If an error occurs, default values are used
+func InitWeb() WebAppConfig {
+	applog.Info("webconfig.init Initializing webconfig")
+	c := WebAppConfig {}
+	configVarsPtr, err := readConfig()
+	if err != nil {
+		applog.Infof("webconfig.init error initializing webconfig: %v", err)
+		c.ConfigVars = make(map[string]string)
+	} else {
+		c.ConfigVars =  *configVarsPtr
+	}
+	return c
+}
+
+// GetAll gets all configuration variables
+func (c WebAppConfig) GetAll() map[string]string {
+	return c.ConfigVars
+}
+
+// GetFromEmail gets the environment or config variable for sending email from
+func (c WebAppConfig) GetFromEmail() string {
+	fromEmail := os.Getenv("FROM_EMAIL")
+	if len(fromEmail) == 0 {
+		fromEmail = c.GetVar("FromEmail")
+	}
+	return fromEmail
+}
+
+// GetPasswordResetURL get the password reset URL for inclusion in email
+func (c WebAppConfig) GetPasswordResetURL() string {
+	passwordResetURL := os.Getenv("PASSWORD_RESET_URL")
+	if len(passwordResetURL) == 0 {
+		passwordResetURL = c.GetVar("PasswordResetURL")
+	}
+	return passwordResetURL
+}
+
+// GetVar gets a configuration variable value, default empty string
+func (c WebAppConfig) GetVar(key string) string {
+	val, ok := c.ConfigVars[key]
+	if !ok {
+		applog.Errorf("config.GetVar: could not find key: %s", key)
+		val = ""
+	}
+	return val
+}
+
+// GetVarWithDefault gets a configuration value with given default
+func (c WebAppConfig) GetVarWithDefault(key, defaultVal string) string {
+	val, ok := c.ConfigVars[key]
+	if !ok {
+		return defaultVal
+	}
+	return val
+}
+
+// DBConfig gets the configuration string to connect to the database
 func DBConfig() string {
 	instanceConnectionName := os.Getenv("INSTANCE_CONNECTION_NAME")
 	dbUser := "app_user"
@@ -87,12 +128,7 @@ func DBConfig() string {
 		dbport, dbname)
 }
 
-// Gets all configuration variables
-func GetAll() map[string]string {
-	return configVars
-}
-
-// The home directory of the Chinese Notes project
+// GetCnReaderHome gets the home directory of the Chinese Notes project
 func GetCnReaderHome() string {
 	cnReaderHome := os.Getenv("CNREADER_HOME")
 	if len(cnReaderHome) == 0 {
@@ -102,7 +138,7 @@ func GetCnReaderHome() string {
 	return cnReaderHome
 }
 
-// The home directory of the web application
+// GetCnWebHome gets the home directory of the web application
 func GetCnWebHome() string {
 	cnWebHome := os.Getenv("CNWEB_HOME")
 	if len(cnWebHome) == 0 {
@@ -112,15 +148,7 @@ func GetCnWebHome() string {
 	return cnWebHome
 }
 
-// Get environment variable for sending email from
-func GetFromEmail() string {
-	fromEmail := os.Getenv("FROM_EMAIL")
-	if fromEmail == "" {
-		fromEmail = GetVar("FromEmail")
-	}
-	return fromEmail
-}
-
+// GetEnvIntValue gets a value from the environment
 func GetEnvIntValue(key string, defValue int) int {
     if val, ok := os.LookupEnv(key); ok {
     	value, err := strconv.Atoi(val)
@@ -132,16 +160,7 @@ func GetEnvIntValue(key string, defValue int) int {
     return defValue
 }
 
-// Get the domain name of the site
-func GetPasswordResetURL() string {
-	passwordResetURL := os.Getenv("PASSWORD_RESET_URL")
-	if passwordResetURL == "" {
-		passwordResetURL = GetVar("PasswordResetURL")
-	}
-	return passwordResetURL
-}
-
-// Get environment variable for serving port
+// GetPort get environment variable for serving port
 func GetPort() int {
 	portString := os.Getenv("PORT")
 	if portString == "" {
@@ -156,26 +175,12 @@ func GetPort() int {
 
 // Get the domain name of the site
 func GetSiteDomain() string {
-	return *domain
-}
-
-// Gets a configuration variable value
-func GetVar(key string) string {
-	val, ok := configVars[key]
-	if !ok {
-		applog.Errorf("config.GetVar: could not find key: %s", key)
-		val = ""
+	domain := "localhost"
+	site_domain := os.Getenv("SITEDOMAIN")
+	if len(site_domain) != 0 {
+		domain = site_domain
 	}
-	return val
-}
-
-// Gets a configuration value with given default
-func GetVarWithDefault(key, defaultVal string) string {
-	val, ok := configVars[key]
-	if !ok {
-		return defaultVal
-	}
-	return val
+	return domain
 }
 
 // Reads the configuration file with project variables

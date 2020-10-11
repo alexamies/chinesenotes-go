@@ -13,6 +13,7 @@
 package mail
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	
@@ -23,12 +24,15 @@ import (
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 )
 
-func SendPasswordReset(toUser identity.UserInfo, token string) error {
-	fromEmail := webconfig.GetVar("FromEmail")
+func SendPasswordReset(toUser identity.UserInfo, token string, c webconfig.WebAppConfig) error {
+	fromEmail := c.GetVar("FromEmail")
 	from := mail.NewEmail("Do Not Reply", fromEmail)
 	subject := "Password Reset"
 	to := mail.NewEmail(toUser.FullName, toUser.Email)
-	passwordResetURL := webconfig.GetPasswordResetURL()
+	passwordResetURL := c.GetPasswordResetURL()
+	if len(passwordResetURL) == 0 {
+		return errors.New("SendPasswordReset: error, passwordResetURL is empty")
+	}
 	plainText := "To reset your password, please go to %s?token=%s . Your username is %s."
 	plainTextContent := fmt.Sprintf(plainText, passwordResetURL, token, toUser.UserName)
 	htmlText := "<p>To reset your password, please click <a href='%s?token=%s'>here</a>. Your username is %s.</p>"
@@ -37,10 +41,9 @@ func SendPasswordReset(toUser identity.UserInfo, token string) error {
 	client := sendgrid.NewSendClient(os.Getenv("SENDGRID_API_KEY"))
 	response, err := client.Send(message)
 	if err != nil {
-		applog.Info("SendPasswordReset: error, ", err)
-		return err
+		return fmt.Errorf("SendPasswordReset: error, %v\n", err)
 	} else {
-		applog.Info("SendPasswordReset: sent email code:, url:",
+		applog.Infof("SendPasswordReset: sent email code: %v, url: %s",
 			response.StatusCode, passwordResetURL)
 	}
 	return nil

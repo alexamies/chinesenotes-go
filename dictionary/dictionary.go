@@ -40,7 +40,7 @@ type Searcher struct {
 	initialized bool
 }
 
-// Initialize SQL statements
+// NewSearcher initialize SQL statements
 func NewSearcher(ctx context.Context, database *sql.DB) *Searcher {
 	s := Searcher{}
 	if database != nil {
@@ -121,25 +121,26 @@ func (searcher *Searcher) FindWordsByEnglish(ctx context.Context,
 	return senses, nil
 }
 
-// Loads all words from the database
-func LoadDict(ctx context.Context, database *sql.DB) (map[string]dicttypes.Word, error) {
+// LoadDict loads all words from the database
+func LoadDict(ctx context.Context, database *sql.DB,
+		appConfig config.AppConfig) (map[string]dicttypes.Word, error) {
 	start := time.Now()
 	if database == nil {
 		applog.Error("LoadDict, database nil, loading from file")
-    return loadDictFile()
+    return loadDictFile(appConfig)
 	}
 	wdict := map[string]dicttypes.Word{}
-	avoidSub := config.AvoidSubDomains()
+	avoidSub := appConfig.AvoidSubDomains()
 	stmt, err := database.PrepareContext(ctx, 
 		"SELECT id, simplified, traditional, pinyin, english, parent_en, notes, headword FROM words")
     if err != nil {
         applog.Errorf("LoadDict Error preparing stmt, load from file instead: %v\n", err)
-        return loadDictFile()
+        return loadDictFile(appConfig)
     }
 	results, err := stmt.QueryContext(ctx)
 	if err != nil {
 		applog.Errorf("LoadDict, Error for query, loading from file: \n%v\n", err)
-    return loadDictFile()
+    return loadDictFile(appConfig)
 	}
 	for results.Next() {
 		ws := dicttypes.WordSense{}
@@ -204,7 +205,7 @@ func LoadDict(ctx context.Context, database *sql.DB) (map[string]dicttypes.Word,
 	return wdict, nil
 }
 
-// Loads all words from a static file included in the Docker image
-func loadDictFile() (map[string]dicttypes.Word, error) {
-	return fileloader.LoadDictFile(config.LUFileNames())
+// loadDictFile loads all words from a static file included in the Docker image
+func loadDictFile(appConfig config.AppConfig) (map[string]dicttypes.Word, error) {
+	return fileloader.LoadDictFile(appConfig)
 }

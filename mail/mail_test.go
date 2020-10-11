@@ -18,11 +18,12 @@ import (
 	"testing"
 
 	"github.com/alexamies/chinesenotes-go/identity"
+	"github.com/alexamies/chinesenotes-go/webconfig"
 )
 
 // Test package initialization, which requires a database connection
-func TestSendPasswordReset(t *testing.T) {
-	t.Log("TestSendPasswordReset: Begin unit tests")
+func TestSendPasswordResetExpectError(t *testing.T) {
+	t.Log("TestSendPasswordResetExpectError: Begin unit test")
 	userInfo := identity.UserInfo{
 		UserID: 100,
 		UserName: "test",
@@ -30,8 +31,9 @@ func TestSendPasswordReset(t *testing.T) {
 		FullName: "Alex Test",
 		Role: "tester",
 	}
-	err := SendPasswordReset(userInfo, "")
-	if err != nil {
-		t.Fatalf("TestSendPasswordReset: Error, %v", err)
+	c := webconfig.WebAppConfig{}
+	err := SendPasswordReset(userInfo, "", c)
+	if err == nil {
+		t.Fatal("TestSendPasswordResetExpectError: Expect error with no config")
 	}
 }

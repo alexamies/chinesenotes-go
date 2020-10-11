@@ -16,44 +16,21 @@ package fileloader
 
 import (
 	"testing"
+
+	"github.com/alexamies/chinesenotes-go/config"
 )
 
 // With no files
-func TestLoadDictFile0(t *testing.T) {
-	t.Log("TestLoadDictFile0: Begin unit tests")
-	fnames := []string{}
-	dict, err := LoadDictFile(fnames)
+func TestLoadNoDictFile(t *testing.T) {
+	t.Log("TestLoadNoDictFile: Begin unit tests")
+	appConfig := config.AppConfig{
+		LUFileNames: []string{},
+	}
+	dict, err := LoadDictFile(appConfig)
 	if err != nil {
-		t.Fatalf("TestLoadDictFile0: Got error %v", err)
+		t.Fatalf("TestLoadNoDictFile: Got error %v", err)
 	}
 	if len(dict) != 0 {
-		t.Error("TestLoadDictFile0: len(dict) != 0")
-	}
-}
-
-// With one file, 3 entries, 3 simplified + 1 traditional
-func TestLoadDictFile1(t *testing.T) {
-	fnames := []string{"../data/testdict.tsv"}
-	dict, err := LoadDictFile(fnames)
-	if err != nil {
-		t.Fatalf("TestLoadDictFile1: Got an error: %v", err)
-	}
-	if len(dict) < 4 {
-		t.Fatalf("TestLoadDictFile1: excpected at least 4, got %d", len(dict))
-	}
-	chinese := "邃古"
-	word, ok := dict[chinese]
-	if !ok {
-		t.Fatalf("TestLoadDictFile1: could not find word %s", chinese)
-	}
-	senses := word.Senses
-	if len(senses) ==0 {
-		t.Fatalf("TestLoadDictFile1: expected > 0 senses, got %d", len(senses))
-	}
-	expectedDom := "Modern Chinese"
-	domain := senses[0].Domain
-	if expectedDom != domain {
-		t.Errorf("TestLoadDictFile1: expected domain %s, got %s", expectedDom,
-			domain)
+		t.Error("TestLoadNoDictFile: len(dict) != 0")
 	}
 }

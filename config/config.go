@@ -25,28 +25,50 @@ import (
 	"strings"
 )
 
-var projectHome, dictionaryDir string
-var configVars map[string]string
+// AppConfig holds application configuration data that is general to the API
+//
+// These variables are common to API and web app usage, especially loading 
+// dictionary files.
+type AppConfig struct {
 
-func InitConfig() error {
-	projectHome = "."
+	// The top level directory for the project
+	ProjectHome string
+
+	// A map of project configuration variables
+	ConfigVars map[string]string
+
+	// A list of files to read the lexical units in the dictionary from
+	LUFileNames []string
+}
+
+// InitConfig sets application configuration data
+func InitConfig() AppConfig {
+	projectHome := "."
 	cnReaderHome := os.Getenv("CNREADER_HOME")
 	if len(cnReaderHome) != 0 {
 		projectHome = cnReaderHome
 	}
+	c := AppConfig{
+		ProjectHome: projectHome,
+	}
 	log.Printf("config.init projectHome = %s\n", projectHome)
 	var err error
-	configVars, err = readConfig()
+	configVars, err := readConfig(projectHome)
 	if err != nil {
-		return fmt.Errorf("config.InitConfig: error reading config: %v\n", err)
+		log.Printf("error reading app config, using defaults: %v\n", err)
+		configVars = make(map[string]string)
 	}
-	return nil
+	c.ConfigVars = configVars
+	c.LUFileNames = readLUFileNames(configVars, c.DictionaryDir())
+	return c
 }
 
-// Subdomains to avoid whne loading the dictionary, default: empty
-func AvoidSubDomains() map[string]bool {
+// AvoidSubDomains get the subdomains to avoid whne loading the dictionary
+
+// Default: empty
+func (c AppConfig) AvoidSubDomains() map[string]bool {
   avoidSub := make(map[string]bool)
-	if val, ok := configVars["AvoidSubDomains"]; ok {
+	if val, ok := c.ConfigVars["AvoidSubDomains"]; ok {
 		values := strings.Split(",", val)
 		for _, value := range values {
 			log.Printf("config.AvoidSubDomains: value: %s", value)
@@ -58,28 +80,28 @@ func AvoidSubDomains() map[string]bool {
 	return avoidSub
 }
 
-// Returns the directory where the corpus metadata is stored
-func CorpusDataDir() string {
-	return projectHome + "/data/corpus"
+// CorpusDataDir returns the directory where the corpus metadata is stored
+func (c AppConfig) CorpusDataDir() string {
+	return c.ProjectHome + "/data/corpus"
 }
 
-// Returns the directory where the raw corpus text files are read from
-func CorpusDir() string {
-	return projectHome + "/corpus"
+// CorpusDir gets the directory where the raw corpus text files are read from
+func (c AppConfig) CorpusDir() string {
+	return c.ProjectHome + "/corpus"
 }
 
-// The name of the directory containing the dictionary files
-func DictionaryDir() string {
-	val, ok := configVars["DictionaryDir"]
+// DictionaryDir gets the name of the directory containing the dictionary files
+func (c AppConfig) DictionaryDir() string {
+	val, ok := c.ConfigVars["DictionaryDir"]
 	if ok {
-		return projectHome + "/" + val
+		return c.ProjectHome + "/" + val
 	}
-	return projectHome + "/data"
+	return c.ProjectHome + "/data"
 }
 
-// Gets a configuration variable value
-func GetVar(key string) string {
-	val, ok := configVars[key]
+// GetVar gets a configuration variable value
+func (c AppConfig) GetVar(key string) string {
+	val, ok := c.ConfigVars[key]
 	if !ok {
 		log.Printf("config.GetVar: could not find key: '%s'\n", key)
 		val = ""
@@ -87,22 +109,22 @@ func GetVar(key string) string {
 	return val
 }
 
-// The name of the text files with lexical units (word senses)
-func LUFileNames() []string {
+// readLUFileNames gets the name of the text files with lexical units (word senses)
+func readLUFileNames(configVars map[string]string, dictionaryDir string) []string {
 	fileNames := []string{}
 	val, ok := configVars["LUFiles"]
 	if ok {
 		tokens := strings.Split(val, ",")
 		fileNames = []string{}
 		for _, token := range tokens {
-			fileNames = append(fileNames, DictionaryDir() + "/" + token)
+			fileNames = append(fileNames, dictionaryDir + "/" + token)
 		}
 	}
 	return fileNames
 }
 
-// Reads the configuration file with project variables
-func readConfig() (map[string]string, error) {
+// readConfig reads the configuration file with project variables
+func readConfig(projectHome string) (map[string]string, error) {
 	vars := make(map[string]string)
 	sep := "/"
 	if strings.HasSuffix(projectHome, "/") {

@@ -29,7 +29,7 @@ func TestGetPort(t *testing.T) {
 // Test get app home directory
 func TestGetCnWebHome(t *testing.T) {
 	cnwebHome := GetCnWebHome()
-	if cnwebHome == "" {
+	if len(cnwebHome) == 0 {
 		t.Error("TestGetCnWebHome: cnwebHome is empty")
 	}
 }
@@ -37,7 +37,8 @@ func TestGetCnWebHome(t *testing.T) {
 // TestGetVarWithDefault tests the GetVarWithDefault function
 func TestGetVarWithDefault(t *testing.T) {
 	const expect = "My Title"
-	val := GetVarWithDefault("TITLE", expect)
+	c := WebAppConfig{}
+	val := c.GetVarWithDefault("TITLE", expect)
 	if expect != val {
 		t.Errorf("TestGetVarWithDefault: expect %s vs got %s", expect, val)
 	}
