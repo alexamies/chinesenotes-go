@@ -1,6 +1,17 @@
-/*
-Web application for finding documents in the corpus
-*/
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Web application for dictionary lookup, translation memory, and finding
+// documents in a corpus.
 package main
 
 import (
@@ -8,6 +19,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"net/http"
 	"os"
 	"strconv"
@@ -17,13 +29,13 @@ import (
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dictionary"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
+	"github.com/alexamies/chinesenotes-go/fileloader"
 	"github.com/alexamies/chinesenotes-go/find"
 	"github.com/alexamies/chinesenotes-go/identity"
 	"github.com/alexamies/chinesenotes-go/mail"
 	"github.com/alexamies/chinesenotes-go/media"
 	"github.com/alexamies/chinesenotes-go/transmemory"
 	"github.com/alexamies/chinesenotes-go/webconfig"
-	"html/template"
 )
 
 const defTitle = "Chinese Notes Translation Portal"
@@ -39,10 +51,11 @@ var (
 	df find.DocFinder
 	authenticator *identity.Authenticator
 	mediaSearcher *media.MediaSearcher
+	templates map[string]*template.Template
 )
 
 // Content for HTML template
-type HTMLContent struct {
+type htmlContent struct {
 	Title string
 	ErrorMsg string
 	Results *find.QueryResults
@@ -61,9 +74,19 @@ func initApp(ctx context.Context) error {
 		}
 	}
 	dictSearcher = dictionary.NewSearcher(ctx, database)
-	wdict, err = dictionary.LoadDict(ctx, database, appConfig)
-	if err != nil {
-		return fmt.Errorf("main.init() unable to load dictionary: \n%v", err)
+	cnReaderHome := os.Getenv("CNREADER_HOME")
+	if len(cnReaderHome) > 0 {
+		wdict, err = dictionary.LoadDict(ctx, database, appConfig)
+		if err != nil {
+			return fmt.Errorf("main.init() unable to load dictionary locally: \n%v", err)
+		}
+	} else {
+		// Load from web for zero-config Quickstart
+  	const url = "https://github.com/alexamies/chinesenotes.com/blob/master/data/words.txt?raw=true"
+		wdict, err = fileloader.LoadDictURL(appConfig, url)
+		if err != nil {
+			return fmt.Errorf("main.init() unable to load dictionary from net: \n%v", err)
+		}
 	}
 	parser = find.MakeQueryParser(wdict)
 	if database != nil {
@@ -79,6 +102,7 @@ func initApp(ctx context.Context) error {
 			return fmt.Errorf("init authenticator not initialized, \n%v", err)
 		}
 	}
+	templates = newTemplateMap(webConfig)
 	return nil
 }
 
@@ -162,17 +186,8 @@ func custom404(w http.ResponseWriter, r *http.Request, url string) {
 }
 
 func displayPage(w http.ResponseWriter, templateName string, content interface{}) {
-	tmpl, err := template.New(templateName).ParseFiles("templates/" + templateName)
-	if err != nil {
-		applog.Errorf("displayPage: error parsing template %v", err)
-		http.Error(w, "Server Error", http.StatusInternalServerError)
-		return
-	} else if tmpl == nil {
-		applog.Error("displayPage: Template is nil")
-		http.Error(w, "Server Error", http.StatusInternalServerError)
-		return
-	}
-	err = tmpl.Execute(w, content)
+	tmpl := templates[templateName]
+	err := tmpl.Execute(w, content)
 	if err != nil {
 		applog.Errorf("displayPage: error rendering template %f", err)
 		http.Error(w, "Server Error", http.StatusInternalServerError)
@@ -191,7 +206,7 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 	}
 
 	title := webConfig.GetVarWithDefault("Title", defTitle)
-	content := HTMLContent{
+	content := htmlContent{
 		Title: title,
 	}
 	if webconfig.PasswordProtected() {
@@ -269,7 +284,7 @@ func findAdvanced(response http.ResponseWriter, request *http.Request) {
 	if len(q) == 0 {
 		if acceptHTML(request) {
 			title := webConfig.GetVarWithDefault("Title", defTitle)
-			content := HTMLContent{
+			content := htmlContent{
 				Title: title,
 			}
 			if !webconfig.UseDatabase() {
@@ -369,7 +384,7 @@ func getSingleValue(r *http.Request, key string) string {
 // showQueryResults displays query results on a HTML page
 func showQueryResults(w http.ResponseWriter, results *find.QueryResults, fullText bool) {
 	title := webConfig.GetVarWithDefault("Title", defTitle)
-	content := HTMLContent{
+	content := htmlContent{
 		Title: title,
 		Results: results,
 	}
@@ -379,22 +394,21 @@ func showQueryResults(w http.ResponseWriter, results *find.QueryResults, fullTex
 		const fileName = "templates/full_text_search.html"
 		tmpl, err = template.New("full_text_search.html").ParseFiles(fileName)
 	} else {
-		const fileName = "templates/find_results.html"
-		tmpl, err = template.New("find_results.html").ParseFiles(fileName)
+		tmpl = templates["find_results.html"]
 	}
 	if err != nil {
-		applog.Errorf("findDocs: error parsing template %v", err)
+		applog.Errorf("showQueryResults: error parsing template %v", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
 	if tmpl == nil {
-		applog.Error("findDocs: Template is nil")
+		applog.Error("showQueryResults: Template is nil")
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
 	err = tmpl.Execute(w, content)
 	if err != nil {
-		applog.Errorf("findDocs: error rendering template %v", err)
+		applog.Errorf("showQueryResults: error rendering template %v", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 	}
 }
@@ -527,7 +541,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 func logoutForm(w http.ResponseWriter, r *http.Request) {
 	applog.Infof("logoutForm: display form")
 	title := webConfig.GetVarWithDefault("Title", defTitle)
-	content := HTMLContent{
+	content := htmlContent{
 		Title: title,
 	}
 	displayPage(w, "logout.html", content)
@@ -558,7 +572,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	// Return HTML if method is post
 	if acceptHTML(r) {
 		title := webConfig.GetVarWithDefault("Title", defTitle)
-		content := HTMLContent{
+		content := htmlContent{
 			Title: title,
 		}
     displayPage(w, "logged_out.html", content)
@@ -813,7 +827,7 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 	title := webConfig.GetVarWithDefault("Title", defTitle)
 	if len(q) == 0 {
 		if acceptHTML(r) {
-			content := HTMLContent{
+			content := htmlContent{
 				Title: title,
 			}
 			if !webconfig.UseDatabase() {
@@ -845,7 +859,7 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if acceptHTML(r) {
-		content := HTMLContent{
+		content := htmlContent{
 			Title: title,
 			TMResults: results,
 		}
@@ -897,5 +911,9 @@ func main() {
 	http.HandleFunc("/", displayHome)
 	portStr := ":" + strconv.Itoa(webconfig.GetPort())
 	applog.Infof("cnweb.main Starting http server on port %s\n", portStr)
-	http.ListenAndServe(portStr, nil)
+	err = http.ListenAndServe(portStr, nil)
+	if err != nil {
+		applog.Errorf("main() error for starting server: \n%v\n", err)
+		os.Exit(1)
+	}
 }

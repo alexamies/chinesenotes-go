@@ -1,5 +1,8 @@
 # Configuration file for web application
 
+# Directory for Go templates for dynamically rendered pages
+TemplateDir: templates
+
 # Title for Go generated HTML pages
 Title: Chinese Notes Translation Portal
 

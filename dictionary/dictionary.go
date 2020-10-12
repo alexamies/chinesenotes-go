@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 //
 // Chinese-English dictionary database functions
 //
@@ -127,7 +126,7 @@ func LoadDict(ctx context.Context, database *sql.DB,
 	start := time.Now()
 	if database == nil {
 		applog.Error("LoadDict, database nil, loading from file")
-    return loadDictFile(appConfig)
+    return fileloader.LoadDictFile(appConfig)
 	}
 	wdict := map[string]dicttypes.Word{}
 	avoidSub := appConfig.AvoidSubDomains()
@@ -135,12 +134,12 @@ func LoadDict(ctx context.Context, database *sql.DB,
 		"SELECT id, simplified, traditional, pinyin, english, parent_en, notes, headword FROM words")
     if err != nil {
         applog.Errorf("LoadDict Error preparing stmt, load from file instead: %v\n", err)
-        return loadDictFile(appConfig)
+        return fileloader.LoadDictFile(appConfig)
     }
 	results, err := stmt.QueryContext(ctx)
 	if err != nil {
 		applog.Errorf("LoadDict, Error for query, loading from file: \n%v\n", err)
-    return loadDictFile(appConfig)
+    return fileloader.LoadDictFile(appConfig)
 	}
 	for results.Next() {
 		ws := dicttypes.WordSense{}
@@ -203,9 +202,4 @@ func LoadDict(ctx context.Context, database *sql.DB,
 	}
 	applog.Infof("LoadDict loading time: %d", time.Since(start))
 	return wdict, nil
-}
-
-// loadDictFile loads all words from a static file included in the Docker image
-func loadDictFile(appConfig config.AppConfig) (map[string]dicttypes.Word, error) {
-	return fileloader.LoadDictFile(appConfig)
 }

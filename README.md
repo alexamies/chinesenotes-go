@@ -32,8 +32,20 @@ below.
 
 ## Quickstart
 
-Install [Go](https://golang.org/doc/install),
-clone this repo
+Install [Go](https://golang.org/doc/install). In a terminal, run the commands
+
+```shell
+go get github.com/alexamies/chinesenotes-go
+go run github.com/alexamies/chinesenotes-go
+```
+
+Navigate to http://localhost:8080 with your browser. Enter some Chinese words
+and see the English equivalents. With no environment settings the dictionary
+will be loaded from the Net.
+
+## Basic Usage
+
+Clone this repo
 
 ```shell
 git clone https://github.com/alexamies/chinesenotes-go.git
@@ -88,7 +100,7 @@ curl http://localhost:8080/find/?query=邃古
 
 You should see JSON encoded data sent back.
 
-## Integration test with real data
+## Integration with real dictionary and corpus data
 
 To get a fully functioning web app with a JavaScript client and stylized web
 pages, generate the HTML files from the corpus by following instructions at
@@ -532,7 +544,7 @@ LOAD DATA LOCAL INFILE 'data/corpus/example_collection.tsv' INTO TABLE document 
 
 The reverse index is based on unigrams and bigrams with a BM25 formula to give
 the most relevant documents for a given text search.
-To generates the reverse index install the `cnreader` command
+To generate the reverse index install the `cnreader` command
 line tool
 https://github.com/alexamies/chinesenotes.com/tree/master/go/src/cnreader
 
@@ -542,8 +554,16 @@ Run the command with no flags
 ./cnreader 
 ```
 
-This will write the full text index files into the `index` directory. Load those
-into the database with the commands
+This will write the full text index files into the `index` directory. 
+
+Alternatively, try running remotely without explicity cloning the repo
+
+```shell
+go get github.com/alexamies/cnreader
+go run github.com/alexamies/cnreader
+```
+
+Load those into the database with the commands
 
 ```sql
 use [your database];

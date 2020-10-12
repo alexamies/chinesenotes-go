@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"flag"
+	"log"
 	"os"
 	"testing"
 
@@ -34,6 +35,10 @@ var integration = flag.Bool("integration", false, "run an integration test")
 func TestMain(m *testing.M) {
 	flag.Parse()
 	if *integration {
+		err := os.Setenv("CNREADER_HOME", ".")
+		if err != nil {
+			log.Fatalf("could not unset CNREADER_HOME: %v", err)
+		}
 		fmt.Println("Running integration test")
 		os.Exit(m.Run())
 	}
