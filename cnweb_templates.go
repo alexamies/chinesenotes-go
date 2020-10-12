@@ -29,7 +29,7 @@ const indexTmpl = `
     <form name="findForm" method="post" action="/find/">
       <div>
         <label for="findInput">Search for</label>
-        <input type="text" name="query" size="40" required value="{{.Results.Query}}"/>
+        <input type="text" name="query" size="40" required/>
         <button type="submit">Find</button>
       </div>
     </form>
