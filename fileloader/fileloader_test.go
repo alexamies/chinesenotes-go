@@ -15,12 +15,14 @@
 package fileloader
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/alexamies/chinesenotes-go/config"
+	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
 
-// With no files
+// TestLoadNoDictFile tests with no files
 func TestLoadNoDictFile(t *testing.T) {
 	t.Log("TestLoadNoDictFile: Begin unit tests")
 	appConfig := config.AppConfig{
@@ -32,5 +34,78 @@ func TestLoadNoDictFile(t *testing.T) {
 	}
 	if len(dict) != 0 {
 		t.Error("TestLoadNoDictFile: len(dict) != 0")
+	}
+}
+
+// TestLoadDictReader tests loadDictReader
+func TestLoadDictReader(t *testing.T) {
+	t.Log("TestLoadDictReader: Begin unit tests")
+	avoidSub := make( map[string]bool)
+	const inputOneEntry = `# comment
+2	邃古	\N	suìgǔ	remote antiquity	noun	\N	\N	现代汉语	Modern Chinese	\N	\N	\N	\N	(CC-CEDICT '邃古'; Guoyu '邃古')	2
+`
+	type test struct {
+		name string
+		input string
+		expectError bool
+		expectSize int
+		exampleSimp string
+		expectPinyin string
+		expectNoSenses int
+		expectDomain string
+  }
+  tests := []test{
+		{
+			name: "Invalid entry",
+			input: "Hello, Dictionary!",
+			expectError: true,
+			expectSize: 0,
+			exampleSimp: "",
+			expectPinyin: "",
+			expectNoSenses: 0,
+			expectDomain: "",
+		},
+		{
+			name: "One entry",
+			input: inputOneEntry,
+			expectError: false,
+			expectSize: 1,
+			exampleSimp: "邃古",
+			expectPinyin: "suìgǔ",
+			expectNoSenses: 1,
+			expectDomain: "Modern Chinese",
+		},
+  }
+  for _, tc := range tests {
+		wdict := make(map[string]dicttypes.Word)
+		r := strings.NewReader(tc.input)
+		err := loadDictReader(r, wdict, avoidSub)
+		if tc.expectError && (err == nil) {
+			t.Fatalf("%s: expected an error but got none", tc.name)
+		}
+		if tc.expectError {
+			continue
+		}
+		if !tc.expectError && (err != nil) {
+			t.Fatalf("%s: did not expect an error but got %v", tc.name, err)
+		}
+		gotSize := len(wdict)
+		if tc.expectSize != gotSize {
+			t.Fatalf("%s: expectSize %d != %d", tc.name, tc.expectSize, gotSize)
+		}
+		w, ok := wdict[tc.exampleSimp]
+		if !ok {
+			t.Fatalf("%s: did not find expected term for '%s'", tc.name, tc.exampleSimp)
+		}
+		if tc.expectPinyin != w.Pinyin {
+			t.Errorf("%s: expectPinyin %s != %s", tc.name, tc.expectPinyin, w.Pinyin)
+		}
+		if tc.expectNoSenses != len(w.Senses) {
+			t.Fatalf("%s: expectNoSenses %d != %d", tc.name, tc.expectNoSenses, len(w.Senses))
+		}
+		s := w.Senses[0]
+		if tc.expectDomain != s.Domain {
+			t.Errorf("%s: expectDomain %s != %s", tc.name, tc.expectDomain, s.Domain)
+		}
 	}
 }

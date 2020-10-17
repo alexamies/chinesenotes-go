@@ -1,4 +1,4 @@
-# Chinese Notes Translation Portal
+# Chinese Notes Dictionary App and Translation Portal
 
 A Go web application and text processing library for translation from Chinese to
 English that is adaptable to different dictionaries and corpora, powering
@@ -12,7 +12,7 @@ these use cases
 Features include:
 
 1. Chinese-English dictionary word lookup
-2. Chinese text segmentation
+2. Chinese text tokenization
 3. Translation memory (optional)
 4. Full text search of a Chinese corpus (optional)
 5. Password proection (optional)
@@ -90,7 +90,7 @@ customization. The HTML interface is very basic, just enough for minimal
 testing. For a real web site you should use HTML templates with JavaScript line
 at https://github.com/alexamies/chinesenotes.com
 
-## Integration testing with minimal data
+## Development testing with minimal data
 
 In another terminal
 
@@ -120,7 +120,7 @@ traditional Chinese. Lookup by Chinese word is supported in file mode.
 You will need to install and setup the database to do lookup by English word
 Hanyu pinyin. 
 
-### Chinese text segmentation
+### Chinese text tokenization
 
 Given a string of Chinese text, the web app will segment it into words or
 multiword expressions contained in the dictionary. This saves a lot of time
@@ -559,6 +559,7 @@ This will write the full text index files into the `index` directory.
 Alternatively, try running remotely without explicity cloning the repo
 
 ```shell
+mkdir -p web/example_collection
 go get github.com/alexamies/cnreader
 go run github.com/alexamies/cnreader
 ```

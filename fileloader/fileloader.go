@@ -87,8 +87,7 @@ func loadDictReader(r io.Reader, wdict map[string]dicttypes.Word,
 	for i, row := range rawCSVdata {
 		id, err := strconv.ParseInt(row[0], 10, 0)
 		if err != nil {
-			applog.Error("Could not parse word id for word ", i, err)
-			return err
+			return fmt.Errorf("Could not parse word id %d for word %v", i, err)
 		}
 		simp := row[1]
 		trad := row[2]
@@ -140,6 +139,7 @@ func loadDictReader(r io.Reader, wdict map[string]dicttypes.Word,
 		ws.Concept = concept
 		ws.DomainCN = domainCN
 		ws.Domain = domain
+		// applog.Info("loadDictFile, %s domain: %s\n", simp, domain)
 		ws.Image = image
 		ws.MP3 = mp3
 		ws.Notes = notes

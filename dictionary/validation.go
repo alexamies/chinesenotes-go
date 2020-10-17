@@ -79,7 +79,7 @@ func (val validator) Validate(pos, domain string) error {
 		}
 	}
 	if _, ok := val.validDomains[domain]; !ok {
-		return fmt.Errorf("%s is not a recognized domain", domain)
+		return fmt.Errorf("'%s' is not a recognized domain", domain)
 	}
 	return nil
 }
@@ -89,7 +89,7 @@ func (val validator) Validate(pos, domain string) error {
 func ValidateDict(wdict map[string]dicttypes.Word, validator Validator) error {
 	for _, word := range wdict {
 		for _, ws := range word.Senses {
-			if err := validator.Validate(ws.Grammar, ws.Subdomain); err != nil {
+			if err := validator.Validate(ws.Grammar, ws.Domain); err != nil {
 				log.Printf("ValidateDict, Line: %v", ws)
 				return fmt.Errorf("invalid entry %s: %v", ws.Simplified, err)
 			}
