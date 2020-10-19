@@ -51,7 +51,7 @@ func InitConfig() AppConfig {
 	c := AppConfig{
 		ProjectHome: projectHome,
 	}
-	log.Printf("config.init projectHome = %s\n", projectHome)
+	// log.Printf("config.init projectHome = %s\n", projectHome)
 	var err error
 	configVars, err := readConfig(projectHome)
 	if err != nil {
@@ -103,7 +103,7 @@ func (c AppConfig) DictionaryDir() string {
 func (c AppConfig) GetVar(key string) string {
 	val, ok := c.ConfigVars[key]
 	if !ok {
-		log.Printf("config.GetVar: could not find key: '%s'\n", key)
+		// log.Printf("config.GetVar: could not find key: '%s'\n", key)
 		val = ""
 	}
 	return val
@@ -133,7 +133,7 @@ func readConfig(projectHome string) (map[string]string, error) {
 	fileName := projectHome + sep + "config.yaml"
 	configFile, err := os.Open(fileName)
 	if err != nil {
-		projectHome = ".."
+		projectHome = "."
 		log.Printf("config.readConfig: setting projectHome to: '%s'\n",
 			projectHome)
 		fileName = projectHome + "/config.yaml"

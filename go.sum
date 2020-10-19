@@ -19,10 +19,13 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/alexamies/chinesenotes-go v0.0.24/go.mod h1:xdg4UNXw3YWPGmeovyPsb7X8zilnOLT5sJ4NzBcqtx4=
 github.com/alexamies/chinesenotes-go v0.0.25/go.mod h1:xdg4UNXw3YWPGmeovyPsb7X8zilnOLT5sJ4NzBcqtx4=
+github.com/alexamies/chinesenotes-go v0.0.26/go.mod h1:eIkRqDhFheNU9ZLOrBvqIovBVVSpDvExwvFJ/+oyzcU=
 github.com/alexamies/cnreader v0.0.0-20201011025456-29192240cd79 h1:IVL7aBL+jEvAaQJivUk9A3JjK+f37snRdk5KlbZbakE=
 github.com/alexamies/cnreader v0.0.0-20201011025456-29192240cd79/go.mod h1:1qBivAbUOyAsUhJK6MkaNmJts3kfT/HQn/UtN7ItPI8=
 github.com/alexamies/cnreader v0.0.0-20201011221203-0c760dd51d73 h1:pHw0qwIrztUWhdrOp3wiNfFZtGWJfJNijwZ4GnqY+Tw=
 github.com/alexamies/cnreader v0.0.0-20201011221203-0c760dd51d73/go.mod h1:qN/5tMlBwvxoGliyL1Og/7NBbEeM1FuDT8N4GZMlWeA=
+github.com/alexamies/cnreader v0.0.0-20201018040111-ae58def97a40 h1:Vao8bvhkmF0SHeUXa86vUqosbw9dC4QdnRNW21G20ss=
+github.com/alexamies/cnreader v0.0.0-20201018040111-ae58def97a40/go.mod h1:LxX7y9Pq7ynVZnPIy1o7j0fxd5lH9TupqukygV9Mik0=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
