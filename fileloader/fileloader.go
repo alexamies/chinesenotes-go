@@ -12,8 +12,7 @@
 
 
 //
-// Chinese-English dictionary database functions
-//
+// Chinese-English dictionary file and network loading functions
 package fileloader
 
 import (

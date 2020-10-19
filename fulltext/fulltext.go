@@ -10,10 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-//
 // Package for working with the plain, full text of corpus documents
-//
 package fulltext
 
 import (

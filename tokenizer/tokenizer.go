@@ -10,13 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-//
 // Package for tokenizer of Chinese text
-//
-
 package tokenizer
-
 
 import (
 	"github.com/alexamies/chinesenotes-go/dicttypes"

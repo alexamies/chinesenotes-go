@@ -10,10 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-// 
-// Functions for finding collections by partial match on collection title
-//
+// Functions for finding documents by full text search
 package find
 
 import (

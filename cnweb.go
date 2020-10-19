@@ -10,8 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Web application for dictionary lookup, translation memory, and finding
-// documents in a corpus.
+// Web application for Chinese-English dictionary lookup, translation memory,
+// and finding documents in a corpus. Settings in for the app are controlled
+// through the file config.yaml, located in the project home directory, which
+// is found through the env variable CNREADER_HOME or the present working
+// directory.
 package main
 
 import (

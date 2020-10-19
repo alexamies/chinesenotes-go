@@ -10,8 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-// Package for media metadata
+// Package for working with media metadata
 package media
 
 import (

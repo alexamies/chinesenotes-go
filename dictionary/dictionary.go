@@ -11,8 +11,7 @@
 // limitations under the License.
 
 //
-// Chinese-English dictionary database functions
-//
+// Chinese-English dictionary database search functions
 package dictionary
 
 import (

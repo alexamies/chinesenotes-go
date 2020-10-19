@@ -13,7 +13,6 @@
 
 //
 // Chinese-English dictionary type definitions
-//
 package dicttypes
 
 import (
