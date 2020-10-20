@@ -15,6 +15,7 @@
 package tokenizer
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/alexamies/chinesenotes-go/dicttypes"
@@ -41,33 +42,53 @@ func TestGreedyLtoR(t *testing.T) {
 }
 
 // Test simple query with one character
-func TestGreedyRtoL1(t *testing.T) {
+func TestGreedyRtoL(t *testing.T) {
 	chunk := "全"
 	tokenizer := DictTokenizer{}
 	tokens := tokenizer.greedyRtoL(chunk)
 	expect := 1
 	if len(tokens) != expect &&  tokens[0].Token != chunk {
-		t.Error("TestGreedyRtoL1: expect list of one token, got ", tokens)
+		t.Error("TestGreedyRtoL: expect list of one token, got ", tokens)
 	}
 }
 
 // Test trivial query with empty chunk
-func TestTokenize0(t *testing.T) {
-	tokenizer := DictTokenizer{}
-	tokens := tokenizer.Tokenize("")
-	if len(tokens) != 0 {
-		t.Error("TestTokenize0: expect empty list of tokens, got ", tokens)
+func TestTokenize(t *testing.T) {
+	quan := dicttypes.Word{
+		Simplified:"全",
+		Traditional: "",
+		Pinyin: "quán",
+		HeadwordId: 42,
+		Senses: []dicttypes.WordSense{},
+	}	
+	wdict := map[string]dicttypes.Word{quan.Simplified: quan}
+	token := TextToken{
+		Token:"全",
+		DictEntry: quan,
+		Senses: []dicttypes.WordSense{},
 	}
-}
-
-// Test simple query with one character
-func TestTokenize1(t *testing.T) {
-	tokenizer := DictTokenizer{}
-	chunk := "全"
-	tokens := tokenizer.Tokenize(chunk)
-	expect := 1
-	if len(tokens) != expect &&  tokens[0].Token != chunk {
-		t.Error("TestTokenize1: expect list of one token, got ", tokens)
+	tokenizer := DictTokenizer{wdict}
+	testCases := []struct {
+		name string
+		in  string
+		want []TextToken
+	}{
+		{
+			name: "Empty",
+			in: "", 
+			want: []TextToken{},
+		},
+		{
+			name: "One token",
+			in: "全", 
+			want: []TextToken{token},
+		},
+	}
+	for _, tc := range testCases {
+		got := tokenizer.Tokenize(tc.in)
+  	if !reflect.DeepEqual(tc.want, got)  {
+  		t.Errorf("%s, expected %v, got %v", tc.name, tc.want, got)
+  	}
 	}
 }
 

@@ -17,6 +17,7 @@ package dicttypes
 
 import (
 	"strings"
+	"unicode"
 )
 
 // A top level word structure that may include multiple word senses
@@ -55,6 +56,14 @@ func CloneWord(w Word) Word {
 		Senses: w.Senses,
 	}
 }
+
+// IsCJKChar tests whether the symbol is a CJK character, excluding punctuation
+// Only looks at the first charater in the string
+func IsCJKChar(character string) bool {
+	r := []rune(character)
+	return unicode.Is(unicode.Han, r[0]) && !unicode.IsPunct(r[0])
+}
+
 
 // Tests whether the word is a function word
 func (ws *WordSense) IsFunctionWord() bool {
@@ -128,7 +137,7 @@ func (senses WordSenses) Less(i, j int) bool {
 func normalizePinyin(pinyin string) string {
 	runes := []rune{}
 	for _, r := range pinyin {
-		n, ok := NORMAL[r]
+		n, ok := normal[r]
 		if ok {
 			runes = append(runes, n)
 		} else {
@@ -138,7 +147,7 @@ func normalizePinyin(pinyin string) string {
 	return strings.ToLower(string(runes))
 }
 
-var NORMAL = map[rune]rune{
+var normal = map[rune]rune{
 	'ā': 'a',
 	'á': 'a',
 	'ǎ': 'a',

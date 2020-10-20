@@ -10,7 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package for tokenizer of Chinese text
+// Package for tokenizing of Chinese text into multi-character terms and
+// corresponding English equivalents.
 package tokenizer
 
 import (
