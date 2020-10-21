@@ -561,6 +561,7 @@ Alternatively, try running remotely without explicity cloning the repo
 ```shell
 mkdir -p web/example_collection
 go get github.com/alexamies/cnreader
+go run github.com/alexamies/cnreader  -download_dict
 go run github.com/alexamies/cnreader
 ```
 

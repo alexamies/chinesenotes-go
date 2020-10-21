@@ -28,7 +28,7 @@ import (
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
 
-// Loads all words from static files
+// LoadDictFile loads all words from static files
 func LoadDictFile(appConfig config.AppConfig) (map[string]dicttypes.Word, error) {
 	fNames := appConfig.LUFileNames
 	applog.Infof("LoadDictFile, loading %d files\n", len(fNames))

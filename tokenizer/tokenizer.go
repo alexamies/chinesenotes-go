@@ -15,10 +15,11 @@
 package tokenizer
 
 import (
-	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"log"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
 
 // Tokenizes Chinese text

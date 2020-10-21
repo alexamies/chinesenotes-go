@@ -30,14 +30,14 @@
       {{ range $term := .TMResults.Words }}
       <li>
         {{ $term.Traditional}} {{ $term.Pinyin }}
-        <ul>
-        {{ range $ws := $term.Senses }}
-        <li>
-          {{if ne $ws.English "\\N"}}{{ $ws.English }}{{end}}
-          {{if ne $ws.Notes "\\N"}}<div>{{ $ws.Notes }}</div>{{end}}
-        </li>
-        {{ end }}
-        </ul>
+        <ol>
+          {{ range $ws := $term.Senses }}
+          <li>
+            {{if ne $ws.English "\\N"}}{{ $ws.English }}{{end}}
+            {{if ne $ws.Notes "\\N"}}<div>Notes: {{ $ws.Notes }}</div>{{end}}
+          </li>
+          {{ end }}
+        </ol>
       </li>
       {{ end }}
     </ul>

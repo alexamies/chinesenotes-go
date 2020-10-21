@@ -22,16 +22,18 @@
     <ul>
       {{ range $term := .Results.Terms }}
       <li>
-        {{ $term.QueryText}} {{ $term.DictEntry.Pinyin}}
-        <ul>
-        {{ range $ws := $term.DictEntry.Senses }}
-        <li>
-          {{if ne $ws.English "\\N"}}{{ $ws.English }}{{end}}
-          {{if ne $ws.Notes "\\N"}}<div>{{ $ws.Notes }}</div>{{end}}
+        <details open>
+          <summary>{{ $term.QueryText}} {{ $term.DictEntry.Pinyin}}</summary>
+          <ol>
+          {{ range $ws := $term.DictEntry.Senses }}
+          <li>
+            {{if ne $ws.English "\\N"}}{{ $ws.English }}{{end}}
+            {{if ne $ws.Notes "\\N"}}<div>Notes: {{ $ws.Notes }}</div>{{end}}
+          </li>
+          {{ end }}
+          </ol>
+        </details>
         </li>
-        {{ end }}
-        </ul>
-      </li>
       {{ end }}
     </ul>
     {{ end }}

@@ -58,10 +58,10 @@ const findResultsTmpl = `
         {{ $term.QueryText}} {{ $term.DictEntry.Pinyin}}
         <ul>
         {{ range $ws := $term.DictEntry.Senses }}
-        <li>
+          <li>
           {{if ne $ws.English "\\N"}}{{ $ws.English }}{{end}}
-          {{if ne $ws.Notes "\\N"}}<div>{{ $ws.Notes }}</div>{{end}}
-        </li>
+          {{if ne $ws.Notes "\\N"}}<div>Notes: {{ $ws.Notes }}</div>{{end}}
+          </li>
         {{ end }}
         </ul>
       </li>
