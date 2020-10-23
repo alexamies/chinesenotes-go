@@ -30,9 +30,27 @@ developed for Fo Guang Shan, working together with the
 The items above marked as optional require some special set-up, as described
 below.
 
+## Setup
+
+Install [Go](https://golang.org/doc/install).
+
 ## Quickstart
 
-Install [Go](https://golang.org/doc/install). In a terminal, run the commands
+In a terminal, run the commands to get the command line app and download the
+dicitonary
+
+```shell
+go get github.com/alexamies/cnreader
+go run github.com/alexamies/cnreader -download_dict
+```
+
+Set an environment variable to let the app know where its home is
+
+```shell
+export CNREADER_HOME=.
+```
+
+Get the web app and run it
 
 ```shell
 go get github.com/alexamies/chinesenotes-go
@@ -60,7 +78,6 @@ go build
 Run the web server
 
 ```shell
-export CNWEB_HOME=.
 ./chinesenotes-go
 ```
 
@@ -90,7 +107,7 @@ customization. The HTML interface is very basic, just enough for minimal
 testing. For a real web site you should use HTML templates with JavaScript line
 at https://github.com/alexamies/chinesenotes.com
 
-## Development testing with minimal data
+## Development testing
 
 In another terminal
 
@@ -99,16 +116,6 @@ curl http://localhost:8080/find/?query=邃古
 ```
 
 You should see JSON encoded data sent back.
-
-## Integration with real dictionary and corpus data
-
-To get a fully functioning web app with a JavaScript client and stylized web
-pages, generate the HTML files from the corpus by following instructions at
-
-https://github.com/alexamies/chinesenotes.com
-
-Exactly the same process applies to
-[NTI Reader](https://github.com/alexamies/buddhist-dictionary)
 
 ## Features
 
@@ -135,13 +142,6 @@ Tanslation memory search find the closest matching term based on multiple
 criteria, including how many characters match, similarity of the character
 order, Pinyin match, and inclusion of the query in the notes. This depends on
 compilation of the translation memory index and loading it into the database.
-
-```shell
-./cnreader -tmindex
-```
-
-See
-https://github.com/alexamies/chinesenotes.com/blob/master/bin/cnreader.sh
 
 ### Full text search of a Chinese corpus
 
@@ -220,6 +220,15 @@ See the documentation at [Mariadb Image
 Documentation](https://hub.docker.com/_/mariadb/) and [Installing and using 
 MariaDB via Docker](https://mariadb.com/kb/en/library/installing-and-using-mariadb-via-docker/).
 
+The command to download the dictionary files was given above. Generate the
+translation memory index files with the command
+
+```shell
+go run github.com/alexamies/cnreader -tmindex
+```
+
+These are saved in the `index` directory.
+
 To start a Docker container with Mariadb and connect to it from a MySQL command
 line client execute the command below. First, set environment variable 
 `MYSQL_ROOT_PASSWORD`. Also, create a directory outside the container to use as a
@@ -274,17 +283,19 @@ Create the table definitions
 source cndata/chinesenotes.ddl
 ```
 
-Load sample data
+are in the index
+directory.
+
+Load the data into the database
 
 ```sql
 use cnotest_test;
 LOAD DATA LOCAL INFILE 'data/grammar.txt' INTO TABLE grammar CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
 LOAD DATA LOCAL INFILE 'data/topics.txt' INTO TABLE topics CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
-LOAD DATA LOCAL INFILE 'data/testdict.tsv' INTO TABLE words CHARACTER SET utf8mb4 LINES TERMINATED BY '\n' IGNORE 1 LINES;
+LOAD DATA LOCAL INFILE 'data/words.txt' INTO TABLE words CHARACTER SET utf8mb4 LINES TERMINATED BY '\n' IGNORE 1 LINES;
+LOAD DATA LOCAL INFILE 'index/tmindex_uni_domain.tsv' INTO TABLE tmindex_uni_domain CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
+LOAD DATA LOCAL INFILE 'index/tmindex_unigram.tsv' INTO TABLE tmindex_unigram CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
 ```
-
-The word frequency and translation memory index files are in the index
-directory.
 
 Quit from the Maria DB client session
 
@@ -483,38 +494,6 @@ edit the templates under the /templates directory.
 For the even more customization, just use the portal server JSON API to driver
 a JavaScript client.
 
-## Translation Memory Setup
-
-Translation memory search identifies nearly matching terms based on a
-combination of similarity measures. It requires the translation memory index to
-be loaded into the database. In a separate terminal cloone the cnreader repo
-
-```shell
-git clone https://github.com/alexamies/cnreader.git
-```
-
-Build the Go command line app
-
-```shell
-go build
-```
-
-Back in the first terminal use the command
-
-```shell
-bin/buildindex.sh
-```
-
-This will write the index files into the `index` directory. Some sample files
-with a very small dataset are provided for testing purposes. Then load those
-into the database with the commands
-
-```sql
-use [your database];
-LOAD DATA LOCAL INFILE 'index/tmindex_uni_domain.tsv' INTO TABLE tmindex_uni_domain CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
-LOAD DATA LOCAL INFILE 'index/tmindex_unigram.tsv' INTO TABLE tmindex_unigram CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
-```
-
 ## Corpus content and full text search
 
 Full text search requires an forward and reverse indexes: The forward index
@@ -532,16 +511,6 @@ structure with, say, one book per collection, one chapter per document. The
 structure also provides a way to construct links for users to navigate search
 results.
 
-There are sample forward index files in the `data/corpus` directory which can
-be used for testing. Load them into the databsae with the SQL commands
-
-```sql
-use [your database];
-
-LOAD DATA LOCAL INFILE 'data/corpus/example_corpus.tsv' INTO TABLE collection CHARACTER SET utf8mb4 LINES TERMINATED BY '\n' IGNORE 1 LINES;
-LOAD DATA LOCAL INFILE 'data/corpus/example_collection.tsv' INTO TABLE document CHARACTER SET utf8mb4 LINES TERMINATED BY '\n'  IGNORE 1 LINES;;
-```
-
 The reverse index is based on unigrams and bigrams with a BM25 formula to give
 the most relevant documents for a given text search.
 To generate the reverse index install the `cnreader` command
@@ -551,24 +520,21 @@ https://github.com/alexamies/chinesenotes.com/tree/master/go/src/cnreader
 Run the command with no flags
 
 ```shell
-./cnreader 
-```
-
-This will write the full text index files into the `index` directory. 
-
-Alternatively, try running remotely without explicity cloning the repo
-
-```shell
-mkdir -p web/example_collection
-go get github.com/alexamies/cnreader
-go run github.com/alexamies/cnreader  -download_dict
+mkdir -p web/example_collection/
+mkdir -p web/analysis/example_collection
 go run github.com/alexamies/cnreader
 ```
 
-Load those into the database with the commands
+This will write the full text index files into the `index` directory and
+marked up HTML files in the `example_collection` directory.
+
+There are sample forward index files in the `data/corpus` directory which can
+be used for testing. Load them all into the databsae with the SQL commands
 
 ```sql
 use [your database];
+LOAD DATA LOCAL INFILE 'data/corpus/example_corpus.tsv' INTO TABLE collection CHARACTER SET utf8mb4 LINES TERMINATED BY '\n' IGNORE 1 LINES;
+LOAD DATA LOCAL INFILE 'data/corpus/example_collection.tsv' INTO TABLE document CHARACTER SET utf8mb4 LINES TERMINATED BY '\n'  IGNORE 1 LINES;;
 LOAD DATA LOCAL INFILE 'index/word_freq_doc.txt' INTO TABLE word_freq_doc CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
 LOAD DATA LOCAL INFILE 'index/bigram_freq_doc.txt' INTO TABLE bigram_freq_doc CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
 ```
@@ -580,6 +546,12 @@ https://github.com/alexamies/chinesenotes.com
 
 Copy the plain text files to the GCS text directory with environment variable
 `TEXT_BUCKET`.
+
+Start up the web app again and view the pages:
+
+```shell
+./chinesenotes-go
+```
 
 ## Containerize the app and run locally against a databsae
 

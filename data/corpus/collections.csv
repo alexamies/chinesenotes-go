@@ -1,2 +1,2 @@
 #Collection File, HTML File, Title, Description, Introduction File, Corpus, Language, Format, Period
-example_collection.tsv	example_collection.html	A Book 一本書		example_collection000.txt		Literary Chinese	Prose	Classical
+example_collection.tsv	example_collection.html	A Book 一本書		example_collection/example_collection000.txt		Literary Chinese	Prose	Classical

@@ -1,0 +1,10 @@
+內	1	example_collection.html	example_collection/example_collection001.html	0.4771	5
+自	1	example_collection.html	example_collection/example_collection001.html	0.4771	5
+九卿	1	example_collection.html	example_collection/example_collection001.html	0.4771	5
+賦	1	example_collection.html	example_collection/example_collection002.html	0.4771	6
+一	1	example_collection.html	example_collection/example_collection002.html	0.4771	6
+曰	2	example_collection.html	example_collection/example_collection002.html	0.4771	6
+郎將	1	example_collection.html	example_collection/example_collection001.html	0.4771	5
+漢代	1	example_collection.html	example_collection/example_collection001.html	0.4771	5
+風	1	example_collection.html	example_collection/example_collection002.html	0.4771	6
+二	1	example_collection.html	example_collection/example_collection002.html	0.4771	6

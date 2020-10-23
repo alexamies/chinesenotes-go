@@ -1,4 +1,0 @@
-# The name of the directory with dictionary files
-DictionaryDir: data
-
-LUFiles: testdict.tsv

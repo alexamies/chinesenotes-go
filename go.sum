@@ -29,6 +29,10 @@ github.com/alexamies/cnreader v0.0.0-20201018040111-ae58def97a40 h1:Vao8bvhkmF0S
 github.com/alexamies/cnreader v0.0.0-20201018040111-ae58def97a40/go.mod h1:LxX7y9Pq7ynVZnPIy1o7j0fxd5lH9TupqukygV9Mik0=
 github.com/alexamies/cnreader v0.0.2 h1:8rEA3Jx5K8vpaFhJzVtRXf+zypJ6Xvu/TJmbp3ObDBs=
 github.com/alexamies/cnreader v0.0.2/go.mod h1:IGGoBsmtCS5dsboD7b0J9EtT1SJzpBCE6TFuvFsRBqE=
+github.com/alexamies/cnreader v0.0.3 h1:UX6VqaEOyrukT4I1nPQXopjORBXzcscoANHtuvnVZl0=
+github.com/alexamies/cnreader v0.0.3/go.mod h1:IGGoBsmtCS5dsboD7b0J9EtT1SJzpBCE6TFuvFsRBqE=
+github.com/alexamies/cnreader v0.0.4 h1:z7I2fD6mIceySTx4vlBA8Nmi3Ov5J1XZyDj86tZ3U64=
+github.com/alexamies/cnreader v0.0.4/go.mod h1:IGGoBsmtCS5dsboD7b0J9EtT1SJzpBCE6TFuvFsRBqE=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
