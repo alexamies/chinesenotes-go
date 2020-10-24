@@ -1,7 +1,0 @@
-自九卿	1	example_collection.html	example_collection/example_collection001.html	0.4771	5
-一曰	1	example_collection.html	example_collection/example_collection002.html	0.4771	6
-曰風	1	example_collection.html	example_collection/example_collection002.html	0.4771	6
-二曰	1	example_collection.html	example_collection/example_collection002.html	0.4771	6
-曰賦	1	example_collection.html	example_collection/example_collection002.html	0.4771	6
-漢代內	1	example_collection.html	example_collection/example_collection001.html	0.4771	5
-內自	1	example_collection.html	example_collection/example_collection001.html	0.4771	5
