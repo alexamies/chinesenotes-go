@@ -20,8 +20,9 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"fmt"
+	"log"
+
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/alexamies/chinesenotes-go/applog"
 	"github.com/alexamies/chinesenotes-go/webconfig"
 )
 
@@ -77,7 +78,7 @@ func NewAuthenticator(ctx context.Context) (*Authenticator, error) {
 	if err != nil {
 		return nil, err
 	}
-	applog.Info("NewAuthenticator: authenticator initialized")
+	log.Println("NewAuthenticator: authenticator initialized")
 	return &a, nil
 }
 
@@ -87,8 +88,7 @@ func (a *Authenticator) initStatements(ctx context.Context) error {
 	var err error
 	a.database, err = sql.Open("mysql", conString)
 	if err != nil {
-		applog.Error("FATAL: could not connect to the database, ",
-			err)
+		log.Printf("FATAL: could not connect to the database, %v", err)
 		return err
 	}
 
@@ -199,11 +199,11 @@ func (a *Authenticator) ChangePassword(ctx context.Context, userInfo UserInfo,
 			oldPassword, password string) ChangePasswordResult {
 	users, err := a.CheckLogin(ctx, userInfo.UserName, oldPassword)
 	if err != nil {
-		applog.Error("ChangePassword checking login, ", err)
+		log.Printf("ChangePassword checking login, %v", err)
 		return ChangePasswordResult{true, false, false}
 	}
 	if len(users) != 1 {
-		applog.Info("ChangePassword, user or password wrong: ",
+		log.Println("ChangePassword, user or password wrong: ",
 			userInfo.UserName)
 		return ChangePasswordResult{false, false, false}
 	}
@@ -212,11 +212,11 @@ func (a *Authenticator) ChangePassword(ctx context.Context, userInfo UserInfo,
 	hstr := fmt.Sprintf("%x", h.Sum(nil))
 	result, err := a.changePasswordStmt.ExecContext(ctx, hstr, userInfo.UserID)
 	if err != nil {
-		applog.Error("ChangePassword, Error: ", err)
+		log.Printf("ChangePassword, Error: %v", err)
 		return ChangePasswordResult{true, false, false}
 	} 
 	rowsAffected, _ := result.RowsAffected()
-	applog.Info("ChangePassword, rows updated:", rowsAffected)
+	log.Println("ChangePassword, rows updated:", rowsAffected)
 	return ChangePasswordResult{true, true, false}
 }
 
@@ -229,11 +229,11 @@ func (a *Authenticator) CheckLogin(ctx context.Context,
 	h := sha256.New()
 	h.Write([]byte(password))
 	hstr := fmt.Sprintf("%x", h.Sum(nil))
-	//applog.Info("CheckLogin, username, hstr:", username, hstr)
+	//log.Println("CheckLogin, username, hstr:", username, hstr)
 	results, err := a.loginStmt.QueryContext(ctx, username, hstr)
 	defer results.Close()
 	if err != nil {
-		applog.Errorf("CheckLogin, Error for username: %s, %v\n", username, err)
+		log.Printf("CheckLogin, Error for username: %s, %v\n", username, err)
 		return []UserInfo{}, err
 	}
 
@@ -245,10 +245,10 @@ func (a *Authenticator) CheckLogin(ctx context.Context,
 		users = append(users, user)
 	}
 	if len(users) == 0 {
-		applog.Infof("CheckLogin, user or password wrong for user %s\n", username)
+		log.Printf("CheckLogin, user or password wrong for user %s\n", username)
 		u, _ := a.GetUser(ctx, username)
 		if len(u) == 0 {
-			applog.Infof("CheckLogin, user %s not found\n", username)
+			log.Printf("CheckLogin, user %s not found\n", username)
 		}
 	}
 	return users, nil
@@ -260,21 +260,21 @@ func (a *Authenticator) CheckSession(ctx context.Context, sessionid string) Sess
 	if len(sessions) != 1 {
 		return InvalidSession()
 	}
-	applog.Infof("CheckSession, Authenticated = %v\n", sessions[0].Authenticated)
+	log.Printf("CheckSession, Authenticated = %v\n", sessions[0].Authenticated)
 	return sessions[0]
 }
 
 // checkSessionStore checks the session when the user requests a page
 func (a *Authenticator) checkSessionStore(ctx context.Context,
 		sessionid string) []SessionInfo {
-	applog.Infof("checkSessionStore, sessionid: %s\n", sessionid)
+	log.Printf("checkSessionStore, sessionid: %s\n", sessionid)
 	if a.checkSessionStmt == nil {
-		applog.Info("checkSessionStore, checkSessionStmt == nil")
+		log.Println("checkSessionStore, checkSessionStmt == nil")
 		return []SessionInfo{}
 	}
 	results, err := a.checkSessionStmt.QueryContext(ctx, sessionid)
 	if err != nil {
-		applog.Errorf("checkSessionStore, Error: %v\n", err)
+		log.Printf("checkSessionStore, Error: %v\n", err)
 	}
 	defer results.Close()
 
@@ -290,22 +290,21 @@ func (a *Authenticator) checkSessionStore(ctx context.Context,
 			sessions = append(sessions, session)
 		}
 	}
-	applog.Infof("checkSessionStore, sessions found: %d\n", len(sessions))
+	log.Printf("checkSessionStore, sessions found: %d\n", len(sessions))
 	return sessions
 }
 
 // GetUser gets the user information.
 func (a *Authenticator) GetUser(ctx context.Context,
 		username string) ([]UserInfo, error) {
-	applog.Info("getUser, username:", username)
+	log.Println("getUser, username:", username)
 	if a.getUserStmt == nil {
 		return []UserInfo{}, nil
 	}
 	results, err := a.getUserStmt.QueryContext(ctx, username)
 	defer results.Close()
 	if err != nil {
-		applog.Error("getUser, Error for username: ", username, err)
-		return []UserInfo{}, err
+		return nil, fmt.Errorf("getUser, Error for username %s: %v", username, err)
 	}
 
 	users := []UserInfo{}
@@ -355,13 +354,13 @@ func IsAuthorized(user UserInfo, permission string) bool {
 
 // Logout logs the user out of the current session.
 func (a *Authenticator) Logout(ctx context.Context, sessionid string) {
-	applog.Infof("Logout, sessionid: %s\n", sessionid)
+	log.Printf("Logout, sessionid: %s\n", sessionid)
 	result, err := a.logoutStmt.ExecContext(ctx, sessionid)
 	if err != nil {
-		applog.Errorf("Logout, Error: %v\n", err)
+		log.Printf("Logout, Error: %v\n", err)
 	} else {
 		rowsAffected, _ := result.RowsAffected()
-		applog.Infof("Logout, rows updated: %d\n", rowsAffected)
+		log.Printf("Logout, rows updated: %d\n", rowsAffected)
 	}
 }
 
@@ -371,12 +370,12 @@ func NewSessionId() string {
 	b := make([]byte, 32)
     _, err := rand.Read(b)
     if err != nil {
-        applog.Error("NewSessionId, Error: ", err)
+        log.Printf("NewSessionId, Error: %v", err)
         return value
     }
     val, err := base64.URLEncoding.EncodeToString(b), err
 	if err != nil {
-		applog.Info("NewSessionId, Error: ", err)
+		log.Println("NewSessionId, Error: ", err)
 		return value
 	}
 	return val
@@ -390,22 +389,22 @@ func OldPasswordDoesNotMatch() ChangePasswordResult {
 // RequestPasswordReset requests a password reset, to be sent by email.
 func (a *Authenticator) RequestPasswordReset(ctx context.Context,
 		email string) RequestResetResult {
-	applog.Info("RequestPasswordReset, email:", email)
+	log.Println("RequestPasswordReset, email:", email)
 	b := make([]byte, 32)
     _, err := rand.Read(b)
     if err != nil {
-        applog.Error("RequestPasswordReset, Error: ", err)
+        log.Printf("RequestPasswordReset, Error: %v", err)
         return RequestResetResult{true, false, true, InvalidUser(), ""}
     }
     token, err := base64.URLEncoding.EncodeToString(b), err
 	if err != nil {
-		applog.Info("RequestPasswordReset, Error: ", err)
+		log.Println("RequestPasswordReset, Error: ", err)
 		return RequestResetResult{true, false, true, InvalidUser(), ""}
 	}
 	results, err := a.getUserByEmailStmt.QueryContext(ctx, email)
 	defer results.Close()
 	if err != nil {
-		applog.Error("RequestPasswordReset, Error for email: ", email, err)
+		log.Printf("RequestPasswordReset, Error for email %s: %v", email, err)
 		return RequestResetResult{true, false, true, InvalidUser(), ""}
 	}
 	users := []UserInfo{}
@@ -417,27 +416,27 @@ func (a *Authenticator) RequestPasswordReset(ctx context.Context,
 	}
 
 	if len(users) != 1 {
-		applog.Error("RequestPasswordReset, No email: ", email)
+		log.Printf("RequestPasswordReset, No email: %v", email)
 		return RequestResetResult{false, false, true, InvalidUser(), ""}
 	}
 
 	result, err := a.requestResetStmt.ExecContext(ctx, token, users[0].UserID)
 	if err != nil {
-		applog.Info("RequestPasswordReset, Error for email: ", email, err)
+		log.Println("RequestPasswordReset, Error for email: ", email, err)
 		return RequestResetResult{true, false, true, InvalidUser(), ""}
 	}
 	rowsAffected, _ := result.RowsAffected()
-	applog.Info("RequestPasswordReset, rows updated: ", rowsAffected)
+	log.Println("RequestPasswordReset, rows updated: ", rowsAffected)
 	return RequestResetResult{true, true, false, users[0], token}
 }
 
 // ResetPassword resets a password.
 func (a *Authenticator) ResetPassword(ctx context.Context, token, password string) bool {
-	applog.Info("ResetPassword, token:", token)
+	log.Println("ResetPassword, token:", token)
 	results, err := a.getResetRequestStmt.QueryContext(ctx, token)
 	defer results.Close()
 	if err != nil {
-		applog.Error("ResetPassword, Error for token: ", token, err)
+		log.Printf("ResetPassword, Error for token %s: %v", token, err)
 		return false
 	}
 	userIds := []string{}
@@ -447,7 +446,7 @@ func (a *Authenticator) ResetPassword(ctx context.Context, token, password strin
 		userIds = append(userIds, userId)
 	}
 	if len(userIds) != 1 {
-		applog.Error("ResetPassword, No userId: ", token)
+		log.Printf("ResetPassword, No userId: %s", token)
 		return false
 	}
 	userId := userIds[0]
@@ -458,19 +457,19 @@ func (a *Authenticator) ResetPassword(ctx context.Context, token, password strin
 	hstr := fmt.Sprintf("%x", h.Sum(nil))
 	result, err := a.changePasswordStmt.ExecContext(ctx, hstr, userId)
 	if err != nil {
-		applog.Error("ResetPassword, Error setting password: ", err)
+		log.Printf("ResetPassword, Error setting password: %v", err)
 		return false
 	} 
 	rowsAffected, _ := result.RowsAffected()
-	applog.Info("ResetPassword, rows updated for change pwd:", rowsAffected)
+	log.Println("ResetPassword, rows updated for change pwd:", rowsAffected)
 
 	// Update reset token so that it cannot be used again
 	result, err = a.updateResetRequestStmt.ExecContext(ctx, token)
 	if err != nil {
-		applog.Error("ResetPassword, Error updating reset token: ", err)
+		log.Printf("ResetPassword, Error updating reset token: %v", err)
 	} 
 	rowsAffected, _ = result.RowsAffected()
-	applog.Info("ResetPassword, rows updated for token:", rowsAffected)
+	log.Println("ResetPassword, rows updated for token:", rowsAffected)
 
 	return true
 }
@@ -478,15 +477,15 @@ func (a *Authenticator) ResetPassword(ctx context.Context, token, password strin
 // SaveSession saves an authenticated session to the database
 func (a *Authenticator) SaveSession(ctx context.Context,
 		sessionid string, userInfo UserInfo, authenticated int) SessionInfo {
-	applog.Infof("SaveSession, sessionid: %s\n", sessionid)
+	log.Printf("SaveSession, sessionid: %s\n", sessionid)
 	result, err := a.saveSessionStmt.ExecContext(ctx, sessionid, userInfo.UserID,
 		authenticated)
 	if err != nil {
-		applog.Infof("SaveSession, Error for user %d, %v\n ", userInfo.UserID, err)
+		log.Printf("SaveSession, Error for user %d, %v\n ", userInfo.UserID, err)
 		return InvalidSession()
 	}
 	rowsAffected, _ := result.RowsAffected()
-	applog.Infof("SaveSession, rows updated: %d\n", rowsAffected)
+	log.Printf("SaveSession, rows updated: %d\n", rowsAffected)
 	return SessionInfo{
 		Authenticated: authenticated,
 		Valid: true,
@@ -500,11 +499,11 @@ func (a *Authenticator) UpdateSession(ctx context.Context,
 	result, err := a.updateSessionStmt.ExecContext(ctx, authenticated,
 		userInfo.UserID, sessionid)
 	if err != nil {
-		applog.Error("UpdateSession, Error: ", err)
+		log.Printf("UpdateSession, Error: %v", err)
 		return InvalidSession()
 	} 
 	rowsAffected, _ := result.RowsAffected()
-	applog.Infof("UpdateSession, rows updated: %d\n", rowsAffected)
+	log.Printf("UpdateSession, rows updated: %d", rowsAffected)
 	return SessionInfo{
 		Authenticated: authenticated,
 		User: userInfo,

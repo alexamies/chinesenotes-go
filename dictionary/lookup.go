@@ -20,8 +20,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"log"
+
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/alexamies/chinesenotes-go/applog"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
 
@@ -33,7 +35,6 @@ type Results struct {
 
 // Used for grouping word senses by similar headwords in result sets
 func addWordSense2Map(wmap map[string]dicttypes.Word, ws dicttypes.WordSense) {
-	//applog.Info("dictionary.addWordSense2Map() ", ws.Simplified, ws.Traditional)
 	word, ok := wmap[ws.Simplified]
 	if ok {
 		word.Senses = append(word.Senses, ws)
@@ -66,18 +67,12 @@ func (searcher *Searcher) LookupSubstr(ctx context.Context,
 	if query == "" {
 		return nil, errors.New("Query string is empty")
 	}
-	applog.Info("LookupSubstr, query, topic = ", query, topic_en)
+	log.Printf("LookupSubstr, query %s, topic = %s", query, topic_en)
 	likeTerm := "%" + query + "%"
 	results, err := searcher.findSubstrStmt.QueryContext(ctx, likeTerm, likeTerm,
 		topic_en, subtopic_en)
 	if err != nil {
-		applog.Error("LookupSubstr, Error for query: ", query, err)
-		// Retry
-		results, err = searcher.findSubstrStmt.QueryContext(ctx, likeTerm, likeTerm, topic_en)
-		if err != nil {
-			applog.Error("LookupSubstr, Give up after retry: ", query, err)
-			return nil, err
-		}
+		return nil, fmt.Errorf("LookupSubstr, Error for query %s: %v", query, err)
 	}
 	wmap := map[string]dicttypes.Word{}
 	for results.Next() {
@@ -85,7 +80,6 @@ func (searcher *Searcher) LookupSubstr(ctx context.Context,
 		var hw sql.NullInt64
 		var trad, pinyin, english, notes sql.NullString
 		results.Scan(&ws.Simplified, &trad, &pinyin, &english, &notes, &hw)
-		//applog.Info("LookupSubstr, simplified, headword = ", ws.Simplified, hw)
 		if trad.Valid {
 			ws.Traditional = trad.String
 		}
@@ -103,7 +97,7 @@ func (searcher *Searcher) LookupSubstr(ctx context.Context,
 		}
 		addWordSense2Map(wmap, ws)
 	}
-	applog.Info("LookupSubstr, len(wmap): ", len(wmap))
+	log.Printf("LookupSubstr, len(wmap): %d", len(wmap))
 	words := wordMap2Array(wmap)
 	return &Results{words}, nil
 }

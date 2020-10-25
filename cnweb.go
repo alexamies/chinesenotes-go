@@ -23,12 +23,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 
-	"github.com/alexamies/chinesenotes-go/applog"
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dictionary"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
@@ -66,7 +66,7 @@ type htmlContent struct {
 }
 
 func initApp(ctx context.Context) error {
-	applog.Info("initApp Initializing cnweb")
+	log.Println("initApp Initializing cnweb")
 	appConfig = config.InitConfig()
 	webConfig = webconfig.InitWeb()
 	var err error
@@ -116,7 +116,7 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			applog.Errorf("changePasswordHandler authenticator not initialized, \n%v\n", err)
+			log.Printf("changePasswordHandler authenticator not initialized, \n%v\n", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
@@ -129,20 +129,20 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 		vars := webConfig.GetAll()
 		tmpl, err := template.New("admin_portal.html").ParseFiles("templates/admin_portal.html")
 		if err != nil {
-			applog.Errorf("main.adminHandler: error parsing template %v", err)
+			log.Printf("main.adminHandler: error parsing template %v", err)
 		}
 		if tmpl == nil {
-			applog.Error("main.adminHandler: Template is nil")
+			log.Println("main.adminHandler: Template is nil")
 		}
 		if err != nil {
-			applog.Errorf("main.adminHandler: error parsing template %v", err)
+			log.Printf("main.adminHandler: error parsing template %v", err)
 		}
 		err = tmpl.Execute(w, vars)
 		if err != nil {
-			applog.Errorf("main.adminHandler: error rendering template %v", err)
+			log.Printf("main.adminHandler: error rendering template %v", err)
 		}
 	} else {
-		applog.Infof("adminHandler, Not authorized: %v", sessionInfo.User)
+		log.Printf("adminHandler, Not authorized: %v", sessionInfo.User)
 		http.Error(w, "Not authorized", http.StatusForbidden)
 	}
 }
@@ -154,7 +154,7 @@ func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			applog.Errorf("changePasswordHandler authenticator not initialized, \n%v\n", err)
+			log.Printf("changePasswordHandler authenticator not initialized, \n%v\n", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
@@ -184,15 +184,19 @@ func changePasswordFormHandler(w http.ResponseWriter, r *http.Request) {
 
 // Custom 404 page handler
 func custom404(w http.ResponseWriter, r *http.Request, url string) {
-	applog.Errorf("custom404: sending 404 for %s", url)
+	log.Printf("custom404: sending 404 for %s", url)
 	displayPage(w, "404.html", nil)
 }
 
 func displayPage(w http.ResponseWriter, templateName string, content interface{}) {
-	tmpl := templates[templateName]
+	tmpl, ok := templates[templateName]
+	if !ok {
+		log.Printf("displayPage: template found %s", templateName)
+		http.Error(w, "Server Error", http.StatusInternalServerError)
+	}
 	err := tmpl.Execute(w, content)
 	if err != nil {
-		applog.Errorf("displayPage: error rendering template %f", err)
+		log.Printf("displayPage: error rendering template %f", err)
 		http.Error(w, "Server Error", http.StatusInternalServerError)
 	}	
 }
@@ -200,7 +204,7 @@ func displayPage(w http.ResponseWriter, templateName string, content interface{}
 // displayHome shows a simple page, for health checks and testing.
 // End users may also to see this when accessing direct from the browser
 func displayHome(w http.ResponseWriter, r *http.Request) {
-	applog.Infof("displayHome: url %s\n", r.URL.Path)
+	log.Printf("displayHome: url %s\n", r.URL.Path)
 
 	// Tell health check probes that we are alive
 	if !acceptHTML(r) {
@@ -218,7 +222,7 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 			var err error
 			authenticator, err = identity.NewAuthenticator(ctx)
 			if err != nil {
-				applog.Errorf("displayHome: authenticator not initialized, \n%v\n", err)
+				log.Printf("displayHome: authenticator not initialized, \n%v\n", err)
 				http.Error(w, "Server error", http.StatusInternalServerError)
 				return
 			}
@@ -228,7 +232,7 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
 		} else {
-			applog.Info("displayHome error getting cookie: %v", err)
+			log.Printf("displayHome error getting cookie: %v", err)
 			displayPage(w, "login_form.html", content)
 			return
 		}
@@ -257,7 +261,7 @@ func enforceValidSession(w http.ResponseWriter, r *http.Request) identity.Sessio
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			applog.Errorf("enforceValidSession authenticator not initialized, \n%v\n", err)
+			log.Printf("enforceValidSession authenticator not initialized, \n%v\n", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
@@ -270,7 +274,7 @@ func enforceValidSession(w http.ResponseWriter, r *http.Request) identity.Sessio
 			return sessionInfo
 		}
 	} else {
-		applog.Infof("enforceValidSession, Invalid session %v", sessionInfo.User)
+		log.Printf("enforceValidSession, Invalid session %v", sessionInfo.User)
 		http.Error(w, "Not authorized", http.StatusForbidden)
 		return identity.InvalidSession()
 	}
@@ -279,7 +283,7 @@ func enforceValidSession(w http.ResponseWriter, r *http.Request) identity.Sessio
 
 // Finds documents matching the given query with search in text body
 func findAdvanced(response http.ResponseWriter, request *http.Request) {
-	applog.Info("findAdvanced, enter")
+	log.Println("findAdvanced, enter")
 	q := getSingleValue(request, "query")
 	if len(q) == 0 {
 		q = getSingleValue(request, "text")
@@ -291,7 +295,7 @@ func findAdvanced(response http.ResponseWriter, request *http.Request) {
 				Title: title,
 			}
 			if !webconfig.UseDatabase() {
-				applog.Error("findAdvanced database is needed for this feature")
+				log.Println("findAdvanced database is needed for this feature")
 				content.ErrorMsg = "Full text search is not configured"
 			}
 			displayPage(response, "full_text_search.html", content)
@@ -312,10 +316,10 @@ func findDocs(response http.ResponseWriter, request *http.Request, fullText bool
 	c := getSingleValue(request, "collection")
 	ctx := context.Background()
 	if df == nil || !df.Inititialized() || dictSearcher == nil || !dictSearcher.Initialized() {
-		applog.Info("main.findDocs re-initializing app")
+		log.Println("main.findDocs re-initializing app")
 		err := initApp(ctx)
 		if err != nil {
-			applog.Errorf("findDocs error: \n%v\n", err)
+			log.Printf("findDocs error: \n%v\n", err)
 			http.Error(response, "Internal error", http.StatusInternalServerError)
 			return
 		}
@@ -328,7 +332,7 @@ func findDocs(response http.ResponseWriter, request *http.Request, fullText bool
 	}
 
 	if err != nil {
-		applog.Errorf("main.findDocs Error searching docs, %v", err)
+		log.Printf("main.findDocs Error searching docs, %v", err)
 		http.Error(response, "Internal error", http.StatusInternalServerError)
 		return
 	}
@@ -349,12 +353,12 @@ func findDocs(response http.ResponseWriter, request *http.Request, fullText bool
 	// Return JSON
 	resultsJson, err := json.Marshal(results)
 	if err != nil {
-		applog.Errorf("main.findDocs error marshalling JSON, %v", err)
+		log.Printf("main.findDocs error marshalling JSON, %v", err)
 		http.Error(response, "Error marshalling results",
 			http.StatusInternalServerError)
 	} else {
 		if (q != "hello" && q != "Eight" ) { // Health check monitoring probe
-			applog.Infof("main.findDocs, results: %q", string(resultsJson))
+			log.Printf("main.findDocs, results: %q", string(resultsJson))
 		}
 		response.Header().Set("Content-Type", "application/json; charset=utf-8")
 		fmt.Fprintf(response, string(resultsJson))
@@ -400,31 +404,31 @@ func showQueryResults(w http.ResponseWriter, results *find.QueryResults, fullTex
 		tmpl = templates["find_results.html"]
 	}
 	if err != nil {
-		applog.Errorf("showQueryResults: error parsing template %v", err)
+		log.Printf("showQueryResults: error parsing template %v", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
 	if tmpl == nil {
-		applog.Error("showQueryResults: Template is nil")
+		log.Println("showQueryResults: Template is nil")
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
 	err = tmpl.Execute(w, content)
 	if err != nil {
-		applog.Errorf("showQueryResults: error rendering template %v", err)
+		log.Printf("showQueryResults: error rendering template %v", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 	}
 }
 
 // findHandler finds documents matching the given query.
 func findHandler(response http.ResponseWriter, request *http.Request) {
-	applog.Infof("findHandler: url %s\n", request.URL.Path)
+	log.Printf("findHandler: url %s\n", request.URL.Path)
 	findDocs(response, request, false)
 }
 
 // findSubstring finds terms matching the given query with a substring match.
 func findSubstring(response http.ResponseWriter, request *http.Request) {
-	applog.Info("main.findSubstring, enter")
+	log.Println("main.findSubstring, enter")
 	url := request.URL
 	queryString := url.Query()
 	query := queryString["query"]
@@ -445,14 +449,14 @@ func findSubstring(response http.ResponseWriter, request *http.Request) {
 	ctx := context.Background()
 	results, err := dictSearcher.LookupSubstr(ctx, q, t, st)
 	if err != nil {
-		applog.Errorf("main.findSubstring Error looking up term, %v", err)
+		log.Printf("main.findSubstring Error looking up term, %v", err)
 		http.Error(response, "Error looking up term",
 			http.StatusInternalServerError)
 		return
 	}
 	resultsJson, err := json.Marshal(results)
 	if err != nil {
-		applog.Errorf("main.findSubstring error marshalling JSON, %v", err)
+		log.Printf("main.findSubstring error marshalling JSON, %v", err)
 		http.Error(response, "Error marshalling results",
 			http.StatusInternalServerError)
 	} else {
@@ -485,38 +489,38 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			applog.Errorf("loginHandler authenticator not initialized, \n%v\n", err)
+			log.Printf("loginHandler authenticator not initialized, \n%v\n", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
 	sessionInfo := identity.InvalidSession()
 	err := r.ParseForm()
 	if err != nil {
-		applog.Errorf("loginHandler: error parsing form: %v", err)
+		log.Printf("loginHandler: error parsing form: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	username := r.PostFormValue("UserName")
-	applog.Infof("loginHandler: username = %s", username)
+	log.Printf("loginHandler: username = %s", username)
 	password := r.PostFormValue("Password")
 	users, err := authenticator.CheckLogin(ctx, username, password)
 	if err != nil {
-		applog.Errorf("main.loginHandler checking login, %v", err)
+		log.Printf("main.loginHandler checking login, %v", err)
 		http.Error(w, "Error checking login", http.StatusInternalServerError)
 		return
 	}
 	if len(users) != 1 {
-		applog.Error("loginHandler: user not found", username)
+		log.Println("loginHandler: user not found", username)
 	} else {
 		cookie, err := r.Cookie("session")
 		if err == nil {
-			applog.Infof("loginHandler: updating session: %s", cookie.Value)
+			log.Printf("loginHandler: updating session: %s", cookie.Value)
 			sessionInfo = authenticator.UpdateSession(ctx, cookie.Value, users[0], 1)
 		}
 		if (err != nil) || !sessionInfo.Valid {
 			sessionid := identity.NewSessionId()
 			domain := webconfig.GetSiteDomain()
-			applog.Info("loginHandler: setting new session %s\n for domain %s\n",
+			log.Printf("loginHandler: setting new session %s\n for domain %s",
 				sessionid, domain)
 			cookie := &http.Cookie{
         		Name: "session",
@@ -542,7 +546,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 // logoutForm displays a form button to logout the user
 func logoutForm(w http.ResponseWriter, r *http.Request) {
-	applog.Infof("logoutForm: display form")
+	log.Printf("logoutForm: display form")
 	title := webConfig.GetVarWithDefault("Title", defTitle)
 	content := htmlContent{
 		Title: title,
@@ -552,20 +556,20 @@ func logoutForm(w http.ResponseWriter, r *http.Request) {
 
 // logoutHandler logs the user out of their session
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
-	applog.Infof("logoutHandler: process form")
+	log.Printf("logoutHandler: process form")
 	ctx := context.Background()
 	if authenticator == nil {
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			applog.Errorf("loginHandler authenticator not initialized, \n%v\n", err)
+			log.Printf("loginHandler authenticator not initialized, \n%v\n", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
 	cookie, err := r.Cookie("session")
 	if err != nil {
 		// OK, just don't show the contents that require a login
-		applog.Error("logoutHandler: no cookie")
+		log.Println("logoutHandler: no cookie")
 	} else {
 		authenticator.Logout(ctx, cookie.Value)
 		cookie.MaxAge = -1
@@ -593,7 +597,7 @@ func mediaDetailHandler(response http.ResponseWriter, request *http.Request) {
 	if (mediaSearcher == nil) {
 		mediaSearcher = media.NewMediaSearcher(database, ctx)
 		if !mediaSearcher.Initialized() {
-			applog.Error("main.mediaDetailHandler initializing media searcher")
+			log.Println("main.mediaDetailHandler initializing media searcher")
 			http.Error(response, "Error marshalling results",
 					http.StatusInternalServerError)
 			return
@@ -604,14 +608,14 @@ func mediaDetailHandler(response http.ResponseWriter, request *http.Request) {
 	}
 	queryString := request.URL.Query()
 	query := queryString["mediumResolution"]
-	applog.Infof("mediaDetailHandler: query: %s", query)
+	log.Printf("mediaDetailHandler: query: %s", query)
 	q := "No Query"
 	if len(query) > 0 {
 		q = query[0]
 	}
 	results, err := mediaSearcher.FindMedia(q, ctx)
 	if err != nil {
-		applog.Error("main.mediaDetailHandler Error retrieving media detail, ",
+		log.Println("main.mediaDetailHandler Error retrieving media detail, ",
 			err)
 		http.Error(response, "Error retrieving media detail",
 			http.StatusInternalServerError)
@@ -619,7 +623,7 @@ func mediaDetailHandler(response http.ResponseWriter, request *http.Request) {
 	}
 	resultsJson, err := json.Marshal(results)
 	if err != nil {
-		applog.Errorf("main.mediaDetailHandler error marshalling JSON, %v", err)
+		log.Printf("main.mediaDetailHandler error marshalling JSON, %v", err)
 		http.Error(response, "Error marshalling results",
 			http.StatusInternalServerError)
 	} else {
@@ -635,7 +639,7 @@ func portalHandler(w http.ResponseWriter, r *http.Request) {
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			applog.Errorf("portalHandler: authenticator not initialized, \n%v\n", err)
+			log.Printf("portalHandler: authenticator not initialized, \n%v\n", err)
 			http.Error(w, "Server error", http.StatusInternalServerError)
 		}
 	}
@@ -644,7 +648,7 @@ func portalHandler(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
 	} else {
-		applog.Info("portalHandler error getting cookie: %v", err)
+		log.Printf("portalHandler error getting cookie: %v", err)
 		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
 	}
@@ -652,7 +656,7 @@ func portalHandler(w http.ResponseWriter, r *http.Request) {
 	if identity.IsAuthorized(user, "translation_portal") {
 		displayPortalHome(w)
 	} else {
-		applog.Infof("portalHandler %s with role %s not authorized for portal",
+		log.Printf("portalHandler %s with role %s not authorized for portal",
 			user.UserName, user.Role)
 		http.Error(w, "Not authorized", http.StatusForbidden)
 	}
@@ -660,13 +664,13 @@ func portalHandler(w http.ResponseWriter, r *http.Request) {
 
 // portalLibraryHandler handles static but private pages
 func portalLibraryHandler(w http.ResponseWriter, r *http.Request) {
-	applog.Infof("portalLibraryHandler: url %s\n", r.URL.Path)
+	log.Printf("portalLibraryHandler: url %s\n", r.URL.Path)
 	ctx := context.Background()
 	if authenticator == nil {
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			applog.Errorf("portalLibraryHandler: authenticator not initialized, \n%v\n", err)
+			log.Printf("portalLibraryHandler: authenticator not initialized, \n%v\n", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
@@ -675,7 +679,7 @@ func portalLibraryHandler(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
 	} else {
-		applog.Infof("portalLibraryHandler error getting cookie: %v\n", err)
+		log.Printf("portalLibraryHandler error getting cookie: %v\n", err)
 		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
 	}
@@ -686,15 +690,15 @@ func portalLibraryHandler(w http.ResponseWriter, r *http.Request) {
 		filename := portalLibHome + "/" + filepart
 		_, err := os.Stat(filename)
 		if err != nil {
-			applog.Infof("portalLibraryHandler os.Stat error: %v for file %s\n",
+			log.Printf("portalLibraryHandler os.Stat error: %v for file %s\n",
 					err, filename)
 			custom404(w, r, filename)
 			return
 		}
-		applog.Infof("portalLibraryHandler: serving file %s\n", filename)
+		log.Printf("portalLibraryHandler: serving file %s\n", filename)
 		http.ServeFile(w, r, filename)
 	} else {
-		applog.Infof("portalLibraryHandler %s with role %s not authorized\n",
+		log.Printf("portalLibraryHandler %s with role %s not authorized\n",
 			user.UserName, user.Role)
 		http.Error(w, "Not authorized", http.StatusForbidden)
 	}
@@ -714,7 +718,7 @@ func requestResetHandler(w http.ResponseWriter, r *http.Request) {
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			applog.Errorf("requestResetHandler: authenticator not initialized, \n%v\n", err)
+			log.Printf("requestResetHandler: authenticator not initialized, \n%v\n", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
@@ -746,13 +750,13 @@ func resetPasswordFormHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
-	applog.Info("resetPasswordHandler enter")
+	log.Println("resetPasswordHandler enter")
 	ctx := context.Background()
 	if authenticator == nil {
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			applog.Errorf("resetPasswordHandler: authenticator not initialized, \n%v\n", err)
+			log.Printf("resetPasswordHandler: authenticator not initialized, \n%v\n", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
@@ -774,7 +778,7 @@ func sendJSON(w http.ResponseWriter, obj interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	resultsJson, err := json.Marshal(obj)
 	if err != nil {
-		applog.Errorf("changePasswordHandler: error marshalling json: %v", err)
+		log.Printf("changePasswordHandler: error marshalling json: %v", err)
 		http.Error(w, "Error checking login", http.StatusInternalServerError)
 		return
 	}
@@ -789,7 +793,7 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			applog.Errorf("sessionHandler: authenticator not initialized, \n%v\n", err)
+			log.Printf("sessionHandler: authenticator not initialized, \n%v\n", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
@@ -800,7 +804,7 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if (err != nil) || (!sessionInfo.Valid) {
 		// OK, just don't show the contents that don't require a login
-		applog.Info("sessionHandler: creating a new cookie")
+		log.Println("sessionHandler: creating a new cookie")
 		sessionid := identity.NewSessionId()
 		cookie := &http.Cookie{
         	Name: "session",
@@ -834,30 +838,30 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 				Title: title,
 			}
 			if !webconfig.UseDatabase() {
-				applog.Error("translationMemory database is needed for this feature")
+				log.Println("translationMemory database is needed for this feature")
 				content.ErrorMsg = "Translation memory not configured"
 			}
 			displayPage(w, "findtm.html", content)
 			return
 		}
-		applog.Error("translationMemory Search query string is empty")
+		log.Println("translationMemory Search query string is empty")
 		http.Error(w, "Query string is empty", http.StatusInternalServerError)
 		return
 	}
 	d := getSingleValue(r, "domain")
-	applog.Infof("main.translationMemory Query: %s, domain: %s", q, d)
+	log.Printf("main.translationMemory Query: %s, domain: %s", q, d)
 	ctx := context.Background()
 	if tmSearcher == nil {
 		err := initApp(ctx)
 		if err != nil {
-			applog.Errorf("findDocs error: \n%v\n", err)
+			log.Printf("findDocs error: \n%v\n", err)
 			http.Error(w, "Internal error", http.StatusInternalServerError)
 			return
 		}
 	}
 	results, err := tmSearcher.Search(ctx, q, d, wdict)
 	if err != nil {
-		applog.Errorf("main.translationMemory error searching, %v", err)
+		log.Printf("main.translationMemory error searching, %v", err)
 		http.Error(w, "Internal Error", http.StatusInternalServerError)
 		return
 	}
@@ -871,7 +875,7 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 	}
 	resultsJson, err := json.Marshal(results)
 	if err != nil {
-		applog.Errorf("main.translationMemory error marshalling JSON, %v", err)
+		log.Printf("main.translationMemory error marshalling JSON, %v", err)
 		http.Error(w, "Internal Error", http.StatusInternalServerError)
 		return
 	}
@@ -881,11 +885,11 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 
 //Entry point for the web application
 func main() {
-	applog.Info("cnweb.main Iniitalizing cnweb")
+	log.Println("cnweb.main Iniitalizing cnweb")
 	ctx := context.Background()
 	err := initApp(ctx)
 	if err != nil {
-		applog.Errorf("main() error for initApp: \n%v\n", err)
+		log.Printf("main() error for initApp: \n%v\n", err)
 	}
 
 	http.HandleFunc("/#", findHandler)
@@ -913,10 +917,10 @@ func main() {
 	http.Handle("/web/", http.StripPrefix("/web/", fs))
 	http.HandleFunc("/", displayHome)
 	portStr := ":" + strconv.Itoa(webconfig.GetPort())
-	applog.Infof("cnweb.main Starting http server on port %s\n", portStr)
+	log.Printf("cnweb.main Starting http server on port %s\n", portStr)
 	err = http.ListenAndServe(portStr, nil)
 	if err != nil {
-		applog.Errorf("main() error for starting server: \n%v\n", err)
+		log.Printf("main() error for starting server: \n%v\n", err)
 		os.Exit(1)
 	}
 }

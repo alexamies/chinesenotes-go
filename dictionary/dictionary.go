@@ -18,8 +18,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
+	
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/alexamies/chinesenotes-go/applog"
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/fileloader"
@@ -45,12 +46,12 @@ func NewSearcher(ctx context.Context, database *sql.DB) *Searcher {
 		var err error
 		s.findEnglishStmt, err = initEnglishQuery(ctx, database)
 		if err != nil {
-			applog.Infof("NewSearcher, database statement initializaton error %v", err)
+			log.Printf("NewSearcher, database statement initializaton error %v", err)
 			return &s
 		}
 		s.findSubstrStmt, err = initSubtrQuery(ctx, database)
 		if err != nil {
-			applog.Infof("NewSearcher, substr query initializaton error \n%v\n", err)
+			log.Printf("NewSearcher, substr query initializaton error \n%v\n", err)
 			return &s
 		}
 	}
@@ -74,7 +75,7 @@ func (s *Searcher) Initialized() bool {
 // FindWordsByEnglish returns the word senses with English approximate or Pinyin exact match
 func (searcher *Searcher) FindWordsByEnglish(ctx context.Context,
 		query string) ([]dicttypes.WordSense, error) {
-	applog.Infof("findWordsByEnglish, query = %s", query)
+	log.Printf("findWordsByEnglish, query = %s", query)
 	likeEnglish := "%" + query + "%"
 	if searcher.findEnglishStmt == nil {
 		return nil, fmt.Errorf("FindWordsByEnglish,findEnglishStmt is nil query = %s",
@@ -82,11 +83,11 @@ func (searcher *Searcher) FindWordsByEnglish(ctx context.Context,
 	}
 	results, err := searcher.findEnglishStmt.QueryContext(ctx, query, likeEnglish)
 	if err != nil {
-		applog.Errorf("FindWordsByEnglish, Error for query: %s, error %v", query, err)
+		log.Printf("FindWordsByEnglish, Error for query: %s, error %v", query, err)
 		// Retry
 		results, err = searcher.findEnglishStmt.QueryContext(ctx, query, query)
 		if err != nil {
-			applog.Errorf("FindWordsByEnglish, Give up after retry: %s, error: %v", query, err)
+			log.Printf("FindWordsByEnglish, Give up after retry: %s, error: %v", query, err)
 			return nil, err
 		}
 	}
@@ -96,7 +97,7 @@ func (searcher *Searcher) FindWordsByEnglish(ctx context.Context,
 		var hw sql.NullInt64
 		var trad, pinyin, english, notes sql.NullString
 		results.Scan(&ws.Simplified, &trad, &pinyin, &english, &notes, &hw)
-		applog.Infof("FindWordsByEnglish, simplified, headword = %s, %v",
+		log.Printf("FindWordsByEnglish, simplified, headword = %s, %v",
 			ws.Simplified, hw)
 		if trad.Valid {
 			ws.Traditional = trad.String
@@ -115,7 +116,7 @@ func (searcher *Searcher) FindWordsByEnglish(ctx context.Context,
 		}
 		senses = append(senses, ws)
 	}
-	applog.Info("FindWordsByEnglish, len(senses): ", len(senses))
+	log.Printf("FindWordsByEnglish, len(senses): %d", len(senses))
 	return senses, nil
 }
 
@@ -124,7 +125,7 @@ func LoadDict(ctx context.Context, database *sql.DB,
 		appConfig config.AppConfig) (map[string]dicttypes.Word, error) {
 	start := time.Now()
 	if database == nil {
-		applog.Error("LoadDict, database nil, loading from file")
+		log.Println("LoadDict, database nil, loading from file")
     return fileloader.LoadDictFile(appConfig)
 	}
 	wdict := map[string]dicttypes.Word{}
@@ -132,12 +133,12 @@ func LoadDict(ctx context.Context, database *sql.DB,
 	stmt, err := database.PrepareContext(ctx, 
 		"SELECT id, simplified, traditional, pinyin, english, parent_en, notes, headword FROM words")
     if err != nil {
-        applog.Errorf("LoadDict Error preparing stmt, load from file instead: %v\n", err)
+        log.Printf("LoadDict Error preparing stmt, load from file instead: %v\n", err)
         return fileloader.LoadDictFile(appConfig)
     }
 	results, err := stmt.QueryContext(ctx)
 	if err != nil {
-		applog.Errorf("LoadDict, Error for query, loading from file: \n%v\n", err)
+		log.Printf("LoadDict, Error for query, loading from file: \n%v\n", err)
     return fileloader.LoadDictFile(appConfig)
 	}
 	for results.Next() {
@@ -199,6 +200,6 @@ func LoadDict(ctx context.Context, database *sql.DB,
 			}
 		}
 	}
-	applog.Infof("LoadDict loading time: %d", time.Since(start))
+	log.Printf("LoadDict loading time: %d", time.Since(start))
 	return wdict, nil
 }

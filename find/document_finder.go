@@ -16,13 +16,12 @@ package find
 import (
 	"database/sql"
 	"context"
-	"errors"
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 	_ "github.com/go-sql-driver/mysql"
 	
-	"github.com/alexamies/chinesenotes-go/applog"
 	"github.com/alexamies/chinesenotes-go/dictionary"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/fulltext"
@@ -102,11 +101,11 @@ func NewDocFinder(ctx context.Context, database *sql.DB) DocFinder {
 	if database != nil {
 		err := df.initFind(ctx)
 		if err != nil {
-			applog.Errorf("NewDocFinder, Error: %v", err)
+			log.Printf("NewDocFinder, Error: %v", err)
 			return &df
 		}
 	}
-	applog.Info("NewDocFinder initialized")
+	log.Println("NewDocFinder initialized")
 	df.initialized = true
 	return &df
 }
@@ -133,7 +132,7 @@ func (df *DatabaseDocFinder) cacheColDetails(ctx context.Context) map[string]str
 	df.colMap = map[string]string{}
 	results, err := df.findAllColTitlesStmt.QueryContext(ctx)
 	if err != nil {
-		applog.Errorf("cacheColDetails, Error for query: %v", err)
+		log.Printf("cacheColDetails, Error for query: %v", err)
 		return df.colMap
 	}
 	defer results.Close()
@@ -143,7 +142,7 @@ func (df *DatabaseDocFinder) cacheColDetails(ctx context.Context) map[string]str
 		results.Scan(&gloss_file, &title)
 		df.colMap[gloss_file] = title
 	}
-	applog.Infof("cacheColDetails, len(colMap) = %d\n", len(df.colMap))
+	log.Printf("cacheColDetails, len(colMap) = %d\n", len(df.colMap))
 	return df.colMap
 }
 
@@ -166,7 +165,7 @@ func (df *DatabaseDocFinder) cacheDocDetails(ctx context.Context) (map[string]Do
 			&doc.CollectionTitle)
 		df.docMap[doc.GlossFile] = doc
 	}
-	applog.Infof("cacheDocDetails, len(docMap) = %d\n", len(df.docMap))
+	log.Printf("cacheDocDetails, len(docMap) = %d\n", len(df.docMap))
 	return df.docMap, nil
 }
 
@@ -179,7 +178,7 @@ func (df *DatabaseDocFinder) cacheDocFileMap(ctx context.Context) map[string]str
 	df.docFileMap = map[string]string{}
 	results, err := df.docListStmt.QueryContext(ctx)
 	if err != nil {
-		applog.Error("cacheDocFileMap, Error for query: ", err)
+		log.Printf("cacheDocFileMap, Error for query: %v", err)
 		return df.docFileMap
 	}
 	defer results.Close()
@@ -202,7 +201,7 @@ func (df DatabaseDocFinder) GetDocFileMap() map[string]string {
 // Raw BM25 values are scaled with 1.0 being the top value
 func combineByWeight(doc Document, maxSimWords, maxSimBigram float64) Document {
 	similarity := minSimilarity
-	if maxSimWords != 0. && maxSimBigram != 0. {
+	if maxSimWords != 0.0 && maxSimBigram != 0.0 {
 		similarity = intercept +
 			WEIGHT[0] * doc.SimWords / maxSimWords +
 			WEIGHT[1] * doc.SimBigram / maxSimBigram +
@@ -230,7 +229,6 @@ func (df *DatabaseDocFinder) countCollections(ctx context.Context, query string)
 	var count int
 	results, err := df.countColStmt.QueryContext(ctx, "%" + query + "%")
 	if err != nil {
-		applog.Error("countCollections: Error for query: ", query, err)
 		return 0, fmt.Errorf("countCollections: query %s, error: %v", query, err)
 	}
 	results.Next()
@@ -242,7 +240,7 @@ func (df *DatabaseDocFinder) countCollections(ctx context.Context, query string)
 // findBodyBM25 searches the corpus for document bodies most similar using a BM25 model.
 //  Param: terms - The decomposed query string with 0 < num elements < 7
 func (df *DatabaseDocFinder) findBodyBM25(ctx context.Context, terms []string) ([]Document, error) {
-	applog.Info("findBodyBM25, terms = ", terms)
+	log.Println("findBodyBM25, terms = ", terms)
 	var results *sql.Rows
 	var err error
 	if len(terms) == 1 {
@@ -264,15 +262,15 @@ func (df *DatabaseDocFinder) findBodyBM25(ctx context.Context, terms []string) (
 			terms[2], terms[3], terms[4], terms[5])
 	}
 	if err != nil {
-		applog.Error("findBodyBM25, Error for query: ", terms, err)
-		return []Document{}, err
+		
+		return nil, fmt.Errorf("findBodyBM25, Error for query %v: %v", terms, err)
 	}
 	simSlice := []Document{}
 	for results.Next() {
 		docSim := Document{}
 		results.Scan(&docSim.SimWords, &docSim.SimBitVector,
 			&docSim.ContainsWords, &docSim.CollectionFile, &docSim.GlossFile)
-		//applog.Info("findBodyBM25, Similarity, Document = ", docSim)
+		//log.Println("findBodyBM25, Similarity, Document = ", docSim)
 		simSlice = append(simSlice, docSim)
 	}
 	return simSlice, nil
@@ -283,7 +281,7 @@ func (df *DatabaseDocFinder) findBodyBM25(ctx context.Context, terms []string) (
 //  Param: terms - The decomposed query string with 1 < num elements < 7
 func (df *DatabaseDocFinder) findBodyBM25InCol(ctx context.Context, terms []string,
 		col_gloss_file string) ([]Document, error) {
-	applog.Info("findBodyBM25InCol, terms = ", terms)
+	log.Println("findBodyBM25InCol, terms = ", terms)
 	var results *sql.Rows
 	var err error
 	if len(terms) == 1 {
@@ -308,8 +306,7 @@ func (df *DatabaseDocFinder) findBodyBM25InCol(ctx context.Context, terms []stri
 			col_gloss_file)
 	}
 	if err != nil {
-		applog.Error("findBodyBM25InCol, Error for query: ", terms, err)
-		return []Document{}, err
+		return nil, fmt.Errorf("findBodyBM25InCol, Error for query %v: %v", terms, err)
 	}
 	simSlice := []Document{}
 	for results.Next() {
@@ -317,7 +314,7 @@ func (df *DatabaseDocFinder) findBodyBM25InCol(ctx context.Context, terms []stri
 		docSim.CollectionFile = col_gloss_file
 		results.Scan(&docSim.SimWords, &docSim.SimBitVector,
 			&docSim.ContainsWords, &docSim.GlossFile)
-		//applog.Info("findBodyBM25InCol, Similarity, Document = ", docSim)
+		//log.Println("findBodyBM25InCol, Similarity, Document = ", docSim)
 		simSlice = append(simSlice, docSim)
 	}
 	return simSlice, nil
@@ -327,12 +324,11 @@ func (df *DatabaseDocFinder) findBodyBM25InCol(ctx context.Context, terms []stri
 // model.
 //  Param: terms - The decomposed query string with 1 < num elements < 7
 func (df *DatabaseDocFinder) findBodyBigram(ctx context.Context, terms []string) ([]Document, error) {
-	applog.Info("findBodyBigram, terms = ", terms)
+	log.Println("findBodyBigram, terms = ", terms)
 	var results *sql.Rows
 	var err error
 	if len(terms) < 2 {
-		applog.Error("findBodyBigram, len(terms) < 2", len(terms))
-		return []Document{}, errors.New("Too few arguments")
+		return nil, fmt.Errorf("findBodyBigram, too few arguments, len(terms) < 2: %d", len(terms))
 	} else if len(terms) == 2 {
 		bigram1 := terms[0] + terms[1]
 		results, err = df.simBigram1Stmt.QueryContext(ctx, df.avdl, bigram1)
@@ -364,15 +360,14 @@ func (df *DatabaseDocFinder) findBodyBigram(ctx context.Context, terms []string)
 			bigram3, bigram4, bigram5)
 	}
 	if err != nil {
-		applog.Error("findBodyBigram, Error for query: ", terms, err)
-		return []Document{}, err
+		return nil, fmt.Errorf("findBodyBigram, Error for query %v: %v", terms, err)
 	}
 	simSlice := []Document{}
 	for results.Next() {
 		docSim := Document{}
 		results.Scan(&docSim.SimBigram, &docSim.ContainsBigrams,
 			&docSim.CollectionFile, &docSim.GlossFile)
-		//applog.Info("findBodyBigram, Similarity, Document = ", docSim)
+		//log.Println("findBodyBigram, Similarity, Document = ", docSim)
 		simSlice = append(simSlice, docSim)
 	}
 	return simSlice, nil
@@ -383,12 +378,11 @@ func (df *DatabaseDocFinder) findBodyBigram(ctx context.Context, terms []string)
 //  Param: terms - The decomposed query string with 1 < num elements < 7
 func (df *DatabaseDocFinder) findBodyBgInCol(ctx context.Context, terms []string,
 		col_gloss_file string) ([]Document, error) {
-	applog.Info("findBodyBgInCol, terms = ", terms)
+	log.Println("findBodyBgInCol, terms = ", terms)
 	var results *sql.Rows
 	var err error
 	if len(terms) < 2 {
-		applog.Error("findBodyBgInCol, len(terms) < 2", len(terms))
-		return []Document{}, errors.New("Too few arguments")
+		return nil, fmt.Errorf("findBodyBgInCol, too few arguments, len(terms) < 2: %d", len(terms))
 	} else if len(terms) == 2 {
 		if df.simBgCol1Stmt == nil {
 			return []Document{}, nil
@@ -431,8 +425,7 @@ func (df *DatabaseDocFinder) findBodyBgInCol(ctx context.Context, terms []string
 			bigram3, bigram4, bigram5, col_gloss_file)
 	}
 	if err != nil {
-		applog.Error("findBodyBgInCol, Error for query: ", terms, err)
-		return []Document{}, err
+		return nil, fmt.Errorf("findBodyBgInCol, Error for query %v: %v", terms, err)
 	}
 	simSlice := []Document{}
 	for results.Next() {
@@ -440,7 +433,7 @@ func (df *DatabaseDocFinder) findBodyBgInCol(ctx context.Context, terms []string
 		docSim.CollectionFile = col_gloss_file
 		results.Scan(&docSim.SimBigram, &docSim.ContainsBigrams,
 			&docSim.GlossFile)
-		//applog.Info("findBodyBgInCol, Similarity, Document = ", docSim)
+		//log.Println("findBodyBgInCol, Similarity, Document = ", docSim)
 		simSlice = append(simSlice, docSim)
 	}
 	return simSlice, nil
@@ -449,10 +442,10 @@ func (df *DatabaseDocFinder) findBodyBgInCol(ctx context.Context, terms []string
 func (df *DatabaseDocFinder) findCollections(ctx context.Context, query string) []Collection {
 	results, err := df.findColStmt.QueryContext(ctx, "%" + query + "%")
 	if err != nil {
-		applog.Error("findCollections, Error for query: ", query, err)
+		log.Printf("findCollections, Error for query %v: %v", query, err)
+		return nil
 	}
 	defer results.Close()
-
 	collections := []Collection{}
 	for results.Next() {
 		col := Collection{}
@@ -466,8 +459,7 @@ func (df *DatabaseDocFinder) findCollections(ctx context.Context, query string) 
 func (df *DatabaseDocFinder) findDocsByTitle(ctx context.Context, query string) ([]Document, error) {
 	results, err := df.findDocStmt.QueryContext(ctx, "%" + query + "%")
 	if err != nil {
-		applog.Error("findDocsByTitle, Error for query: ", query, err)
-		return nil, err
+		return nil, fmt.Errorf("findDocsByTitle, Error for query %v: %v", query, err)
 	}
 	defer results.Close()
 
@@ -488,8 +480,7 @@ func (df *DatabaseDocFinder) findDocsByTitleInCol(ctx context.Context,
 	results, err := df.findDocInColStmt.QueryContext(ctx, "%" + query + "%",
 		col_gloss_file)
 	if err != nil {
-		applog.Error("findDocsByTitleInCol, Error for query: ", query, err)
-		return nil, err
+		return nil, fmt.Errorf("findDocsByTitleInCol, Error for query %v: %v", query, err)
 	}
 	defer results.Close()
 
@@ -499,7 +490,7 @@ func (df *DatabaseDocFinder) findDocsByTitleInCol(ctx context.Context,
 		doc.CollectionFile = col_gloss_file
 		results.Scan(&doc.Title, &doc.GlossFile, &doc.CollectionTitle)
 		doc.SimTitle = 1.0
-		//applog.Info("findDocsByTitleInCol, doc: ", doc)
+		//log.Println("findDocsByTitleInCol, doc: ", doc)
 		documents = append(documents, doc)
 	}
 	return documents, nil
@@ -508,12 +499,12 @@ func (df *DatabaseDocFinder) findDocsByTitleInCol(ctx context.Context,
 // findDocuments find documents by both title and contents, and merge the lists
 func (df *DatabaseDocFinder) findDocuments(ctx context.Context, query string, terms []TextSegment,
 		advanced bool) ([]Document, error) {
-	applog.Infof("findDocuments, enter: %s", query)
+	log.Printf("findDocuments, enter: %s", query)
 	docs, err := df.findDocsByTitle(ctx, query)
 	if err != nil {
 		return nil, err
 	}
-	applog.Infof("findDocuments, by title len(docs): %s, %d", query, len(docs))
+	log.Printf("findDocuments, by title len(docs): %s, %d", query, len(docs))
 	queryTerms := toQueryTerms(terms)
 	if (!advanced) {
 		return docs, nil
@@ -521,7 +512,7 @@ func (df *DatabaseDocFinder) findDocuments(ctx context.Context, query string, te
 
 	// For more than one term find docs that are similar body and merge
 	docMap := toSimilarDocMap(docs) // similarity = 1.0
-	applog.Infof("findDocuments, len(docMap): %s, %d", query, len(docMap))
+	log.Printf("findDocuments, len(docMap): %s, %d", query, len(docMap))
 	simDocs, err := df.findBodyBM25(ctx, queryTerms)
 	if err != nil {
 		return nil, err
@@ -531,7 +522,7 @@ func (df *DatabaseDocFinder) findDocuments(ctx context.Context, query string, te
 	// If less than 2 terms then do not need to check bigrams
 	if len(terms) < 2 {
 		sortedDocs := toSortedDocList(docMap)
-		applog.Infof("findDocuments, < 2 len(sortedDocs): %s, %d", query, 
+		log.Printf("findDocuments, < 2 len(sortedDocs): %s, %d", query, 
 			len(sortedDocs))
 		relevantDocs := toRelevantDocList(df, sortedDocs, queryTerms)
 		return relevantDocs, nil
@@ -542,9 +533,9 @@ func (df *DatabaseDocFinder) findDocuments(ctx context.Context, query string, te
 	}
 	mergeDocList(df, docMap, moreDocs)
 	sortedDocs := toSortedDocList(docMap)
-	applog.Infof("findDocuments, len(sortedDocs): %s, %d", query, len(sortedDocs))
+	log.Printf("findDocuments, len(sortedDocs): %s, %d", query, len(sortedDocs))
 	relevantDocs := toRelevantDocList(df, sortedDocs, queryTerms)
-	applog.Infof("findDocuments, len(relevantDocs): %s, %d", query, len(relevantDocs))
+	log.Printf("findDocuments, len(relevantDocs): %s, %d", query, len(relevantDocs))
 	return relevantDocs, nil
 }
 
@@ -552,14 +543,14 @@ func (df *DatabaseDocFinder) findDocuments(ctx context.Context, query string, te
 // merge the lists
 func (df *DatabaseDocFinder) findDocumentsInCol(ctx context.Context, query string, terms []TextSegment,
 		col_gloss_file string) ([]Document, error) {
-	applog.Infof("findDocumentsInCol, col_gloss_file, terms: %s, %v",
+	log.Printf("findDocumentsInCol, col_gloss_file, terms: %s, %v",
 		col_gloss_file, terms)
 	docs, err := df.findDocsByTitleInCol(ctx, query, col_gloss_file)
 	if err != nil {
 		return nil, err
 	}
-	applog.Infof("findDocumentsInCol, len(docs) by title: %d", len(docs))
-	//applog.Info("findDocumentsInCol, docs array by title: ", docs)
+	log.Printf("findDocumentsInCol, len(docs) by title: %d", len(docs))
+	//log.Println("findDocumentsInCol, docs array by title: ", docs)
 	queryTerms := toQueryTerms(terms)
 
 	// For more than one term find docs that are similar body and merge
@@ -569,13 +560,13 @@ func (df *DatabaseDocFinder) findDocumentsInCol(ctx context.Context, query strin
 	if err != nil {
 		return nil, err
 	}
-	//applog.Info("findDocumentsInCol, len(simDocs) by word freq: ", len(simDocs))
+	//log.Println("findDocumentsInCol, len(simDocs) by word freq: ", len(simDocs))
 	mergeDocList(df, docMap, simDocs)
 
 	if len(terms) > 1 {
 		// If there are 2 or more terms then check bigrams
 		simBGDocs, err := df.findBodyBgInCol(ctx, queryTerms, col_gloss_file)
-		//applog.Info("findDocumentsInCol, len(simBGDocs) ", len(simBGDocs))
+		//log.Println("findDocumentsInCol, len(simBGDocs) ", len(simBGDocs))
 		if err != nil {
 			return nil, fmt.Errorf("findDocumentsInCol, findBodyBgInCol error: %v",
 					err)
@@ -583,9 +574,9 @@ func (df *DatabaseDocFinder) findDocumentsInCol(ctx context.Context, query strin
 		mergeDocList(df, docMap, simBGDocs)
 	}
 	sortedDocs := toSortedDocList(docMap)
-	applog.Infof("findDocumentsInCol, len(sortedDocs): %d", len(sortedDocs))
+	log.Printf("findDocumentsInCol, len(sortedDocs): %d", len(sortedDocs))
 	relevantDocs := toRelevantDocList(df, sortedDocs, queryTerms)
-	applog.Infof("findDocumentsInCol, len(relevantDocs): %s, %d", query,
+	log.Printf("findDocumentsInCol, len(relevantDocs): %s, %d", query,
 			len(relevantDocs))
 	return relevantDocs, nil
 }
@@ -602,12 +593,11 @@ func (df DatabaseDocFinder) FindDocuments(ctx context.Context,
 		parser QueryParser, query string,
 		advanced bool) (*QueryResults, error) {
 	if query == "" {
-		applog.Error("FindDocuments, Empty query string")
-		return nil, errors.New("Empty query string")
+		return nil, fmt.Errorf("FindDocuments, Empty query string")
 	}
 	terms := parser.ParseQuery(query)
 	if (len(terms) == 1) && (terms[0].DictEntry.HeadwordId == 0) {
-	    applog.Infof("FindDocuments,Query does not contain Chinese, look for " +
+	    log.Printf("FindDocuments,Query does not contain Chinese, look for " +
 	    	"English and Pinyin matches: %s", query)
 		senses, err := dictSearcher.FindWordsByEnglish(ctx, terms[0].QueryText)
 		if err != nil {
@@ -631,7 +621,7 @@ func (df DatabaseDocFinder) FindDocuments(ctx context.Context,
 		return nil, fmt.Errorf("FindDocuments, error from findDocuments: %v", err)
 	}
 	nDoc := len(documents)
-	applog.Infof("FindDocuments, query %s, nTerms %d, collection %d, doc count %d: ",
+	log.Printf("FindDocuments, query %s, nTerms %d, collection %d, doc count %d: ",
 			query, len(terms), nCol, nDoc)
 	return &QueryResults{query, "", nCol, nDoc, collections, documents, terms}, nil
 }
@@ -648,12 +638,11 @@ func (df DatabaseDocFinder) FindDocumentsInCol(ctx context.Context,
 		dictSearcher *dictionary.Searcher, parser QueryParser, query,
 		col_gloss_file string) (*QueryResults, error) {
 	if query == "" {
-		applog.Error("FindDocumentsInCol, Empty query string")
-		return nil, errors.New("Empty query string")
+		return nil, fmt.Errorf("FindDocumentsInCol, Empty query string")
 	}
 	terms := parser.ParseQuery(query)
 	if (len(terms) == 1) && (terms[0].DictEntry.HeadwordId == 0) {
-	    applog.Infof("FindDocumentsInCol, Query does not contain Chinese, " +
+	    log.Printf("FindDocumentsInCol, Query does not contain Chinese, " +
 	    	"look for English and Pinyin matches query: %s", query)
 		senses, err := dictSearcher.FindWordsByEnglish(ctx, terms[0].QueryText)
 		if err != nil {
@@ -667,7 +656,7 @@ func (df DatabaseDocFinder) FindDocumentsInCol(ctx context.Context,
 		return nil, err
 	}
 	nDoc := len(documents)
-	applog.Infof("FindDocumentsInCol, query %s, nTerms %d, collection %d, doc count %d ",
+	log.Printf("FindDocumentsInCol, query %s, nTerms %d, collection %d, doc count %d ",
 			query, len(terms), 1, nDoc)
 	return &QueryResults{query, col_gloss_file, 1, nDoc, []Collection{}, documents, terms}, err
 }
@@ -685,7 +674,7 @@ func (df *DatabaseDocFinder) findWords(ctx context.Context, query string) ([]dic
 		var hw sql.NullInt64
 		var trad sql.NullString
 		results.Scan(&word.Simplified, &trad, &word.Pinyin, &hw)
-		applog.Info("findWords, simplified, headword = ", word.Simplified, hw)
+		log.Println("findWords, simplified, headword = ", word.Simplified, hw)
 		if trad.Valid {
 			word.Traditional = trad.String
 		}
@@ -700,7 +689,7 @@ func (df *DatabaseDocFinder) findWords(ctx context.Context, query string) ([]dic
 // Open database connection and prepare statements. Allows for re-initialization
 // at most every minute
 func (df *DatabaseDocFinder) initFind(ctx context.Context) error {
-	applog.Info("find.initFind Initializing document_finder")
+	log.Println("find.initFind Initializing document_finder")
 	df.avdl = webconfig.GetEnvIntValue("AVG_DOC_LEN", avDocLen)
 	err := df.initStatements(ctx)
 	if err != nil {
@@ -726,23 +715,20 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"SELECT plain_text_file, gloss_file " +
 		"FROM document")
     if err != nil {
-        applog.Errorf("find.initStatements() Error for docListStmt: %v\n", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error for docListStmt: %v\n", err)
     }
 
 	df.findColStmt, err = df.database.PrepareContext(ctx,
 		"SELECT title, gloss_file FROM collection WHERE title LIKE ? LIMIT 20")
     if err != nil {
-        applog.Errorf("find.initStatements() Error preparing collection stmt: %v\n",
+        return fmt.Errorf("find.initStatements() Error preparing collection stmt: %v\n",
         	err)
-        return err
     }
 
 	df.countColStmt, err = df.database.PrepareContext(ctx,
 		"SELECT count(title) FROM collection WHERE title LIKE ?")
     if err != nil {
-        applog.Errorf("find.initStatements() Error preparing cstmt: %v\n",err)
-        return err
+    	return fmt.Errorf("find.initStatements() Error preparing cstmt: %v\n",err)
     }
 
     // Search documents by title substring
@@ -751,8 +737,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"FROM document " +
 		"WHERE col_plus_doc_title LIKE ? LIMIT 20")
     if err != nil {
-        applog.Errorf("find.initStatements() Error preparing dstmt: %v\n", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error preparing dstmt: %v\n", err)
     }
 
     // Search documents by title substring within a collection
@@ -763,16 +748,14 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"AND col_gloss_file = ? " +
 		"LIMIT 500")
     if err != nil {
-        applog.Errorf("find.initStatements() Error preparing dstmt: %v\n", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error preparing dstmt: %v\n", err)
     }
 
 	df.findWordStmt, err = df.database.PrepareContext(ctx, 
 		"SELECT simplified, traditional, pinyin, headword FROM words WHERE " +
 		"simplified = ? OR traditional = ? LIMIT 1")
     if err != nil {
-        applog.Error("find.initStatements() Error preparing fwstmt: ", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error preparing fwstmt: %v", err)
     }
 
     // Document similarity with BM25 using 1-6 terms, k = 1.5, b = 0.65
@@ -788,8 +771,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBM251Stmt: ", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error for simBM251Stmt: %v", err)
     }
 
 	df.simBM252Stmt, err = df.database.PrepareContext(ctx, 
@@ -804,8 +786,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Errorf("find.initStatements() Error for simBM252Stmt: %s\n", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error for simBM252Stmt: %s\n", err)
     }
 
 	df.simBM253Stmt, err = df.database.PrepareContext(ctx, 
@@ -820,8 +801,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Errorf("find.initStatements() Error for simBM253Stmt: %v\n", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error for simBM253Stmt: %v\n", err)
     }
 
 	df.simBM254Stmt, err = df.database.PrepareContext(ctx, 
@@ -836,8 +816,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Errorf("find.initStatements() Error for simBM254Stmt: %v\n", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error for simBM254Stmt: %v\n", err)
     }
 
 
@@ -853,8 +832,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Errorf("find.initStatements() Error for simBM255Stmt: %v\n", err)
-        return err
+       return fmt.Errorf("find.initStatements() Error for simBM255Stmt: %v\n", err)
     }
 
 	df.simBM256Stmt, err = df.database.PrepareContext(ctx, 
@@ -870,8 +848,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Errorf("find.initStatements() Error for simBM256Stmt: %v\n", err)
-        return err
+       return fmt.Errorf("find.initStatements() Error for simBM256Stmt: %v\n", err)
     }
 
     // Document similarity with BM25 using 2-6 terms, for a specific collection
@@ -889,8 +866,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"GROUP BY document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Errorf("find.initStatements() Error for simBM25Col1Stmt: %v\n", err)
-        return err
+       return fmt.Errorf("find.initStatements() Error for simBM25Col1Stmt: %v\n", err)
     }
 
 	df.simBM25Col2Stmt, err = df.database.PrepareContext(ctx, 
@@ -906,8 +882,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"GROUP BY document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Errorf("find.initStatements() Error for simBM252Stmt: %v\n", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error for simBM252Stmt: %v\n", err)
     }
 
 	df.simBM25Col3Stmt, err = df.database.PrepareContext(ctx, 
@@ -923,8 +898,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"GROUP BY document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Errorf("find.initStatements() Error for simBM253Stmt: %v\n", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error for simBM253Stmt: %v\n", err)
     }
 
 	df.simBM25Col4Stmt, err = df.database.PrepareContext(ctx, 
@@ -940,8 +914,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"GROUP BY document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Errorf("find.initStatements() Error for simBM254Stmt: %v\n", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error for simBM254Stmt: %v\n", err)
     }
 
 	df.simBM25Col5Stmt, err = df.database.PrepareContext(ctx, 
@@ -957,8 +930,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"GROUP BY document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Errorf("find.initStatements() Error for simBM255Stmt: %v\n", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error for simBM255Stmt: %v\n", err)
     }
 
 	df.simBM25Col6Stmt, err = df.database.PrepareContext(ctx, 
@@ -975,8 +947,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Errorf("find.initStatements() Error for simBM256Stmt: %v\n", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error for simBM256Stmt: %v\n", err)
     }
 
     // Document similarity with Bigram using 1-6 bigrams, k = 1.5, b = 0
@@ -991,8 +962,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBigram1Stmt: %v\n", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error for simBigram1Stmt: %v\n", err)
     }
 
 	df.simBigram2Stmt, err = df.database.PrepareContext(ctx, 
@@ -1005,8 +975,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"WHERE bigram = ? OR bigram = ? GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBM252Stmt: %v\n", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error for simBM252Stmt: %v\n", err)
     }
 
 	df.simBigram3Stmt, err = df.database.PrepareContext(ctx, 
@@ -1020,8 +989,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Errorf("find.initStatements() Error for simBigram3Stmt: %v\n", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error for simBigram3Stmt: %v\n", err)
     }
 
 	df.simBigram4Stmt, err = df.database.PrepareContext(ctx, 
@@ -1035,8 +1003,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Errorf("find.initStatements() Error for simBigram4Stmt: %v\n", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error for simBigram4Stmt: %v\n", err)
     }
 
 	df.simBigram5Stmt, err = df.database.PrepareContext(ctx, 
@@ -1051,8 +1018,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"GROUP BY collection, document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Errorf("find.initStatements() Error for simBigram5Stmt: %v\n", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error for simBigram5Stmt: %v\n", err)
     }
 
     // Document similarity with Bigram using 1-6 bigrams, within a specific
@@ -1069,8 +1035,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"GROUP BY document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Errorf("find.initStatements() Error for simBgCol1Stmt: %v\n", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error for simBgCol1Stmt: %v\n", err)
     }
 
 	df.simBgCol2Stmt, err = df.database.PrepareContext(ctx, 
@@ -1085,8 +1050,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"GROUP BY document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Error("find.initStatements() Error for simBgCol2Stmt: ", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error for simBgCol2Stmt: %v", err)
     }
 
 	df.simBgCol3Stmt, err = df.database.PrepareContext(ctx, 
@@ -1101,8 +1065,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"GROUP BY document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Errorf("find.initStatements() Error for simBgCol3Stmt: %v\n", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error for simBgCol3Stmt: %v\n", err)
     }
 
 	df.simBgCol4Stmt, err = df.database.PrepareContext(ctx, 
@@ -1117,8 +1080,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"GROUP BY document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Errorf("find.initStatements() Error for simBgCol4Stmt: %v\n", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error for simBgCol4Stmt: %v\n", err)
     }
 
 	df.simBgCol5Stmt, err = df.database.PrepareContext(ctx, 
@@ -1134,8 +1096,7 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"GROUP BY document " +
 		"ORDER BY bm25 DESC LIMIT 500")
     if err != nil {
-        applog.Errorf("find.initStatements() Error for simBgCol5Stmt: %v\n", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error for simBgCol5Stmt: %v\n", err)
     }
 
     // Find the titles of all documents
@@ -1143,17 +1104,15 @@ func (df *DatabaseDocFinder) initStatements(ctx context.Context) error {
 		"SELECT gloss_file, title, col_gloss_file, col_title " +
 		"FROM document LIMIT 5000000")
     if err != nil {
-        applog.Errorf("find.initStatements() Error for findAllTitlesStmt: %v\n", err)
-        return err
+        return fmt.Errorf("find.initStatements() Error for findAllTitlesStmt: %v\n", err)
     }
 
     // Find the titles of all documents
 	df.findAllColTitlesStmt, err = df.database.PrepareContext(ctx, 
 		"SELECT gloss_file, title FROM collection LIMIT 500000")
     if err != nil {
-        applog.Errorf("find.initStatements() Error for findAllColTitlesStmt: %v\n",
+        return fmt.Errorf("find.initStatements() Error for findAllColTitlesStmt: %v\n",
         	err)
-        return err
     }
 
     return nil
@@ -1198,7 +1157,7 @@ func mergeDocList(df DocFinder, simDocMap map[string]Document, docList []Documen
 							}
 				simDocMap[simDoc.GlossFile] = doc
 			} else if ok2 {
-				applog.Info("mergeDocList, collection title not found: ",
+				log.Println("mergeDocList, collection title not found: ",
 					simDoc)
 				doc := Document{CollectionFile: "",
 								CollectionTitle: "", 
@@ -1214,7 +1173,7 @@ func mergeDocList(df DocFinder, simDocMap map[string]Document, docList []Documen
 							}
 				simDocMap[simDoc.GlossFile] = doc
 			} else {
-				applog.Infof("mergeDocList, doc title not found: %v\n", simDoc)
+				log.Printf("mergeDocList, doc title not found: %v\n", simDoc)
 				simDocMap[simDoc.GlossFile] = simDoc
 			}
 		}
@@ -1229,7 +1188,7 @@ func mergeDocList(df DocFinder, simDocMap map[string]Document, docList []Documen
 // doc.ContainsTerms is a list of terms found both in the query and the doc
 // sorted in the same order as the query terms with words merged to bigrams
 func setMatchDetails(doc Document, terms []string, docMatch fulltext.DocMatch) Document {
-	applog.Infof("sortContainsWords: %v\n", terms)
+	log.Printf("sortContainsWords: %v\n", terms)
 	containsTems := []string{}
 	for i, term := range terms {
 		//fmt.Printf("sortContainsWords: i = %d\n", i)
@@ -1274,7 +1233,7 @@ func toRelevantDocList(df DocFinder, docs []Document, terms []string) []Document
 	for _, doc  := range docs {
 		plainTextFN, ok := df.GetDocFileMap()[doc.GlossFile]
 		if !ok {
-			applog.Infof("find.toRelevantDocList could not find %s\n", plainTextFN)
+			log.Printf("find.toRelevantDocList could not find %s\n", plainTextFN)
 			continue
 		}
 		keys = append(keys, plainTextFN)
@@ -1282,11 +1241,11 @@ func toRelevantDocList(df DocFinder, docs []Document, terms []string) []Document
 	docMatches := fulltext.GetMatches(keys, terms)
 	relDocs := []Document{}
 	for _, doc  := range docs {
-		applog.Infof("toRelevantDocList, check Similarity %f, min %f\n",
+		log.Printf("toRelevantDocList, check Similarity %f, min %f\n",
 				doc.Similarity, minSimilarity)
 		plainTextFN, ok := df.GetDocFileMap()[doc.GlossFile]
 		if !ok {
-			applog.Infof("find.toRelevantDocList 2 could not find %s\n", plainTextFN)
+			log.Printf("find.toRelevantDocList 2 could not find %s\n", plainTextFN)
 		}
 		docMatch := docMatches[plainTextFN]
 		doc = setMatchDetails(doc, terms, docMatch)

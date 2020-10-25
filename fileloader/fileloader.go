@@ -19,11 +19,11 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
 
-	"github.com/alexamies/chinesenotes-go/applog"
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
@@ -31,11 +31,11 @@ import (
 // LoadDictFile loads all words from static files
 func LoadDictFile(appConfig config.AppConfig) (map[string]dicttypes.Word, error) {
 	fNames := appConfig.LUFileNames
-	applog.Infof("LoadDictFile, loading %d files\n", len(fNames))
+	log.Printf("LoadDictFile, loading %d files", len(fNames))
 	wdict := map[string]dicttypes.Word{}
 	avoidSub := appConfig.AvoidSubDomains()
 	for _, fName := range fNames {
-		applog.Infof("fileloader.LoadDictFile: fName: %s", fName)
+		log.Printf("fileloader.LoadDictFile: fName: %s", fName)
 		wsfile, err := os.Open(fName)
 		if err != nil {
 			return wdict, fmt.Errorf("fileloader.LoadDictFile, error opening %s: %v",
@@ -48,13 +48,13 @@ func LoadDictFile(appConfig config.AppConfig) (map[string]dicttypes.Word, error)
 					fName, err)
 		}
 	}
-	applog.Infof("LoadDictFile, loaded %d entries", len(wdict))
+	log.Printf("LoadDictFile, loaded %d entries", len(wdict))
 	return wdict, nil
 }
 
 // Loads all words from a URL
 func LoadDictURL(appConfig config.AppConfig, url string) (map[string]dicttypes.Word, error) {
-	applog.Info("LoadDictURL loading from URL")
+	log.Println("LoadDictURL loading from URL")
 	resp, err := http.Get(url)
 	wdict := map[string]dicttypes.Word{}
 	if err != nil {
@@ -80,8 +80,7 @@ func loadDictReader(r io.Reader, wdict map[string]dicttypes.Word,
 	reader.Comment = '#'
 	rawCSVdata, err := reader.ReadAll()
 	if err != nil {
-		applog.Error("Could not parse lexical units file", err)
-		return err
+		return fmt.Errorf("Could not parse lexical units file: %v", err)
 	}
 	for i, row := range rawCSVdata {
 		id, err := strconv.ParseInt(row[0], 10, 0)
@@ -112,19 +111,19 @@ func loadDictReader(r io.Reader, wdict map[string]dicttypes.Word,
 		if len(row) == 16 {
 			hwIdInt, err := strconv.ParseInt(row[15], 10, 0)
 			if err != nil {
-				applog.Info("loadDictFile, id: %d, simp: %s, trad: %s, " + 
+				log.Printf("loadDictFile, id: %d, simp: %s, trad: %s, " + 
 					"pinyin: %s, english: %s, grammar: %s\n",
 					id, simp, trad, pinyin, english, grammar,)
-				applog.Error("loadDictFile: Could not parse headword id for word ",
+				log.Printf("loadDictFile: Could not parse headword id for word %d: %v",
 					id, err)
 			}
 			hwId = int(hwIdInt)
 		} else {
-			applog.Info("loadDictFile, No. cols: %d\n",len(row))
-			applog.Info("loadDictFile, id: %d, simp: %s, trad: %s, pinyin: %s, " +
+			log.Printf("loadDictFile, No. cols: %d",len(row))
+			log.Printf("loadDictFile, id: %d, simp: %s, trad: %s, pinyin: %s, " +
 				"english: %s, grammar: %s\n",
 				id, simp, trad, pinyin, english, grammar)
-			applog.Error("loadDictFile wrong number of columns ", id, err)
+			log.Printf("loadDictFile wrong number of columns %d: %v", id, err)
 		}
 		ws := dicttypes.WordSense{}
 		ws.Id = hwId
@@ -138,7 +137,7 @@ func loadDictReader(r io.Reader, wdict map[string]dicttypes.Word,
 		ws.Concept = concept
 		ws.DomainCN = domainCN
 		ws.Domain = domain
-		// applog.Info("loadDictFile, %s domain: %s\n", simp, domain)
+		// log.Println("loadDictFile, %s domain: %s\n", simp, domain)
 		ws.Image = image
 		ws.MP3 = mp3
 		ws.Notes = notes

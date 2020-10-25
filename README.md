@@ -107,7 +107,7 @@ customization. The HTML interface is very basic, just enough for minimal
 testing. For a real web site you should use HTML templates with JavaScript line
 at https://github.com/alexamies/chinesenotes.com
 
-## Development testing
+### Development testing
 
 In another terminal
 
@@ -209,16 +209,14 @@ interoperate with the other components in the Chinese Notes family
 
 ## Database Setup
 
-The prepared statements in the Go code assuming a mysql driver. Maria
-is compatible with this. The local development instructions assume a Mariadb
-database. For full details about the database see the
-[Mariadb Documentation](https://mariadb.org/). 
+The prepared statements in the Go code assuming a MySQL driver. Maria
+is compatible with MySQL. The local development instructions assume a Mariadb
+database running in Docker. For full details about the database see the
+[Mariadb Documentation](https://mariadb.org/).
 
-### Mariadb Docker Image
+Install Docker if you have not already.
 
-See the documentation at [Mariadb Image 
-Documentation](https://hub.docker.com/_/mariadb/) and [Installing and using 
-MariaDB via Docker](https://mariadb.com/kb/en/library/installing-and-using-mariadb-via-docker/).
+### Translation memory files
 
 The command to download the dictionary files was given above. Generate the
 translation memory index files with the command
@@ -227,7 +225,13 @@ translation memory index files with the command
 go run github.com/alexamies/cnreader -tmindex
 ```
 
-These are saved in the `index` directory.
+The index files are saved in the `index` directory.
+
+### Mariadb Docker Image
+
+See the documentation at [Mariadb Image 
+Documentation](https://hub.docker.com/_/mariadb/) and [Installing and using 
+MariaDB via Docker](https://mariadb.com/kb/en/library/installing-and-using-mariadb-via-docker/).
 
 To start a Docker container with Mariadb and connect to it from a MySQL command
 line client execute the command below. First, set environment variable 
@@ -244,12 +248,13 @@ cd ..
 mkdir mariadb
 cd mariadb
 MYSQL_ROOT_PASSWORD=[your password]
+CNREADER_HOME=../chinesenotes-go
 mkdir mariadb-data
 docker run --name mariadb -p 3306:3306 \
   -e MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD -d \
   -v "$(pwd)"/mariadb-data:/var/lib/mysql \
-  --mount type=bind,source="$(pwd)"/data,target=/cndata \
-  --mount type=bind,source="$(pwd)"/index,target=/cnindex \
+  --mount type=bind,source="$CNREADER_HOME"/data,target=/cndata \
+  --mount type=bind,source="$CNREADER_HOME"/index,target=/cnindex \
   mariadb:10
 ```
 
@@ -290,11 +295,11 @@ Load the data into the database
 
 ```sql
 use cnotest_test;
-LOAD DATA LOCAL INFILE 'data/grammar.txt' INTO TABLE grammar CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
-LOAD DATA LOCAL INFILE 'data/topics.txt' INTO TABLE topics CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
-LOAD DATA LOCAL INFILE 'data/words.txt' INTO TABLE words CHARACTER SET utf8mb4 LINES TERMINATED BY '\n' IGNORE 1 LINES;
-LOAD DATA LOCAL INFILE 'index/tmindex_uni_domain.tsv' INTO TABLE tmindex_uni_domain CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
-LOAD DATA LOCAL INFILE 'index/tmindex_unigram.tsv' INTO TABLE tmindex_unigram CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
+LOAD DATA LOCAL INFILE 'cndata/grammar.txt' INTO TABLE grammar CHARACTER SET utf8mb4 LINES TERMINATED BY '\r\n';
+LOAD DATA LOCAL INFILE 'cndata/topics.txt' INTO TABLE topics CHARACTER SET utf8mb4 LINES TERMINATED BY '\r\n';
+LOAD DATA LOCAL INFILE 'cndata/words.txt' INTO TABLE words CHARACTER SET utf8mb4 LINES TERMINATED BY '\n' IGNORE 1 LINES;
+LOAD DATA LOCAL INFILE 'cnindex/tmindex_uni_domain.tsv' INTO TABLE tmindex_uni_domain CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
+LOAD DATA LOCAL INFILE 'cnindex/tmindex_unigram.tsv' INTO TABLE tmindex_unigram CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
 ```
 
 Quit from the Maria DB client session
@@ -306,7 +311,6 @@ quit
 ### Run against a databsae
 
 Restart the web application server.
-
 
 ```shell
 export DBUSER=app_user
@@ -323,6 +327,17 @@ curl http://localhost:8080/find/?query=antiquity
 ```
 
 You should see JSON returned.
+
+### Updating the dictionary
+
+If you add more words to the dictionary, you can update it with the SQ commands:
+
+```sql
+use cnotest_test;
+DELETE FROM words;
+```
+
+Restart the web application.
 
 ## Deploy to Cloud Run with a Cloud SQL databsae
 
@@ -526,10 +541,17 @@ go run github.com/alexamies/cnreader
 ```
 
 This will write the full text index files into the `index` directory and
-marked up HTML files in the `example_collection` directory.
+marked up HTML files in the `example_collection` directory. Add a link in the
+`index.html` template to the page `/web/texts.html`. After starting the web
+server again you should be able to navigate to the list of texts and see
+Chinese words marked up with English equivalents on mouseover. You can change
+the config.yaml `VocabFormat` variable to create other markup options, including
+hyperlinks to dictionary pages and dialog boxes.
 
-There are sample forward index files in the `data/corpus` directory which can
-be used for testing. Load them all into the databsae with the SQL commands
+For full text search, you will need to load the document indexes into the 
+database. There are sample forward index files in the `data/corpus` directory
+which can be used for testing. Load them all into the databsae with the SQL
+commands
 
 ```sql
 use [your database];

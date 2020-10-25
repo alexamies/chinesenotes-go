@@ -14,8 +14,8 @@ package main
 
 import (
 	"html/template"
+  "log"
 
-	"github.com/alexamies/chinesenotes-go/applog"
 	"github.com/alexamies/chinesenotes-go/webconfig"
 )
 
@@ -72,6 +72,48 @@ const findResultsTmpl = `
 </html>
 `
 
+const findTMTmpl = `
+<!DOCTYPE html>
+<html lang="en">
+  <body>
+  <body>
+    <h1>{{.Title}}</h1>
+    <p><a href="/">Home</a></p>
+    <h2>Translation Memory</h2>
+    {{if .ErrorMsg}}
+      <p>Error: {{ .ErrorMsg }}</p>
+    {{ else }}
+    <p>Enter Chinese text into to the most closely related names and phrases</p>
+    <form name="findForm" method="post" action="/findtm">
+      <div>
+        <label for="findInput">Search for</label>
+        <input type="text" name="query" size="40" required/>
+        <button type="submit">Find</button>
+      </div>
+    </form>
+    {{ end }}
+    {{if .TMResults}}
+    <h4>Results</h4>
+    <ul>
+      {{ range $term := .TMResults.Words }}
+      <li>
+        {{ $term.Traditional}} {{ $term.Pinyin }}
+        <ol>
+          {{ range $ws := $term.Senses }}
+          <li>
+            {{if ne $ws.English "\\N"}}{{ $ws.English }}{{end}}
+            {{if ne $ws.Notes "\\N"}}<div>Notes: {{ $ws.Notes }}</div>{{end}}
+          </li>
+          {{ end }}
+        </ol>
+      </li>
+      {{ end }}
+    </ul>
+    {{ end }}
+  <body>
+</html>
+`
+
 // newTemplateMap builds the template map
 func newTemplateMap(webConfig webconfig.WebAppConfig) map[string]*template.Template {
 	templateMap := make(map[string]*template.Template)
@@ -79,6 +121,7 @@ func newTemplateMap(webConfig webconfig.WebAppConfig) map[string]*template.Templ
 	tNames := map[string]string{
 		"index.html": indexTmpl,
 		"find_results.html": findResultsTmpl,
+    "findtm.html": findTMTmpl,
 	}
 	if len(templDir) > 0 {
 		for tName, defTmpl := range tNames {
@@ -87,7 +130,7 @@ func newTemplateMap(webConfig webconfig.WebAppConfig) map[string]*template.Templ
 			var err error
 			tmpl, err = template.New(tName).ParseFiles(fileName)
 			if err != nil {
-				applog.Errorf("newTemplateMap: error parsing template, using default %s: %v",
+				log.Printf("newTemplateMap: error parsing template, using default %s: %v",
 						tName, err)
 				tmpl = template.Must(template.New(tName).Parse(defTmpl))
 			}

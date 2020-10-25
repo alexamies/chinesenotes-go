@@ -18,7 +18,7 @@
 package fulltext
 
 import (
-	"github.com/alexamies/chinesenotes-go/applog"
+	"log"
 )
 
 type Job struct {
@@ -39,7 +39,7 @@ func (job Job) Do(loader TextLoader, queryTerms []string) {
 	mt, err := loader.GetMatching(job.key, queryTerms)
 	if err != nil {
 		// log and move on
-		applog.Infof("job.Do key %v, error: %v", job.key, err)
+		log.Printf("job.Do key %v, error: %v", job.key, err)
 	} else {
 		dm.MT = mt
 	}
@@ -62,14 +62,14 @@ func addJobs(jobs chan<- Job, keys []string, results chan<- Result) {
 }
 
 func collectDocs(done <-chan struct{}, results chan Result, keys []string) map[string]DocMatch {
-	applog.Info("fulltext.collectDocs")
+	log.Println("fulltext.collectDocs")
 	matches := map[string]DocMatch{}
 	workers := len(keys)
 	for working := workers; working > 0; {
 		select {
 		case result := <- results:
 			matches[result.key] = result.dm
-			applog.Infof("fulltext.collectDocs: %s: %v", result.key, result.dm)
+			log.Printf("fulltext.collectDocs: %s: %v", result.key, result.dm)
 		case <-done:
 			working--
 		}
@@ -79,7 +79,7 @@ DONE:
 		select {
 			case result := <- results:
 				matches[result.key] = result.dm
-				applog.Infof("fulltext.collectDocs done, %s: %v", result.key, result.dm)
+				log.Printf("fulltext.collectDocs done, %s: %v", result.key, result.dm)
 			default:
 				break DONE 
 		}
@@ -88,7 +88,7 @@ DONE:
 }
 
 func getDoc(done chan struct{}, loader TextLoader, key string, queryTerms []string, jobs <-chan Job) {
-	//applog.Info("fulltext.getDoc:", key)
+	//log.Println("fulltext.getDoc:", key)
 	for job := range jobs {
 		job.Do(loader, queryTerms)
 	}
@@ -96,7 +96,7 @@ func getDoc(done chan struct{}, loader TextLoader, key string, queryTerms []stri
 }
 
 func GetMatches(keys []string, queryTerms []string) map[string]DocMatch {
-	applog.Info("GetMatches")
+	log.Println("GetMatches")
 	loader := getLoader()
 	jobs := make(chan Job, len(keys))
 	results := make(chan Result, len(keys))

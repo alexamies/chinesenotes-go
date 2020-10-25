@@ -17,10 +17,9 @@ import (
 	"cloud.google.com/go/storage"
 	"context"
 	"io/ioutil"
+	"log"
 	"os"
 	"strings"
-
-	"github.com/alexamies/chinesenotes-go/applog"
 )
 
 const (
@@ -79,7 +78,7 @@ type GCSLoader struct{
 // Gets the matching text from a local file and find the best match
 func (loader GCSLoader) GetMatching(plainTextFile string,
 		queryTerms []string) (MatchingText, error) {
-	applog.Infof("GCSLoader.GetMatching %s", plainTextFile)
+	log.Printf("GCSLoader.GetMatching %s", plainTextFile)
 	ctx := context.Background()
 	r, err := loader.client.Bucket(loader.bucket).Object(plainTextFile).NewReader(ctx)
 	if err != nil {
@@ -92,7 +91,7 @@ func (loader GCSLoader) GetMatching(plainTextFile string,
         return MatchingText{}, err
 	}
 	txt := string(bs)
-	applog.Infof("GCSLoader.GetMatching len(txt) %d", len(txt))
+	log.Printf("GCSLoader.GetMatching len(txt) %d", len(txt))
 	return getMatch(txt, queryTerms), nil
 }
 
@@ -102,22 +101,22 @@ func getLoader() TextLoader {
 	if bucket, ok := os.LookupEnv("TEXT_BUCKET"); ok {
 		loader, err := NewGCSLoader(bucket)
 		if err == nil {
-			applog.Info("fulltext.getLoader, using GCSLoader")
+			log.Println("fulltext.getLoader, using GCSLoader")
 			return loader
 		}
-		applog.Infof("fulltext.getLoader, error creating GCSLoader: %v", err)
+		log.Printf("fulltext.getLoader, error creating GCSLoader: %v", err)
 	}
 	if corpusDir, ok := os.LookupEnv("CORPUS_DIR"); ok {
-		applog.Infof("fulltext.getLoader, using LocalTextLoader: %s ", corpusDir)
+		log.Printf("fulltext.getLoader, using LocalTextLoader: %s ", corpusDir)
 		return LocalTextLoader{corpusDir}
 	}
-	applog.Info("fulltext.getLoader, using LocalTextLoader,default corpusDir")
+	log.Println("fulltext.getLoader, using LocalTextLoader,default corpusDir")
 	return LocalTextLoader{"../corpus"}
 }
 
 // Given the already retrieved text body, find the best match
 func getMatch(txt string, queryTerms []string) MatchingText {
-	// applog.Infof("fulltext.getMatch, txt = %s, query: %v", txt, queryTerms)
+	// log.Printf("fulltext.getMatch, txt = %s, query: %v", txt, queryTerms)
 	if len(queryTerms) == 0 {
 		return MatchingText{}
 	}
@@ -179,7 +178,7 @@ func getMatch(txt string, queryTerms []string) MatchingText {
     	}
 		snippet = txt[start:end]
 	}
-	// applog.Infof("fulltext.getMatch, snippet = %s", snippet)
+	// log.Printf("fulltext.getMatch, snippet = %s", snippet)
 	mt := MatchingText{
 		Snippet: 		snippet,
 		LongestMatch:	longest,
@@ -190,11 +189,11 @@ func getMatch(txt string, queryTerms []string) MatchingText {
 
 // Creates and initiates a new GCSLoader object
 func NewGCSLoader(bucket string) (GCSLoader, error) {
-	applog.Infof("fulltext.NewGCSLoader %s ", bucket)
+	log.Printf("fulltext.NewGCSLoader %s ", bucket)
 	ctx := context.Background()
 	client, err := storage.NewClient(ctx)
 	if err != nil {
-    	applog.Infof("fulltext.NewGCSLoader error getting client %v", err)
+    	log.Printf("fulltext.NewGCSLoader error getting client %v", err)
     	return GCSLoader{}, err 
 	}
 	return GCSLoader{bucket, client}, nil
