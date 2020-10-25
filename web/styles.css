@@ -27,4 +27,10 @@ span.dict-entry-definition {
 
 .dict-entry-notes {
   font-size: 90%;
+  color: grey;
+}
+
+.dict-entry-domain {
+  font-size: 90%;
+  color: grey;
 }

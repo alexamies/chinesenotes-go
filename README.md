@@ -643,7 +643,10 @@ docker -- push gcr.io/$PROJECT/cn-app-image:$TAG
 This GitHub project is a Go module. You can install it with the instructions at
 the [Go module reference](https://golang.org/ref/mod), which just involves
 importing the APIs and using them. It tries to fail gracefully if you do not
-have a database setup and do what it can loading from text files.
+have a database setup and do what it can loading from text files. The API doc
+is given at 
+
+https://pkg.go.dev/mod/github.com/alexamies/chinesenotes-go
 
 Try the example below.
 

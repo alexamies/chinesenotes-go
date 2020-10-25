@@ -18,12 +18,56 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexamies/chinesenotes-go/dicttypes"
+	"github.com/alexamies/chinesenotes-go/find"
 	"github.com/alexamies/chinesenotes-go/webconfig"
 )
 
 // TestNewTemplateMap building the template map
 func TestNewTemplateMap(t *testing.T) {
-	want := "<title>Home Page</title>"
+	const title = "Translation Portal"
+	const query = "謹"
+	const simplified = "謹"
+	const pinyin = "jǐn"
+	const english = "to be cautious"
+	ws := dicttypes.WordSense{
+		Id: 42,
+		HeadwordId: 42,
+		Simplified: simplified,
+		Traditional: query,
+		Pinyin: pinyin,
+		English: english,
+		Grammar: "verb",
+		Concept: "\\N",
+		ConceptCN: "\\N",
+		Domain: "Literary Chinese",
+		DomainCN: "\\N",
+		Subdomain: "\\N",
+		SubdomainCN: "\\N",
+		Image: "\\N",
+		MP3: "\\N",
+		Notes: "\\N",
+	}
+	w := dicttypes.Word{
+		Simplified: simplified,
+		Traditional: "謹",
+		Pinyin: pinyin,
+		HeadwordId: 42,
+		Senses: []dicttypes.WordSense{ws},
+	}
+	term := find.TextSegment{
+		QueryText: query,
+		DictEntry: w,
+	}
+	results := find.QueryResults{
+		Query: query,
+		CollectionFile: "",
+		NumCollections: 0,
+		NumDocuments: 0,
+		Collections: []find.Collection{},
+		Documents: []find.Document{},
+		Terms: []find.TextSegment{term},
+	}
 	type test struct {
 		name string
 		templateName string
@@ -32,10 +76,19 @@ func TestNewTemplateMap(t *testing.T) {
   }
   tests := []test{
 		{
-			name: "Home Page",
+			name: "Home page",
 			templateName: "index.html",
-			content: map[string]string{"Title": "Home Page"},
-			want: "<title>Home Page</title>",
+			content: map[string]string{"Title": title},
+			want: "<title>" + title + "</title>",
+		},
+		{
+			name: "Find results",
+			templateName: "find_results.html",
+			content: htmlContent{
+				Title: title,
+				Results: &results,
+			},
+			want: english,
 		},
   }
   for _, tc := range tests {
@@ -44,15 +97,14 @@ func TestNewTemplateMap(t *testing.T) {
 		if !ok {
 			t.Fatalf("%s, template not found: %s", tc.name, tc.templateName)
 		}
-		content := map[string]string{"Title": "Home Page"}
 		var buf bytes.Buffer
-		err := tmpl.Execute(&buf, content)
+		err := tmpl.Execute(&buf, tc.content)
 		if err != nil {
-			t.Fatalf("error rendering template %v", err)
+			t.Fatalf("%s, error rendering template %v", tc.name, err)
 		}
 		got := buf.String()
-		if !strings.Contains(got, want) {
-			t.Errorf("got %s\n bug want %s", got, want)
+		if !strings.Contains(got, tc.want) {
+			t.Errorf("%s, got %s\n bug want %s", tc.name, got, tc.want)
 		}
 	}
 }
