@@ -555,10 +555,10 @@ commands
 
 ```sql
 use [your database];
-LOAD DATA LOCAL INFILE 'data/corpus/example_corpus.tsv' INTO TABLE collection CHARACTER SET utf8mb4 LINES TERMINATED BY '\n' IGNORE 1 LINES;
-LOAD DATA LOCAL INFILE 'data/corpus/example_collection.tsv' INTO TABLE document CHARACTER SET utf8mb4 LINES TERMINATED BY '\n'  IGNORE 1 LINES;;
-LOAD DATA LOCAL INFILE 'index/word_freq_doc.txt' INTO TABLE word_freq_doc CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
-LOAD DATA LOCAL INFILE 'index/bigram_freq_doc.txt' INTO TABLE bigram_freq_doc CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
+LOAD DATA LOCAL INFILE 'cndata/corpus/collections.csv' INTO TABLE collection CHARACTER SET utf8mb4 LINES TERMINATED BY '\n' IGNORE 1 LINES;
+LOAD DATA LOCAL INFILE 'cndata/corpus/example_collection.tsv' INTO TABLE document CHARACTER SET utf8mb4 LINES TERMINATED BY '\n'  IGNORE 1 LINES;;
+LOAD DATA LOCAL INFILE 'cnindex/word_freq_doc.txt' INTO TABLE word_freq_doc CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
+LOAD DATA LOCAL INFILE 'cnindex/bigram_freq_doc.txt' INTO TABLE bigram_freq_doc CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
 ```
 
 If the site is password protected then copy the generated HTML files to the

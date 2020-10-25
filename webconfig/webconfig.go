@@ -17,11 +17,10 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strconv"
 	"strings"
-
-	"github.com/alexamies/chinesenotes-go/applog"
 )
 
 // WebAppConfig holds application configuration data that is specific to the web app
@@ -33,11 +32,11 @@ type WebAppConfig struct {
 
 // InitWeb loads the WebAppConfig data. If an error occurs, default values are used
 func InitWeb() WebAppConfig {
-	applog.Info("webconfig.init Initializing webconfig")
+	log.Println("webconfig.init Initializing webconfig")
 	c := WebAppConfig {}
 	configVarsPtr, err := readConfig()
 	if err != nil {
-		applog.Infof("webconfig.init error initializing webconfig: %v", err)
+		log.Printf("webconfig.init error initializing webconfig: %v", err)
 		c.ConfigVars = make(map[string]string)
 	} else {
 		c.ConfigVars =  *configVarsPtr
@@ -72,7 +71,7 @@ func (c WebAppConfig) GetPasswordResetURL() string {
 func (c WebAppConfig) GetVar(key string) string {
 	val, ok := c.ConfigVars[key]
 	if !ok {
-		applog.Errorf("config.GetVar: could not find key: %s", key)
+		log.Printf("config.GetVar: could not find key: %s", key)
 		val = ""
 	}
 	return val
@@ -131,7 +130,7 @@ func GetCnReaderHome() string {
 	if len(cnReaderHome) == 0 {
 		cnReaderHome = "."
 	}
-	applog.Infof("config.readConfig: CNREADER_HOME set to %s", cnReaderHome)
+	log.Printf("config.readConfig: CNREADER_HOME set to %s", cnReaderHome)
 	return cnReaderHome
 }
 
@@ -139,7 +138,7 @@ func GetCnReaderHome() string {
 func GetCnWebHome() string {
 	cnWebHome := os.Getenv("CNWEB_HOME")
 	if len(cnWebHome) == 0 {
-		applog.Info("config.readConfig: CNWEB_HOME is not defined")
+		log.Println("config.readConfig: CNWEB_HOME is not defined")
 		cnWebHome = ".."
 	}
 	return cnWebHome
@@ -189,7 +188,7 @@ func readConfig() (*map[string]string, error) {
 	if err != nil {
 		path, er := os.Getwd()
 		if er != nil {
-    	applog.Errorf("cannot find cwd: %v", er)
+    	log.Printf("cannot find cwd: %v", er)
 			path = ""
 		}
 		return nil, fmt.Errorf("webconfig.readConfig error loading file '%s' (%s): %v",

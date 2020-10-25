@@ -114,6 +114,44 @@ const findTMTmpl = `
 </html>
 `
 
+const fullTextSearchTmpl = `
+<!DOCTYPE html>
+<html lang="en">
+  <body>
+  <body>
+    <h1>{{.Title}}</h1>
+    <p><a href="/">Home</a></p>
+    <h2>Full Text Search</h2>
+    {{if .ErrorMsg}}
+      <p>Error: {{ .ErrorMsg }}</p>
+    {{ else }}
+    <p>Enter Chinese text into to the most relevant documents</p>
+    <form name="findForm" method="post" action="/findadvanced/">
+      <div>
+        <label for="findInput">Search for</label>
+        <input type="text" name="query" size="40" required/>
+        <button type="submit">Find</button>
+      </div>
+    </form>
+    {{ end }}
+    {{if .Results}}
+    <h4>Results</h4>
+     {{if .Results.Documents}}
+      <ul>
+        {{ range $doc := .Results.Documents }}
+        <li>
+          <a href="{{ $doc.GlossFile }}">{{ $doc.Title }}</a>
+        </li>
+        {{ end }}
+      </ul>
+      {{ else }}
+      <p>No results found</p>
+      {{ end }}
+    {{ end }}
+  <body>
+</html>
+`
+
 // newTemplateMap builds the template map
 func newTemplateMap(webConfig webconfig.WebAppConfig) map[string]*template.Template {
 	templateMap := make(map[string]*template.Template)
@@ -122,6 +160,7 @@ func newTemplateMap(webConfig webconfig.WebAppConfig) map[string]*template.Templ
 		"index.html": indexTmpl,
 		"find_results.html": findResultsTmpl,
     "findtm.html": findTMTmpl,
+    "full_text_search.html": fullTextSearchTmpl,
 	}
 	if len(templDir) > 0 {
 		for tName, defTmpl := range tNames {

@@ -389,11 +389,46 @@ func getSingleValue(r *http.Request, key string) string {
 }
 
 // showQueryResults displays query results on a HTML page
-func showQueryResults(w http.ResponseWriter, results *find.QueryResults, fullText bool) {
+func showQueryResults(w http.ResponseWriter, results *find.QueryResults,
+		fullText bool) {
+	res := results
+	staticDir := appConfig.GetVar("GoStaticDir")
+	log.Printf("showQueryResults, staticDir: %s", staticDir)
+	if len(staticDir) > 0 && len(results.Documents) > 0 {
+		log.Printf("showQueryResults, len(Documents): %d", len(results.Documents))
+		docs := []find.Document{}
+		for _, doc := range results.Documents {
+			d := find.Document{
+				GlossFile: "/" + staticDir + "/" + doc.GlossFile,
+				Title: doc.Title,
+				CollectionFile: "/" + staticDir + "/" + doc.CollectionFile,
+				CollectionTitle: doc.CollectionTitle,
+				ContainsWords: doc.ContainsWords,
+				ContainsBigrams: doc.ContainsBigrams,
+				SimTitle: doc.SimTitle,
+				SimWords: doc.SimWords,
+				SimBigram: doc.SimBigram,
+				SimBitVector: doc.SimBitVector,
+				Similarity: doc.Similarity,
+				ContainsTerms: doc.ContainsTerms,
+				MatchDetails: doc.MatchDetails,
+			}
+			docs = append(docs, d)
+		}
+		res = &find.QueryResults{
+			Query: results.Query,
+			CollectionFile: staticDir + "/" + results.CollectionFile,
+			NumCollections: results.NumCollections,
+			NumDocuments: results.NumDocuments,
+			Collections: results.Collections,
+			Documents: docs,
+			Terms: results.Terms,
+		}
+	}
 	title := webConfig.GetVarWithDefault("Title", defTitle)
 	content := htmlContent{
 		Title: title,
-		Results: results,
+		Results: res,
 	}
 	var tmpl *template.Template
 	var err error 

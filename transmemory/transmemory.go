@@ -17,10 +17,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 
-	"github.com/alexamies/chinesenotes-go/applog"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
 
@@ -188,7 +188,7 @@ func (searcher *Searcher) queryPinyin(ctx context.Context, query,
 		}
 		resSlice = append(resSlice, &result)
 	}
-	applog.Infof("queryPinyin, num results: %d\n", len(resSlice))
+	log.Printf("queryPinyin, num results: %d\n", len(resSlice))
 	return resSlice, nil
 }
 
@@ -216,7 +216,7 @@ func (searcher *Searcher) queryUnigram(ctx context.Context, chars []string,
 		}
 		resSlice = append(resSlice, &result)
 	}
-	applog.Infof("queryUnigram, num results: %d\n", len(resSlice))
+	log.Printf("queryUnigram, num results: %d\n", len(resSlice))
 	return resSlice, nil
 }
 
@@ -397,10 +397,10 @@ func eitherSubstring(s1, s2 string) int {
 
 // Prints top search results
 func printTopResults(query string, matches []*tmResult) {
-	applog.Infof("transmemory.printTopResults, query: %s" +
+	log.Printf("transmemory.printTopResults, query: %s" +
 			", top results", query)
 	if len(matches) == 0 {
-		applog.Infof("transmemory.Search no results")
+		log.Printf("transmemory.Search no results")
 		return
 	}
 	var sb strings.Builder
@@ -416,5 +416,5 @@ func printTopResults(query string, matches []*tmResult) {
 			matches[i].combinedScore)
 		sb.WriteString(m)
 	}
-	applog.Infof("transmemory.printTopResults, matchs:\n%s\n", sb.String())
+	log.Printf("transmemory.printTopResults, matchs:\n%s\n", sb.String())
 }

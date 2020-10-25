@@ -17,9 +17,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/alexamies/chinesenotes-go/applog"
 )
 
 // A media object structure for media metadata
@@ -36,11 +36,11 @@ type MediaSearcher struct {
 
 // Open database connection and prepare query
 func NewMediaSearcher(database *sql.DB, ctx context.Context) *MediaSearcher {
-	applog.Info("media.init Initializing mediameta")
+	log.Println("media.init Initializing mediameta")
 	ms := MediaSearcher{database: database}
 	err := ms.InitQuery(ctx)
 	if err != nil {
-		applog.Errorf("media/NewMediaSearcher: error preparing database statement ", err)
+		log.Printf("media/NewMediaSearcher: error preparing database statement %v", err)
 		return &ms
 	}
 	ms.initialized = true
@@ -67,7 +67,7 @@ func (ms *MediaSearcher) Initialized() bool {
 
 // Looks up media metadata by object ID
 func (ms *MediaSearcher) FindMedia(objectId string, ctx context.Context) (*MediaMetadata, error) {
-	applog.Info("FindMedia: objectId (len) ", objectId, len(objectId))
+	log.Println("FindMedia: objectId (len) ", objectId, len(objectId))
 	mediaMeta := MediaMetadata{}
 	results, err := ms.findMediaStmt.QueryContext(ctx, objectId)
   if err != nil {
@@ -79,9 +79,9 @@ func (ms *MediaSearcher) FindMedia(objectId string, ctx context.Context) (*Media
 	results.Close()
 	if medium.Valid {
 		mediaMeta.ObjectId = medium.String
-		applog.Info("FindMedia: medium: ", medium)
+		log.Printf("FindMedia: medium: %v", medium)
 	} else {
-		applog.Error("FindMedia: ObjectId is not valid")
+		log.Println("FindMedia: ObjectId is not valid")
 	}
 	if titleZhCn.Valid {
 		mediaMeta.TitleZhCn = titleZhCn.String
@@ -95,6 +95,6 @@ func (ms *MediaSearcher) FindMedia(objectId string, ctx context.Context) (*Media
 	if license.Valid {
 		mediaMeta.License = license.String
 	}
-	applog.Info("FindMedia: mediaMeta ", mediaMeta)
+	log.Println("FindMedia: mediaMeta ", mediaMeta)
 	return &mediaMeta, nil
 }

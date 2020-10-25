@@ -16,9 +16,9 @@ package mail
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	
-	"github.com/alexamies/chinesenotes-go/applog"
 	"github.com/alexamies/chinesenotes-go/identity"
 	"github.com/alexamies/chinesenotes-go/webconfig"
 	"github.com/sendgrid/sendgrid-go"
@@ -44,7 +44,7 @@ func SendPasswordReset(toUser identity.UserInfo, token string, c webconfig.WebAp
 	if err != nil {
 		return fmt.Errorf("SendPasswordReset: error, %v\n", err)
 	} else {
-		applog.Infof("SendPasswordReset: sent email code: %v, url: %s",
+		log.Printf("SendPasswordReset: sent email code: %v, url: %s",
 			response.StatusCode, passwordResetURL)
 	}
 	return nil
