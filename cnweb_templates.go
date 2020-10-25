@@ -13,19 +13,51 @@
 package main
 
 import (
+  "fmt"
 	"html/template"
   "log"
 
 	"github.com/alexamies/chinesenotes-go/webconfig"
 )
 
+// HTML fragment for page head
+const head = `
+  <head>
+    <meta charset="utf-8">
+    <title>{{.Title}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link rel="stylesheet" href="/web/styles.css">
+  </head>
+`
+
+const footer = `
+    <footer>
+      <p>
+        Copyright Fo Guang Shan 佛光山 2020.
+        The Chinese-English dictionary is reproduced from the <a 
+        href="http://ntireader.org/" target="_blank"
+        > NTI Buddhist Text Reader</a> under the <a 
+        href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank"
+        >Creative Commons Attribution-Share Alike 3.0 License</a>
+        (CCASE 3.0). 
+        The site is powered by open source
+        software under an <a 
+        href="http://www.apache.org/licenses/LICENSE-2.0.html"
+        >Apache 2.0 license</a>.
+        Other content shown in password protected versions of this site is
+        copyright protected.
+      </p>
+    </footer>
+`
+
 // Templates from source for zero-config Quickstart
 const indexTmpl = `
 <!DOCTYPE html>
 <html lang="en">
+  %s
   <body>
     <h1>{{.Title}}</h1>
-    <p><a href="/">Home</a></p>
     <form name="findForm" method="post" action="/find/">
       <div>
         <label for="findInput">Search for</label>
@@ -33,6 +65,7 @@ const indexTmpl = `
         <button type="submit">Find</button>
       </div>
     </form>
+    %s
   <body>
 </html>
 `
@@ -40,6 +73,7 @@ const indexTmpl = `
 const findResultsTmpl = `
 <!DOCTYPE html>
 <html lang="en">
+  %s
   <body>
     <h1>{{.Title}}</h1>
     <p><a href="/">Home</a></p>
@@ -52,22 +86,30 @@ const findResultsTmpl = `
     </form>
     {{if .Results}}
     <h4>Results</h4>
-    <ul>
+    <div>
       {{ range $term := .Results.Terms }}
-      <li>
-        {{ $term.QueryText}} {{ $term.DictEntry.Pinyin}}
-        <ul>
-        {{ range $ws := $term.DictEntry.Senses }}
-          <li>
-          {{if ne $ws.English "\\N"}}{{ $ws.English }}{{end}}
-          {{if ne $ws.Notes "\\N"}}<div>Notes: {{ $ws.Notes }}</div>{{end}}
-          </li>
-        {{ end }}
-        </ul>
-      </li>
+      <div>
+        <details open>
+          <summary>
+            <span class="dict-entry-headword">{{ $term.QueryText }}</span>
+            <span class="dict-entry-pinyin">{{ $term.DictEntry.Pinyin }}</span>
+          </summary>
+          <ol>
+          {{ range $ws := $term.DictEntry.Senses }}
+            <li>
+            {{if ne $ws.Pinyin "\\N"}}<span class="dict-entry-pinyin">{{ $ws.Pinyin }}</span>{{end}}
+            {{if ne $ws.Grammar "\\N"}}<span class="dict-entry-grammar">{{ $ws.Grammar }}</span>{{end}}
+            {{if ne $ws.English "\\N"}}<span class="dict-entry-definition">{{ $ws.English }}</span>{{end}}
+            {{if ne $ws.Notes "\\N"}}<div class="dict-entry-notes">Notes: {{ $ws.Notes }}</div>{{end}}
+            </li>
+          {{ end }}
+          </ol>
+        </details>
+        </div>
       {{ end }}
-    </ul>
+    </div>
     {{ end }}
+    %s
   <body>
 </html>
 `
@@ -75,7 +117,7 @@ const findResultsTmpl = `
 const findTMTmpl = `
 <!DOCTYPE html>
 <html lang="en">
-  <body>
+  %s
   <body>
     <h1>{{.Title}}</h1>
     <p><a href="/">Home</a></p>
@@ -110,6 +152,7 @@ const findTMTmpl = `
       {{ end }}
     </ul>
     {{ end }}
+    %s
   <body>
 </html>
 `
@@ -117,7 +160,7 @@ const findTMTmpl = `
 const fullTextSearchTmpl = `
 <!DOCTYPE html>
 <html lang="en">
-  <body>
+  %s
   <body>
     <h1>{{.Title}}</h1>
     <p><a href="/">Home</a></p>
@@ -148,20 +191,21 @@ const fullTextSearchTmpl = `
       <p>No results found</p>
       {{ end }}
     {{ end }}
+    %s
   <body>
 </html>
 `
 
 // newTemplateMap builds the template map
 func newTemplateMap(webConfig webconfig.WebAppConfig) map[string]*template.Template {
-	templateMap := make(map[string]*template.Template)
-	templDir := webConfig.GetVar("TemplateDir")
 	tNames := map[string]string{
 		"index.html": indexTmpl,
 		"find_results.html": findResultsTmpl,
     "findtm.html": findTMTmpl,
     "full_text_search.html": fullTextSearchTmpl,
 	}
+  templateMap := make(map[string]*template.Template)
+  templDir := webConfig.GetVar("TemplateDir")
 	if len(templDir) > 0 {
 		for tName, defTmpl := range tNames {
 			fileName := "templates/" + tName
@@ -171,13 +215,15 @@ func newTemplateMap(webConfig webconfig.WebAppConfig) map[string]*template.Templ
 			if err != nil {
 				log.Printf("newTemplateMap: error parsing template, using default %s: %v",
 						tName, err)
-				tmpl = template.Must(template.New(tName).Parse(defTmpl))
+        t := fmt.Sprintf(defTmpl, head, footer)
+				tmpl = template.Must(template.New(tName).Parse(t))
 			}
 			templateMap[tName] = tmpl
 		}
 	} else {
 		for tName, defTmpl := range tNames {
-			tmpl := template.Must(template.New(tName).Parse(defTmpl))
+      t := fmt.Sprintf(defTmpl, head, footer)
+			tmpl := template.Must(template.New(tName).Parse(t))
 			templateMap[tName] = tmpl
 		}
 	}

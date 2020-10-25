@@ -6,3 +6,25 @@ body {
 h1 {
   color: #2F4F4F;
 }
+
+/* Dictionary Entry style */
+span.dict-entry-headword {
+  font-size: 150%;
+  font-weight: normal;
+}
+
+span.dict-entry-pinyin {
+  font-style: italic;
+}
+
+span.dict-entry-grammar {
+  color: grey;
+}
+
+span.dict-entry-definition {
+  font-weight: bold;
+}
+
+.dict-entry-notes {
+  font-size: 90%;
+}

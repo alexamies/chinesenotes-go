@@ -63,10 +63,17 @@ will be loaded from the Net.
 
 ## Basic Usage
 
-Clone this repo
+The repo contains a number of file that allow for customization of the app. To
+get them, clone this repo:
 
 ```shell
 git clone https://github.com/alexamies/chinesenotes-go.git
+```
+
+Then cd into the directory cloned:
+
+```shell
+cd chinesenotes-go
 ```
 
 Build the app
@@ -83,24 +90,11 @@ Run the web server
 
 Navigate to http://localhost:8080
 
-This project contains sufficient data to do minimal integration testing, even if
-you have not set up a database or cloned the related dictionary or corpus.
+You can change styles by changing the CSS settings in the file `web/styles.css`.
 
-```shell
-cd ..
-git clone https://github.com/alexamies/chinesenotes.com.git
-export CNREADER_HOME=$PWD/chinesenotes.com
-```
-
-Then return to this project and re-start the web app:
-
-```shell
-cd chinesenotes-go
-export CNWEB_HOME=$PWD
-./chinesenotes-go
-```
-
-Navigate back to http://localhost:8080
+You can do a lot of customization by editing the HTML templates in the
+`templates` directory. Make sure that the `TemplateDir` parameter is set
+in the `webconfig.yaml` file for this to take effect.
 
 The webconfig.yaml file and HTML tempates in /templates allow some additional
 customization. The HTML interface is very basic, just enough for minimal

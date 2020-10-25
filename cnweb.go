@@ -196,7 +196,7 @@ func displayPage(w http.ResponseWriter, templateName string, content interface{}
 	}
 	err := tmpl.Execute(w, content)
 	if err != nil {
-		log.Printf("displayPage: error rendering template %f", err)
+		log.Printf("displayPage: error rendering template %v", err)
 		http.Error(w, "Server Error", http.StatusInternalServerError)
 	}	
 }

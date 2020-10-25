@@ -14,6 +14,8 @@
 package main
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/alexamies/chinesenotes-go/webconfig"
@@ -21,9 +23,36 @@ import (
 
 // TestNewTemplateMap building the template map
 func TestNewTemplateMap(t *testing.T) {
-	templates := newTemplateMap(webconfig.WebAppConfig{})
-	_, ok := templates["find_results.html"]
-	if !ok {
-		t.Error("TestNewTemplateMap template not found")
+	want := "<title>Home Page</title>"
+	type test struct {
+		name string
+		templateName string
+		content interface{}
+		want string
+  }
+  tests := []test{
+		{
+			name: "Home Page",
+			templateName: "index.html",
+			content: map[string]string{"Title": "Home Page"},
+			want: "<title>Home Page</title>",
+		},
+  }
+  for _, tc := range tests {
+		templates := newTemplateMap(webconfig.WebAppConfig{})
+		tmpl, ok := templates[tc.templateName]
+		if !ok {
+			t.Fatalf("%s, template not found: %s", tc.name, tc.templateName)
+		}
+		content := map[string]string{"Title": "Home Page"}
+		var buf bytes.Buffer
+		err := tmpl.Execute(&buf, content)
+		if err != nil {
+			t.Fatalf("error rendering template %v", err)
+		}
+		got := buf.String()
+		if !strings.Contains(got, want) {
+			t.Errorf("got %s\n bug want %s", got, want)
+		}
 	}
 }
