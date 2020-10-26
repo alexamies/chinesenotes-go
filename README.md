@@ -21,6 +21,11 @@ Features include:
 8. Go module with Go and JSON APIs for interactive Chinese text processing
    - as opposed to batch processing of a corpus for indexing
 
+A screenshot of dictionary lookup of multiple terms with text tokenization is
+shown below.
+
+![screenshot of dictionary lookup](doc/text_lookup_screenshot.png)
+
 The web app drives the https://chinesenotes.com, https://ntireader.org, and
 https://hbreader.org web site and a private translation portal
 developed for Fo Guang Shan, working together with the 
@@ -183,7 +188,7 @@ and corpus of source text.
 This project is designed to be easy to setup with minimal dependencies but
 also run in a production architecture like shown below.
 
-![Production architecture.png](doc/prod_architecture.png)
+![Production architecture](doc/prod_architecture.png)
 
 Various flavors are possible depending on how it is configured. It can
 interoperate with the other components in the Chinese Notes family
