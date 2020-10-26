@@ -3,13 +3,26 @@
   <head>
     <meta charset="UTF-8">
     <title>Administration Portal</title>
+    <link href="https://fonts.googleapis.com/css?family=Noto+Sans" rel="stylesheet">
     <link rel="stylesheet" href="/web/styles.css">
   </head>
   <body>
-  	<p><a href="/">Home</a></p>
-  	<h1>Administration Portal</h1>
-  	<p><a href="https://docs.google.com/spreadsheets/d/{{.UsersSheetID}}/" target="_blank">Library Users</a></p>
-  	<p><a href="https://docs.google.com/spreadsheets/d/{{.TitlesSheetID}}/" target="_blank">Collection Titles</a></p>
+    <header>
+      <h1>{{.Title}}</h1>
+    </header>
+    <nav>
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/findtm">Translation Memory</a></li>
+        <li><a href="/findadvanced/">Full Text Search</a></li>
+        <li><a href="/web/texts.html">Library</a></li>
+      </ul>
+    </nav>
+    <main>
+  	  <h2>Administration Portal</h2>
+  	  <p><a href="https://docs.google.com/spreadsheets/d/{{.UsersSheetID}}/" target="_blank">Library Users</a></p>
+  	  <p><a href="https://docs.google.com/spreadsheets/d/{{.TitlesSheetID}}/" target="_blank">Collection Titles</a></p>
+    </main>
     <footer>
       <p>
         Copyright Fo Guang Shan 佛光山 2020.

@@ -6,38 +6,50 @@
     <title>{{.Title}}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link href="https://fonts.googleapis.com/css?family=Noto+Sans" rel="stylesheet">
     <link rel="stylesheet" href="/web/styles.css">
   </head>
   <body>
-    <h1>{{.Title}}</h1>
-    <p><a href="/">Home</a></p>
-    <h2>Full Text Search</h2>
-    {{if .ErrorMsg}}
-      <p>Error: {{ .ErrorMsg }}</p>
-    {{ else }}
-    <p>Enter Chinese text into to the most relevant documents</p>
-    <form name="findForm" method="post" action="/findadvanced/">
-      <div>
-        <label for="findInput">Search for</label>
-        <input type="text" name="query" size="40" required/>
-        <button type="submit">Find</button>
-      </div>
-    </form>
-    {{ end }}
-    {{if .Results}}
-    <h4>Results</h4>
-     {{if .Results.Documents}}
+    <header>
+      <h1>{{.Title}}</h1>
+    </header>
+    <nav>
       <ul>
-        {{ range $doc := .Results.Documents }}
-        <li>
-          <a href="{{ $doc.GlossFile }}">{{ $doc.Title }}</a>
-        </li>
-        {{ end }}
+        <li><a href="/">Home</a></li>
+        <li><a href="/findtm">Translation Memory</a></li>
+        <li><a href="/findadvanced/">Full Text Search</a></li>
+        <li><a href="/web/texts.html">Library</a></li>
       </ul>
+    </nav>
+    <main>
+      <h2>Full Text Search</h2>
+      {{if .ErrorMsg}}
+        <p>Error: {{ .ErrorMsg }}</p>
       {{ else }}
-      <p>No results found</p>
+      <p>Enter Chinese text into to the most relevant documents</p>
+      <form name="findForm" method="post" action="/findadvanced/">
+        <div>
+          <label for="findInput">Search for</label>
+          <input type="text" name="query" size="40" required/>
+          <button type="submit">Find</button>
+        </div>
+      </form>
       {{ end }}
-    {{ end }}
+      {{if .Results}}
+      <h4>Results</h4>
+       {{if .Results.Documents}}
+        <ul>
+          {{ range $doc := .Results.Documents }}
+          <li>
+            <a href="{{ $doc.GlossFile }}">{{ $doc.Title }}</a>
+          </li>
+          {{ end }}
+        </ul>
+        {{ else }}
+        <p>No results found</p>
+        {{ end }}
+      {{ end }}
+    <main>
     <footer>
       <p>
         Copyright Fo Guang Shan 佛光山 2020.

@@ -1,10 +1,62 @@
+/* Main body */
+html {
+  font-family: "Noto Sans";
+}
+
 body {
-  width: 1000px;
   color: #696969;
+  padding: 0;
+  margin: 0;
+  max-width: 1000px;
 }
 
 h1 {
-  color: #2F4F4F;
+  background-color: darkblue;
+  color: white;
+  padding: 10px;
+  margin: 0;
+}
+
+header {
+  background-color: darkblue;
+  padding: 0;
+  margin: 0;
+}
+
+main {
+  padding: 5px;
+}
+
+/* Menu */
+nav {
+  background-color: darkblue;
+  padding: 3px;
+  margin: 0;
+}
+
+nav > ul {
+	display: flex;
+	flex-direction: row;
+}
+
+nav > ul > li {
+  padding: 5px;
+	list-style-type:none;
+}
+
+nav > ul > li > a {
+  color: white;
+  text-decoration: none;
+}
+
+nav > ul > li > a:hover {
+  text-decoration: underline;
+}
+
+/* Search form */
+form {
+  padding: 5px;
+  margin: 5px;
 }
 
 /* Dictionary Entry style */
@@ -33,4 +85,10 @@ span.dict-entry-definition {
 .dict-entry-domain {
   font-size: 90%;
   color: grey;
+}
+
+/* Footer */
+footer {
+  padding: 5px;
+  background-color: #DCDCDC;
 }

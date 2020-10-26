@@ -6,42 +6,54 @@
     <title>{{.Title}}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link href="https://fonts.googleapis.com/css?family=Noto+Sans" rel="stylesheet">
     <link rel="stylesheet" href="/web/styles.css">
   </head>
   <body>
-    <h1>{{.Title}}</h1>
-    <p><a href="/">Home</a></p>
-    <h2>Translation Memory</h2>
-    {{if .ErrorMsg}}
-      <p>Error: {{ .ErrorMsg }}</p>
-    {{ else }}
-    <p>Enter Chinese text into to the most closely related names and phrases</p>
-    <form name="findForm" method="post" action="/findtm">
-      <div>
-        <label for="findInput">Search for</label>
-        <input type="text" name="query" size="40" required/>
-        <button type="submit">Find</button>
-      </div>
-    </form>
-    {{ end }}
-    {{if .TMResults}}
-    <h4>Results</h4>
-    <ul>
-      {{ range $term := .TMResults.Words }}
-      <li>
-        {{ $term.Traditional}} {{ $term.Pinyin }}
-        <ol>
-          {{ range $ws := $term.Senses }}
-          <li>
-            {{if ne $ws.English "\\N"}}{{ $ws.English }}{{end}}
-            {{if ne $ws.Notes "\\N"}}<div>Notes: {{ $ws.Notes }}</div>{{end}}
-          </li>
-          {{ end }}
-        </ol>
-      </li>
+    <header>
+      <h1>{{.Title}}</h1>
+    </header>
+    <nav>
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/findtm">Translation Memory</a></li>
+        <li><a href="/findadvanced/">Full Text Search</a></li>
+        <li><a href="/web/texts.html">Library</a></li>
+      </ul>
+    </nav>
+    <main>
+      <h2>Translation Memory</h2>
+      {{if .ErrorMsg}}
+        <p>Error: {{ .ErrorMsg }}</p>
+      {{ else }}
+      <p>Enter Chinese text into to the most closely related names and phrases</p>
+      <form name="findForm" method="post" action="/findtm">
+        <div>
+          <label for="findInput">Search for</label>
+          <input type="text" name="query" size="40" required/>
+          <button type="submit">Find</button>
+        </div>
+      </form>
       {{ end }}
-    </ul>
-    {{ end }}
+      {{if .TMResults}}
+      <h4>Results</h4>
+      <ul>
+        {{ range $term := .TMResults.Words }}
+        <li>
+          {{ $term.Traditional}} {{ $term.Pinyin }}
+          <ol>
+            {{ range $ws := $term.Senses }}
+            <li>
+              {{if ne $ws.English "\\N"}}{{ $ws.English }}{{end}}
+              {{if ne $ws.Notes "\\N"}}<div>Notes: {{ $ws.Notes }}</div>{{end}}
+            </li>
+            {{ end }}
+          </ol>
+        </li>
+        {{ end }}
+      </ul>
+      {{ end }}
+    </main>
     <footer>
       <p>
         Copyright Fo Guang Shan 佛光山 2020.

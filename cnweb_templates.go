@@ -27,8 +27,26 @@ const head = `
     <title>{{.Title}}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link href="https://fonts.googleapis.com/css?family=Noto+Sans" rel="stylesheet">
     <link rel="stylesheet" href="/web/styles.css">
   </head>
+`
+
+const header = `
+<header>
+  <h1>{{.Title}}</h1>
+</header>
+`
+
+const nav = `
+<nav>
+  <ul>
+    <li><a href="/">Home</a></li>
+    <li><a href="/findtm">Translation Memory</a></li>
+    <li><a href="/findadvanced/">Full Text Search</a></li>
+    <li><a href="/web/texts.html">Library</a></li>
+  </ul>
+</nav>
 `
 
 const footer = `
@@ -57,14 +75,21 @@ const indexTmpl = `
 <html lang="en">
   %s
   <body>
-    <h1>{{.Title}}</h1>
-    <form name="findForm" method="post" action="/find/">
-      <div>
-        <label for="findInput">Search for</label>
-        <input type="text" name="query" size="40" required/>
-        <button type="submit">Find</button>
-      </div>
-    </form>
+    %s
+    %s
+    <main>
+      <p>
+        Enter Chinese text into the input field below to find each word and its
+        English equivalent.
+      </p>
+      <form name="findForm" method="post" action="/find/">
+        <div>
+          <label for="findInput">Search for</label>
+          <input type="text" name="query" size="40" required/>
+          <button type="submit">Find</button>
+        </div>
+      </form>
+    </main>
     %s
   <body>
 </html>
@@ -75,41 +100,43 @@ const findResultsTmpl = `
 <html lang="en">
   %s
   <body>
-    <h1>{{.Title}}</h1>
-    <p><a href="/">Home</a></p>
-    <form name="findForm" method="post" action="/find/">
-      <div>
-        <label for="findInput">Search for</label>
-        <input type="text" name="query" size="40" required value="{{.Results.Query}}"/>
-        <button type="submit">Find</button>
-      </div>
-    </form>
-    {{if .Results}}
-    <h4>Results</h4>
-    <div>
-      {{ range $term := .Results.Terms }}
-      <div>
-        <details open>
-          <summary>
-            <span class="dict-entry-headword">{{ $term.QueryText }}</span>
-            <span class="dict-entry-pinyin">{{ $term.DictEntry.Pinyin }}</span>
-          </summary>
-          <ol>
-          {{ range $ws := $term.DictEntry.Senses }}
-            <li>
-            {{if ne $ws.Pinyin "\\N"}}<span class="dict-entry-pinyin">{{ $ws.Pinyin }}</span>{{end}}
-            {{if ne $ws.Grammar "\\N"}}<span class="dict-entry-grammar">{{ $ws.Grammar }}</span>{{end}}
-            {{if ne $ws.English "\\N"}}<span class="dict-entry-definition">{{ $ws.English }}</span>{{end}}
-            {{if ne $ws.Domain "\\N"}}<div class="dict-entry-domain">Domain: {{ $ws.Domain }}</div>{{end}}
-            {{if ne $ws.Notes "\\N"}}<div class="dict-entry-notes">Notes: {{ $ws.Notes }}</div>{{end}}
-            </li>
-          {{ end }}
-          </ol>
-        </details>
+    %s
+    %s
+    <main>
+      <form name="findForm" method="post" action="/find/">
+        <div>
+          <label for="findInput">Search for</label>
+          <input type="text" name="query" size="40" required value="{{.Results.Query}}"/>
+          <button type="submit">Find</button>
         </div>
+      </form>
+      {{if .Results}}
+      <h4>Results</h4>
+      <div>
+        {{ range $term := .Results.Terms }}
+        <div>
+          <details open>
+            <summary>
+              <span class="dict-entry-headword">{{ $term.QueryText }}</span>
+              <span class="dict-entry-pinyin">{{ $term.DictEntry.Pinyin }}</span>
+            </summary>
+            <ol>
+            {{ range $ws := $term.DictEntry.Senses }}
+              <li>
+              {{if ne $ws.Pinyin "\\N"}}<span class="dict-entry-pinyin">{{ $ws.Pinyin }}</span>{{end}}
+              {{if ne $ws.Grammar "\\N"}}<span class="dict-entry-grammar">{{ $ws.Grammar }}</span>{{end}}
+              {{if ne $ws.English "\\N"}}<span class="dict-entry-definition">{{ $ws.English }}</span>{{end}}
+              {{if ne $ws.Domain "\\N"}}<div class="dict-entry-domain">Domain: {{ $ws.Domain }}</div>{{end}}
+              {{if ne $ws.Notes "\\N"}}<div class="dict-entry-notes">Notes: {{ $ws.Notes }}</div>{{end}}
+              </li>
+            {{ end }}
+            </ol>
+          </details>
+          </div>
+        {{ end }}
+      </div>
       {{ end }}
-    </div>
-    {{ end }}
+    </main>
     %s
   <body>
 </html>
@@ -120,39 +147,41 @@ const findTMTmpl = `
 <html lang="en">
   %s
   <body>
-    <h1>{{.Title}}</h1>
-    <p><a href="/">Home</a></p>
-    <h2>Translation Memory</h2>
-    {{if .ErrorMsg}}
-      <p>Error: {{ .ErrorMsg }}</p>
-    {{ else }}
-    <p>Enter Chinese text into to the most closely related names and phrases</p>
-    <form name="findForm" method="post" action="/findtm">
-      <div>
-        <label for="findInput">Search for</label>
-        <input type="text" name="query" size="40" required/>
-        <button type="submit">Find</button>
-      </div>
-    </form>
-    {{ end }}
-    {{if .TMResults}}
-    <h4>Results</h4>
-    <ul>
-      {{ range $term := .TMResults.Words }}
-      <li>
-        {{ $term.Traditional}} {{ $term.Pinyin }}
-        <ol>
-          {{ range $ws := $term.Senses }}
-          <li>
-            {{if ne $ws.English "\\N"}}{{ $ws.English }}{{end}}
-            {{if ne $ws.Notes "\\N"}}<div>Notes: {{ $ws.Notes }}</div>{{end}}
-          </li>
-          {{ end }}
-        </ol>
-      </li>
+    %s
+    %s
+    <main>
+      <h2>Translation Memory</h2>
+      {{if .ErrorMsg}}
+        <p>Error: {{ .ErrorMsg }}</p>
+      {{ else }}
+      <p>Enter Chinese text into to the most closely related names and phrases</p>
+      <form name="findForm" method="post" action="/findtm">
+        <div>
+          <label for="findInput">Search for</label>
+          <input type="text" name="query" size="40" required/>
+          <button type="submit">Find</button>
+        </div>
+      </form>
       {{ end }}
-    </ul>
-    {{ end }}
+      {{if .TMResults}}
+      <h4>Results</h4>
+      <ul>
+        {{ range $term := .TMResults.Words }}
+        <li>
+          {{ $term.Traditional}} {{ $term.Pinyin }}
+          <ol>
+            {{ range $ws := $term.Senses }}
+            <li>
+              {{if ne $ws.English "\\N"}}{{ $ws.English }}{{end}}
+              {{if ne $ws.Notes "\\N"}}<div>Notes: {{ $ws.Notes }}</div>{{end}}
+            </li>
+            {{ end }}
+          </ol>
+        </li>
+        {{ end }}
+      </ul>
+      {{ end }}
+    </main>
     %s
   <body>
 </html>
@@ -163,35 +192,37 @@ const fullTextSearchTmpl = `
 <html lang="en">
   %s
   <body>
-    <h1>{{.Title}}</h1>
-    <p><a href="/">Home</a></p>
-    <h2>Full Text Search</h2>
-    {{if .ErrorMsg}}
-      <p>Error: {{ .ErrorMsg }}</p>
-    {{ else }}
-    <p>Enter Chinese text into to the most relevant documents</p>
-    <form name="findForm" method="post" action="/findadvanced/">
-      <div>
-        <label for="findInput">Search for</label>
-        <input type="text" name="query" size="40" required/>
-        <button type="submit">Find</button>
-      </div>
-    </form>
-    {{ end }}
-    {{if .Results}}
-    <h4>Results</h4>
-     {{if .Results.Documents}}
-      <ul>
-        {{ range $doc := .Results.Documents }}
-        <li>
-          <a href="{{ $doc.GlossFile }}">{{ $doc.Title }}</a>
-        </li>
-        {{ end }}
-      </ul>
+    %s
+    %s
+    <main>
+      <h2>Full Text Search</h2>
+      {{if .ErrorMsg}}
+        <p>Error: {{ .ErrorMsg }}</p>
       {{ else }}
-      <p>No results found</p>
+      <p>Enter Chinese text into to the most relevant documents</p>
+      <form name="findForm" method="post" action="/findadvanced/">
+        <div>
+          <label for="findInput">Search for</label>
+          <input type="text" name="query" size="40" required/>
+          <button type="submit">Find</button>
+        </div>
+      </form>
       {{ end }}
-    {{ end }}
+      {{if .Results}}
+      <h4>Results</h4>
+       {{if .Results.Documents}}
+        <ul>
+          {{ range $doc := .Results.Documents }}
+          <li>
+            <a href="{{ $doc.GlossFile }}">{{ $doc.Title }}</a>
+          </li>
+          {{ end }}
+        </ul>
+        {{ else }}
+        <p>No results found</p>
+        {{ end }}
+      {{ end }}
+    </main>
     %s
   <body>
 </html>
@@ -216,14 +247,14 @@ func newTemplateMap(webConfig webconfig.WebAppConfig) map[string]*template.Templ
 			if err != nil {
 				log.Printf("newTemplateMap: error parsing template, using default %s: %v",
 						tName, err)
-        t := fmt.Sprintf(defTmpl, head, footer)
+        t := fmt.Sprintf(defTmpl, head, header, nav, footer)
 				tmpl = template.Must(template.New(tName).Parse(t))
 			}
 			templateMap[tName] = tmpl
 		}
 	} else {
 		for tName, defTmpl := range tNames {
-      t := fmt.Sprintf(defTmpl, head, footer)
+      t := fmt.Sprintf(defTmpl, head, header, nav, footer)
 			tmpl := template.Must(template.New(tName).Parse(t))
 			templateMap[tName] = tmpl
 		}

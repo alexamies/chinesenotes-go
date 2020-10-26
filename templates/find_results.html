@@ -5,44 +5,56 @@
     <title>{{.Title}}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link href="https://fonts.googleapis.com/css?family=Noto+Sans" rel="stylesheet">
     <link rel="stylesheet" href="/web/styles.css">
   </head>
   <body>
-    <h1>{{.Title}}</h1>
-    <p><a href="/">Home</a></p>
-    <form name="findForm" method="post" action="/find/">
-      <div>
-        <label for="findInput">Search for</label>
-        <input type="text" name="query" size="40" required value="{{.Results.Query}}"/>
-        <button type="submit">Find</button>
-      </div>
-    </form>
-    {{if .Results}}
-    <h4>Results</h4>
-    <div>
-      {{ range $term := .Results.Terms }}
-      <div>
-        <details open>
-          <summary>
-            <span class="dict-entry-headword">{{ $term.QueryText }}</span>
-            <span class="dict-entry-pinyin">{{ $term.DictEntry.Pinyin }}</span>
-          </summary>
-          <ol>
-          {{ range $ws := $term.DictEntry.Senses }}
-            <li>
-            {{if ne $ws.Pinyin "\\N"}}<span class="dict-entry-pinyin">{{ $ws.Pinyin }}</span>{{end}}
-            {{if ne $ws.Grammar "\\N"}}<span class="dict-entry-grammar">{{ $ws.Grammar }}</span>{{end}}
-            {{if ne $ws.English "\\N"}}<span class="dict-entry-definition">{{ $ws.English }}</span>{{end}}
-            {{if ne $ws.Domain "\\N"}}<div class="dict-entry-domain">Domain: {{ $ws.Domain }}</div>{{end}}
-            {{if ne $ws.Notes "\\N"}}<div class="dict-entry-notes">Notes: {{ $ws.Notes }}</div>{{end}}
-            </li>
-          {{ end }}
-          </ol>
-        </details>
+    <header>
+      <h1>{{.Title}}</h1>
+    </header>
+    <nav>
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/findtm">Translation Memory</a></li>
+        <li><a href="/findadvanced/">Full Text Search</a></li>
+        <li><a href="/web/texts.html">Library</a></li>
+      </ul>
+    </nav>
+    <main>
+      <form name="findForm" method="post" action="/find/">
+        <div>
+          <label for="findInput">Search for</label>
+          <input type="text" name="query" size="40" required value="{{.Results.Query}}"/>
+          <button type="submit">Find</button>
         </div>
+      </form>
+      {{if .Results}}
+      <h4>Results</h4>
+      <div>
+        {{ range $term := .Results.Terms }}
+        <div>
+          <details open>
+            <summary>
+              <span class="dict-entry-headword">{{ $term.QueryText }}</span>
+              <span class="dict-entry-pinyin">{{ $term.DictEntry.Pinyin }}</span>
+            </summary>
+            <ol>
+            {{ range $ws := $term.DictEntry.Senses }}
+              <li>
+              {{if ne $ws.Pinyin "\\N"}}<span class="dict-entry-pinyin">{{ $ws.Pinyin }}</span>{{end}}
+              {{if ne $ws.Grammar "\\N"}}<span class="dict-entry-grammar">{{ $ws.Grammar }}</span>{{end}}
+              {{if ne $ws.English "\\N"}}<span class="dict-entry-definition">{{ $ws.English }}</span>{{end}}
+              {{if ne $ws.Domain "\\N"}}<div class="dict-entry-domain">Domain: {{ $ws.Domain }}</div>{{end}}
+              {{if ne $ws.Notes "\\N"}}<div class="dict-entry-notes">Notes: {{ $ws.Notes }}</div>{{end}}
+              </li>
+            {{ end }}
+            </ol>
+          </details>
+          </div>
+        {{ end }}
+      </div>
       {{ end }}
-    </div>
-    {{ end }}
+    </main>
     <footer>
       <p>
         Copyright Fo Guang Shan 佛光山 2020.
