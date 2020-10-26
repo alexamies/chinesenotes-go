@@ -87,6 +87,12 @@ span.dict-entry-definition {
   color: grey;
 }
 
+/* vocabDialog */
+#vocabDialog {
+  width: '400px',
+  height: '300px',
+}
+
 /* Footer */
 footer {
   padding: 5px;

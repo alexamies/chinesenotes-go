@@ -32,12 +32,14 @@ const head = `
   </head>
 `
 
+// header block in HTML body
 const header = `
 <header>
   <h1>{{.Title}}</h1>
 </header>
 `
 
+// navigation menu
 const nav = `
 <nav>
   <ul>
@@ -49,6 +51,7 @@ const nav = `
 </nav>
 `
 
+// Page footer
 const footer = `
     <footer>
       <p>
