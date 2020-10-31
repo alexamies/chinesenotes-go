@@ -413,7 +413,7 @@ gcloud run deploy --platform=managed $SERVICE \
 --set-env-vars CNREADER_HOME="/"
 ```
 
-## Password protecting
+## Password protecting the web app
 
 To set up the translation portal with password protection, first configure
 the database:

@@ -44,6 +44,10 @@ nav > ul > li {
 	list-style-type:none;
 }
 
+nav > ul > li:hover {
+  background-color: blue;
+}
+
 nav > ul > li > a {
   color: white;
   text-decoration: none;
@@ -87,10 +91,9 @@ span.dict-entry-definition {
   color: grey;
 }
 
-/* vocabDialog */
-#vocabDialog {
-  width: '400px',
-  height: '300px',
+/* vocabulary dialog */
+dialog {
+  width: '800px',
 }
 
 /* Footer */

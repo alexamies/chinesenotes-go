@@ -1,7 +1,7 @@
 # Configuration file for web application
 
 # Directory for Go templates for dynamically rendered pages
-#TemplateDir: templates
+TemplateDir: templates
 
 # Title for Go generated HTML pages
 Title: Chinese Notes Translation Portal
@@ -19,4 +19,4 @@ TitlesSheetID:
 FromEmail: do_not_reply@example.com
 
 # The URL to do a password reset
-PasswordResetURL: http://localhost/loggedin/reset_password
+PasswordResetURL: http://localhost:8080/loggedin/reset_password

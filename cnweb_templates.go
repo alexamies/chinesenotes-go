@@ -231,13 +231,26 @@ const fullTextSearchTmpl = `
 </html>
 `
 
+const useFileTmp = `Use template file %s %s %s %s `
+
 // newTemplateMap builds the template map
 func newTemplateMap(webConfig webconfig.WebAppConfig) map[string]*template.Template {
 	tNames := map[string]string{
-		"index.html": indexTmpl,
-		"find_results.html": findResultsTmpl,
+    "404.html": useFileTmp,
+    "change_password_form.html": useFileTmp,
+    "find_results.html": findResultsTmpl,
     "findtm.html": findTMTmpl,
     "full_text_search.html": fullTextSearchTmpl,
+    "index.html": indexTmpl,
+		"index_auth.html": useFileTmp,
+    "logged_out.html": useFileTmp,
+    "login_form.html": useFileTmp,
+    "logout.html": useFileTmp,
+    "request_reset_form.html": useFileTmp,
+    "request_password_confirmation.html": useFileTmp,
+    "request_password_form.html": useFileTmp,
+    "reset_password_form.html": useFileTmp,
+    "translation_portal.html": useFileTmp,
 	}
   templateMap := make(map[string]*template.Template)
   templDir := webConfig.GetVar("TemplateDir")

@@ -10,8 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Password recovery
-package mail
+package identity
 
 import (
 	"errors"
@@ -19,13 +18,12 @@ import (
 	"log"
 	"os"
 	
-	"github.com/alexamies/chinesenotes-go/identity"
 	"github.com/alexamies/chinesenotes-go/webconfig"
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 )
 
-func SendPasswordReset(toUser identity.UserInfo, token string, c webconfig.WebAppConfig) error {
+func SendPasswordReset(toUser UserInfo, token string, c webconfig.WebAppConfig) error {
 	fromEmail := c.GetVar("FromEmail")
 	from := mail.NewEmail("Do Not Reply", fromEmail)
 	subject := "Password Reset"
@@ -39,10 +37,16 @@ func SendPasswordReset(toUser identity.UserInfo, token string, c webconfig.WebAp
 	htmlText := "<p>To reset your password, please click <a href='%s?token=%s'>here</a>. Your username is %s.</p>"
 	htmlContent := fmt.Sprintf(htmlText, passwordResetURL, token, toUser.UserName)
 	message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
-	client := sendgrid.NewSendClient(os.Getenv("SENDGRID_API_KEY"))
+	key := os.Getenv("SENDGRID_API_KEY")
+	if len(key) == 0 {
+		return fmt.Errorf("SendPasswordReset: no key")
+	}
+	client := sendgrid.NewSendClient(key)
 	response, err := client.Send(message)
 	if err != nil {
-		return fmt.Errorf("SendPasswordReset: error, %v\n", err)
+		return fmt.Errorf("SendPasswordReset: error, %v", err)
+	} else if response.StatusCode >= 300 {
+		return fmt.Errorf("SendPasswordReset: StatusCode:, %d", response.StatusCode)
 	} else {
 		log.Printf("SendPasswordReset: sent email code: %v, url: %s",
 			response.StatusCode, passwordResetURL)

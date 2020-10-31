@@ -35,7 +35,6 @@ import (
 	"github.com/alexamies/chinesenotes-go/fileloader"
 	"github.com/alexamies/chinesenotes-go/find"
 	"github.com/alexamies/chinesenotes-go/identity"
-	"github.com/alexamies/chinesenotes-go/mail"
 	"github.com/alexamies/chinesenotes-go/media"
 	"github.com/alexamies/chinesenotes-go/transmemory"
 	"github.com/alexamies/chinesenotes-go/webconfig"
@@ -63,6 +62,15 @@ type htmlContent struct {
 	ErrorMsg string
 	Results *find.QueryResults
 	TMResults *transmemory.Results
+}
+
+
+// Content for change password page
+type ChangePasswordHTML struct {
+	Title string
+	OldPasswordValid bool
+	ChangeSuccessful bool
+	ShowNewForm bool
 }
 
 func initApp(ctx context.Context) error {
@@ -116,7 +124,7 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			log.Printf("changePasswordHandler authenticator not initialized, \n%v\n", err)
+			log.Printf("adminHandler authenticator not initialized, \n%v\n", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
@@ -167,7 +175,14 @@ func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
     	if strings.Contains(r.Header.Get("Accept"), "application/json") {
     		sendJSON(w, result)
 		} else {
-			displayPage(w, "change_password_form.html", result)
+			title := webConfig.GetVarWithDefault("Title", defTitle)
+			content := ChangePasswordHTML{
+				Title: title,
+				OldPasswordValid: result.OldPasswordValid,
+				ChangeSuccessful: result.ChangeSuccessful,
+				ShowNewForm: result.ShowNewForm,
+			}
+			displayPage(w, "change_password_form.html", content)
 		}
 	}
 }
@@ -176,8 +191,13 @@ func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
 func changePasswordFormHandler(w http.ResponseWriter, r *http.Request) {
 	sessionInfo := enforceValidSession(w, r)
 	if sessionInfo.Authenticated == 1 {
-		// fresh form
-		result := identity.ChangePasswordResult{false, false, true}
+		title := webConfig.GetVarWithDefault("Title", defTitle)
+		result := ChangePasswordHTML{
+			Title: title,
+			OldPasswordValid: false,
+			ChangeSuccessful: false,
+			ShowNewForm: true,
+		}
 		displayPage(w, "change_password_form.html", result)
 	}
 }
@@ -193,6 +213,7 @@ func displayPage(w http.ResponseWriter, templateName string, content interface{}
 	if !ok {
 		log.Printf("displayPage: template found %s", templateName)
 		http.Error(w, "Server Error", http.StatusInternalServerError)
+		return
 	}
 	err := tmpl.Execute(w, content)
 	if err != nil {
@@ -246,12 +267,6 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 	}
 
 	displayPage(w, "index.html", content)
-}
-
-// displayPortalHome shows the translation portal home page
-func displayPortalHome(w http.ResponseWriter) {
-	vars := webConfig.GetAll()
-	displayPage(w, "translation_portal.html", vars)
 }
 
 // Process a change password request
@@ -572,7 +587,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
     	sendJSON(w, sessionInfo)
 	} else {
 		if sessionInfo.Authenticated == 1 {
-			displayPortalHome(w)
+			displayHome(w, r)
 		} else {
 			loginFormHandler(w, r)
 		}
@@ -689,7 +704,7 @@ func portalHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	user := sessionInfo.User
 	if identity.IsAuthorized(user, "translation_portal") {
-		displayPortalHome(w)
+		displayHome(w, r)
 	} else {
 		log.Printf("portalHandler %s with role %s not authorized for portal",
 			user.UserName, user.Role)
@@ -753,15 +768,16 @@ func requestResetHandler(w http.ResponseWriter, r *http.Request) {
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			log.Printf("requestResetHandler: authenticator not initialized, \n%v\n", err)
+			log.Printf("requestResetHandler: authenticator not initialized: %v\n", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
 	email := r.PostFormValue("Email")
 	result := authenticator.RequestPasswordReset(ctx, email)
 	if result.RequestResetSuccess {
-		err := mail.SendPasswordReset(result.User, result.Token, webConfig)
+		err := identity.SendPasswordReset(result.User, result.Token, webConfig)
 		if err != nil {
+			log.Printf("requestResetHandler: could not send password reset: %v\n", err)
 			result.RequestResetSuccess = false
 		}
 	}

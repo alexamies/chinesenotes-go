@@ -11,13 +11,13 @@
 // limitations under the License.
 
 
-// Unit tests for the mail package
-package mail
+// Unit tests for password reset by mail
+
+package identity
 
 import (
 	"testing"
 
-	"github.com/alexamies/chinesenotes-go/identity"
 	"github.com/alexamies/chinesenotes-go/webconfig"
 )
 
