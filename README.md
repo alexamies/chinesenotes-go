@@ -449,23 +449,17 @@ Note that the password needs to be SHA-256 hashed before inserting. If the user
 forgets their password, there is a password recovery function. This requires
 setup of a SendGrid account.
 
-Set the environment variable PROTECTED, the SITEDOMAIN variable for cookies,
-and PORTAL_LIB_HOME before starting the web server:
+Set the environment variable PROTECTED, the SITEDOMAIN variable for cookies:
 
 ```shell
 export PROTECTED=true
 export SITEDOMAIN=localhost
-export PORTAL_LIB_HOME=translation_portal
 ./chinesenotes-go
 ```
 
 Note that you need to have HTTPS enabled for cookies to be sent with most
 browsers. You can create a self-signed certificate, run locally without one,
 or deploy to a managed service like [Cloud Run](https://cloud.google.com/run).
-
-The PORTAL_LIB_HOME environment variable tells the server where to find the
-source documents for translation. You can place your own HTML files in this 
-directory.
 
 For deployment to Cloud Run use the command
 
@@ -496,7 +490,6 @@ gcloud run deploy --platform=managed $SERVICE \
 --set-env-vars CNREADER_HOME="/" \
 --set-env-vars PROTECTED="$PROTECTED" \
 --set-env-vars SITEDOMAIN="$SITEDOMAIN" \
---set-env-vars PORTAL_LIB_HOME="$PORTAL_LIB_HOME"
 ```
 
 You will need to add the users manually using SQL statements. There is no
@@ -541,7 +534,7 @@ go run github.com/alexamies/cnreader
 
 This will write the full text index files into the `index` directory and
 marked up HTML files in the `example_collection` directory. Add a link in the
-`index.html` template to the page `/web/texts.html`. After starting the web
+`library.html` template to the page `/web/texts.html`. After starting the web
 server again you should be able to navigate to the list of texts and see
 Chinese words marked up with English equivalents on mouseover. You can change
 the config.yaml `VocabFormat` variable to create other markup options, including

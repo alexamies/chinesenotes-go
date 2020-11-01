@@ -210,7 +210,7 @@ func custom404(w http.ResponseWriter, r *http.Request, url string) {
 func displayPage(w http.ResponseWriter, templateName string, content interface{}) {
 	tmpl, ok := templates[templateName]
 	if !ok {
-		log.Printf("displayPage: template found %s", templateName)
+		log.Printf("displayPage: template not found %s", templateName)
 		http.Error(w, "Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -524,6 +524,46 @@ func healthcheck(w http.ResponseWriter, r *http.Request) {
 func initDBCon() (*sql.DB, error) {
 	conString := config.DBConfig()
 	return sql.Open("mysql", conString)
+}
+
+// Display library page for digital texts
+func library(w http.ResponseWriter, r *http.Request) {
+	log.Printf("library: url %s\n", r.URL.Path)
+
+	title := webConfig.GetVarWithDefault("Title", defTitle)
+	content := htmlContent{
+		Title: title,
+	}
+	if config.PasswordProtected() {
+		ctx := context.Background()
+		if authenticator == nil {
+			var err error
+			authenticator, err = identity.NewAuthenticator(ctx)
+			if err != nil {
+				log.Printf("displayHome: authenticator not initialized, \n%v\n", err)
+				http.Error(w, "Server error", http.StatusInternalServerError)
+				return
+			}
+		}
+		sessionInfo := identity.InvalidSession()
+		cookie, err := r.Cookie("session")
+		if err == nil {
+			sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
+		} else {
+			log.Printf("displayHome error getting cookie: %v", err)
+			displayPage(w, "login_form.html", content)
+			return
+		}
+		if !sessionInfo.Valid {
+			displayPage(w, "login_form.html", content)
+			return
+		} else {
+			displayPage(w, "library.html", content)
+			return
+		}
+	}
+
+	displayPage(w, "library.html", content)
 }
 
 // Display login form for the Translation Portal
@@ -951,6 +991,7 @@ func main() {
 	http.HandleFunc("/healthcheck", healthcheck)
 	http.HandleFunc("/loggedin/admin", adminHandler)
 	http.HandleFunc("/loggedin/changepassword", changePasswordFormHandler)
+	http.HandleFunc("/library", library)
 	http.HandleFunc("/loggedin/login", loginHandler)
 	http.HandleFunc("/loggedin/login_form", loginFormHandler)
 	http.HandleFunc("/loggedin/logout_form", logoutForm)

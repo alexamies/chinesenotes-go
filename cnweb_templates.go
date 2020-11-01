@@ -46,7 +46,7 @@ const nav = `
     <li><a href="/">Home</a></li>
     <li><a href="/findtm">Translation Memory</a></li>
     <li><a href="/findadvanced/">Full Text Search</a></li>
-    <li><a href="/web/texts.html">Library</a></li>
+    <li><a href="/library">Library</a></li>
   </ul>
 </nav>
 `
@@ -92,6 +92,25 @@ const indexTmpl = `
           <button type="submit">Find</button>
         </div>
       </form>
+    </main>
+    %s
+  <body>
+</html>
+`
+
+// Templates from source for zero-config Quickstart
+const libraryTmpl = `
+<!DOCTYPE html>
+<html lang="en">
+  %s
+  <body>
+    %s
+    %s
+    <main>
+      <h2>Library</h2>
+      <p>
+        Placeholder for a library of digital texts.
+      </p>
     </main>
     %s
   <body>
@@ -243,6 +262,7 @@ func newTemplateMap(webConfig config.WebAppConfig) map[string]*template.Template
     "full_text_search.html": fullTextSearchTmpl,
     "index.html": indexTmpl,
 		"index_auth.html": useFileTmp,
+    "library.html": libraryTmpl,
     "logged_out.html": useFileTmp,
     "login_form.html": useFileTmp,
     "logout.html": useFileTmp,
