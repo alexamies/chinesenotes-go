@@ -19,7 +19,7 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/alexamies/chinesenotes-go/webconfig"	
+	"github.com/alexamies/chinesenotes-go/config"
 )
 
 func initDBCon() (*sql.DB, error) {

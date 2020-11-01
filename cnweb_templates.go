@@ -17,7 +17,7 @@ import (
 	"html/template"
   "log"
 
-	"github.com/alexamies/chinesenotes-go/webconfig"
+  "github.com/alexamies/chinesenotes-go/config"
 )
 
 // HTML fragment for page head
@@ -234,7 +234,7 @@ const fullTextSearchTmpl = `
 const useFileTmp = `Use template file %s %s %s %s `
 
 // newTemplateMap builds the template map
-func newTemplateMap(webConfig webconfig.WebAppConfig) map[string]*template.Template {
+func newTemplateMap(webConfig config.WebAppConfig) map[string]*template.Template {
 	tNames := map[string]string{
     "404.html": useFileTmp,
     "change_password_form.html": useFileTmp,

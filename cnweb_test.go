@@ -19,7 +19,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alexamies/chinesenotes-go/webconfig"
+	"github.com/alexamies/chinesenotes-go/config"
 )
 
 // TestDisplayHome tests the default HTTP handler.

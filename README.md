@@ -52,7 +52,7 @@ go run github.com/alexamies/cnreader -download_dict
 Set an environment variable to let the app know where its home is
 
 ```shell
-export CNREADER_HOME=.
+export CNWEB_HOME=.
 ```
 
 Get the web app and run it

@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package for configuration common to command line tool and web app.
+// Package for configuration of command line tool and web apps.
 package config
 
 import (

@@ -37,14 +37,13 @@ import (
 	"github.com/alexamies/chinesenotes-go/identity"
 	"github.com/alexamies/chinesenotes-go/media"
 	"github.com/alexamies/chinesenotes-go/transmemory"
-	"github.com/alexamies/chinesenotes-go/webconfig"
 )
 
 const defTitle = "Chinese Notes Translation Portal"
 
 var (
 	appConfig config.AppConfig
-	webConfig webconfig.WebAppConfig
+	webConfig config.WebAppConfig
 	database *sql.DB
 	parser find.QueryParser
 	wdict map[string]dicttypes.Word
@@ -76,9 +75,9 @@ type ChangePasswordHTML struct {
 func initApp(ctx context.Context) error {
 	log.Println("initApp Initializing cnweb")
 	appConfig = config.InitConfig()
-	webConfig = webconfig.InitWeb()
+	webConfig = config.InitWeb()
 	var err error
-	if webconfig.UseDatabase() {
+	if config.UseDatabase() {
 		database, err = initDBCon()
 		if err != nil {
 			return fmt.Errorf("initApp unable to connect to database: \n%v\n", err)
@@ -107,7 +106,7 @@ func initApp(ctx context.Context) error {
 		}
 	}
 	df = find.NewDocFinder(ctx, database)
-	if webconfig.PasswordProtected() {
+	if config.PasswordProtected() {
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
 			return fmt.Errorf("init authenticator not initialized, \n%v", err)
@@ -237,7 +236,7 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 	content := htmlContent{
 		Title: title,
 	}
-	if webconfig.PasswordProtected() {
+	if config.PasswordProtected() {
 		ctx := context.Background()
 		if authenticator == nil {
 			var err error
@@ -309,7 +308,7 @@ func findAdvanced(response http.ResponseWriter, request *http.Request) {
 			content := htmlContent{
 				Title: title,
 			}
-			if !webconfig.UseDatabase() {
+			if !config.UseDatabase() {
 				log.Println("findAdvanced database is needed for this feature")
 				content.ErrorMsg = "Full text search is not configured"
 			}
@@ -352,7 +351,7 @@ func findDocs(response http.ResponseWriter, request *http.Request, fullText bool
 		return
 	}
 
-	if webconfig.PasswordProtected() {
+	if config.PasswordProtected() {
 		sessionInfo := enforceValidSession(response, request)
 		if !sessionInfo.Valid {
 			return
@@ -518,12 +517,12 @@ func findSubstring(response http.ResponseWriter, request *http.Request) {
 // Health check for monitoring or load balancing system, checks reachability
 func healthcheck(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "OK")
-	fmt.Fprintf(w, "Using a database: %t\n", webconfig.UseDatabase())
-	fmt.Fprintf(w, "Password protected: %t\n", webconfig.PasswordProtected())
+	fmt.Fprintf(w, "Using a database: %t\n", config.UseDatabase())
+	fmt.Fprintf(w, "Password protected: %t\n", config.PasswordProtected())
 }
 
 func initDBCon() (*sql.DB, error) {
-	conString := webconfig.DBConfig()
+	conString := config.DBConfig()
 	return sql.Open("mysql", conString)
 }
 
@@ -569,7 +568,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		if (err != nil) || !sessionInfo.Valid {
 			sessionid := identity.NewSessionId()
-			domain := webconfig.GetSiteDomain()
+			domain := config.GetSiteDomain()
 			log.Printf("loginHandler: setting new session %s\n for domain %s",
 				sessionid, domain)
 			cookie := &http.Cookie{
@@ -860,7 +859,7 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 		cookie := &http.Cookie{
         	Name: "session",
         	Value: sessionid,
-        	Domain: webconfig.GetSiteDomain(),
+        	Domain: config.GetSiteDomain(),
         	Path: "/",
         	MaxAge: 86400, // One day
         }
@@ -888,7 +887,7 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 			content := htmlContent{
 				Title: title,
 			}
-			if !webconfig.UseDatabase() {
+			if !config.UseDatabase() {
 				log.Println("translationMemory database is needed for this feature")
 				content.ErrorMsg = "Translation memory not configured"
 			}
@@ -967,7 +966,7 @@ func main() {
 	fs := http.FileServer(http.Dir("./web"))
 	http.Handle("/web/", http.StripPrefix("/web/", fs))
 	http.HandleFunc("/", displayHome)
-	portStr := ":" + strconv.Itoa(webconfig.GetPort())
+	portStr := ":" + strconv.Itoa(config.GetPort())
 	log.Printf("cnweb.main Starting http server on port %s\n", portStr)
 	err = http.ListenAndServe(portStr, nil)
 	if err != nil {

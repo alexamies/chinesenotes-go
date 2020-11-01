@@ -18,7 +18,7 @@ package identity
 import (
 	"testing"
 
-	"github.com/alexamies/chinesenotes-go/webconfig"
+	"github.com/alexamies/chinesenotes-go/config"
 )
 
 // Test package initialization, which requires a database connection

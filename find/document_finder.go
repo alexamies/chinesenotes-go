@@ -22,10 +22,10 @@ import (
 	"strings"
 	_ "github.com/go-sql-driver/mysql"
 	
+	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dictionary"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/fulltext"
-	"github.com/alexamies/chinesenotes-go/webconfig"
 )
 
 const (
@@ -690,10 +690,10 @@ func (df *DatabaseDocFinder) findWords(ctx context.Context, query string) ([]dic
 // at most every minute
 func (df *DatabaseDocFinder) initFind(ctx context.Context) error {
 	log.Println("find.initFind Initializing document_finder")
-	df.avdl = webconfig.GetEnvIntValue("AVG_DOC_LEN", avDocLen)
+	df.avdl = config.GetEnvIntValue("AVG_DOC_LEN", avDocLen)
 	err := df.initStatements(ctx)
 	if err != nil {
-		conString := webconfig.DBConfig()
+		conString := config.DBConfig()
 		return fmt.Errorf("find.initFind: got error with conString %s: \n%v\n", conString, err)
 	}
 	df.docMap, err = df.cacheDocDetails(ctx)

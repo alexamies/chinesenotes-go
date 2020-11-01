@@ -10,8 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package for web app configuration
-package webconfig
+package config
 
 import (
 	"bufio"
@@ -34,7 +33,7 @@ type WebAppConfig struct {
 func InitWeb() WebAppConfig {
 	log.Println("webconfig.init Initializing webconfig")
 	c := WebAppConfig {}
-	configVarsPtr, err := readConfig()
+	configVarsPtr, err := readWebConfig()
 	if err != nil {
 		log.Printf("webconfig.init error initializing webconfig: %v", err)
 		c.ConfigVars = make(map[string]string)
@@ -71,7 +70,7 @@ func (c WebAppConfig) GetPasswordResetURL() string {
 func (c WebAppConfig) GetVar(key string) string {
 	val, ok := c.ConfigVars[key]
 	if !ok {
-		log.Printf("config.GetVar: could not find key: %s", key)
+		log.Printf("WebAppConfig.GetVar: could not find key: %s", key)
 		val = ""
 	}
 	return val
@@ -130,7 +129,7 @@ func GetCnReaderHome() string {
 	if len(cnReaderHome) == 0 {
 		cnReaderHome = "."
 	}
-	log.Printf("config.readConfig: CNREADER_HOME set to %s", cnReaderHome)
+	log.Printf("CNREADER_HOME set to %s", cnReaderHome)
 	return cnReaderHome
 }
 
@@ -138,8 +137,7 @@ func GetCnReaderHome() string {
 func GetCnWebHome() string {
 	cnWebHome := os.Getenv("CNWEB_HOME")
 	if len(cnWebHome) == 0 {
-		log.Println("config.readConfig: CNWEB_HOME is not defined")
-		cnWebHome = ".."
+		log.Println("CNWEB_HOME is not defined")
 	}
 	return cnWebHome
 }
@@ -180,7 +178,7 @@ func GetSiteDomain() string {
 }
 
 // Reads the configuration file with project variables
-func readConfig() (*map[string]string, error) {
+func readWebConfig() (*map[string]string, error) {
 	vars := make(map[string]string)
 	cnwebHome := GetCnWebHome()
 	fileName := fmt.Sprintf("%s/webconfig.yaml", cnwebHome)
@@ -191,7 +189,7 @@ func readConfig() (*map[string]string, error) {
     	log.Printf("cannot find cwd: %v", er)
 			path = ""
 		}
-		return nil, fmt.Errorf("webconfig.readConfig error loading file '%s' (%s): %v",
+		return nil, fmt.Errorf("readWebConfig error loading file '%s' (%s): %v",
 				fileName, path, err)
 	}
 	defer configFile.Close()
@@ -204,8 +202,7 @@ func readConfig() (*map[string]string, error) {
 			err = nil
 			eof = true
 		} else if err != nil {
-			return nil, fmt.Errorf("webconfig.readConfig: error reading file: %v", err)
-		}
+			return nil, fmt.Errorf("readWebConfig: error reading file: %v", err)		}
 		// Ignore comments
 		if strings.HasPrefix(line, "#") {
 			continue

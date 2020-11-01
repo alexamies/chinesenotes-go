@@ -18,12 +18,12 @@ import (
 	"log"
 	"os"
 	
-	"github.com/alexamies/chinesenotes-go/webconfig"
+	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 )
 
-func SendPasswordReset(toUser UserInfo, token string, c webconfig.WebAppConfig) error {
+func SendPasswordReset(toUser UserInfo, token string, c config.WebAppConfig) error {
 	fromEmail := c.GetVar("FromEmail")
 	from := mail.NewEmail("Do Not Reply", fromEmail)
 	subject := "Password Reset"

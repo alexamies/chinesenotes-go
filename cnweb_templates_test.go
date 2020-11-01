@@ -18,9 +18,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/find"
-	"github.com/alexamies/chinesenotes-go/webconfig"
 )
 
 // TestNewTemplateMap building the template map

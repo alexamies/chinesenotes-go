@@ -18,7 +18,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/alexamies/chinesenotes-go/webconfig"
+	"github.com/alexamies/chinesenotes-go/config"
 )
 
 // Test check login method

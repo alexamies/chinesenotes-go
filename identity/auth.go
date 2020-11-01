@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/alexamies/chinesenotes-go/config"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/alexamies/chinesenotes-go/webconfig"
 )
 
 // Authenticator holds stateful items needed for user authentication.
@@ -84,7 +84,7 @@ func NewAuthenticator(ctx context.Context) (*Authenticator, error) {
 
 // initStatements opens a database connection and prepares the statements.
 func (a *Authenticator) initStatements(ctx context.Context) error {
-	conString := webconfig.DBConfig()
+	conString := config.DBConfig()
 	var err error
 	a.database, err = sql.Open("mysql", conString)
 	if err != nil {
