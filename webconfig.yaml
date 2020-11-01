@@ -2,6 +2,8 @@
 
 # Directory for Go templates for dynamically rendered pages
 TemplateDir: templates
+# For Material Design Web components
+#TemplateDir: web-resources
 
 # Title for Go generated HTML pages
 Title: Chinese Notes Translation Portal
@@ -18,5 +20,5 @@ TitlesSheetID:
 # The ID of a user to send mail from
 FromEmail: do_not_reply@example.com
 
-# The URL to do a password reset
+# The URL for a password reset
 PasswordResetURL: http://localhost:8080/loggedin/reset_password

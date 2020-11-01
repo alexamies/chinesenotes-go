@@ -1,3 +1,6 @@
 *.html
 analysis/
-example_collection
+example_collection/
+cnotes-compiled.css
+cnotes-compiled.js
+cnotes-not-used.js

@@ -165,7 +165,12 @@ https://github.com/alexamies/chinesenotes.com/tree/master/index
 
 ### Integration with a rich JavaScript web client (optional)
 
-See the web files at 
+For web resources to give a higher quality user experience than the basic Go
+HTML templates using Material Design Web, see
+(Material Design Web Resources)[web_resources/README.md].
+
+For an implementation where the communication with the backend uses AJAX, see
+the web files at 
 
 https://github.com/alexamies/chinesenotes.com/tree/master/web-resources
 

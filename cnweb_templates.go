@@ -270,13 +270,13 @@ func newTemplateMap(webConfig config.WebAppConfig) map[string]*template.Template
     "request_password_confirmation.html": useFileTmp,
     "request_password_form.html": useFileTmp,
     "reset_password_form.html": useFileTmp,
-    "translation_portal.html": useFileTmp,
 	}
   templateMap := make(map[string]*template.Template)
   templDir := webConfig.GetVar("TemplateDir")
+  log.Printf("newTemplateMap, using TemplateDir: %s", templDir)
 	if len(templDir) > 0 {
 		for tName, defTmpl := range tNames {
-			fileName := "templates/" + tName
+			fileName := templDir + "/" + tName
 			var tmpl *template.Template
 			var err error
 			tmpl, err = template.New(tName).ParseFiles(fileName)
