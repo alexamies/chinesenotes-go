@@ -25,7 +25,7 @@ Build the CSS and JavaScript bundles with the command
 npm run-script build
 ```
 
-This will generate compiled bundles in the dist directory. Copy those to the
+This will generate transpiled bundles in the dist directory. Copy those to the
 `web` directory where they can be served as static file by the go web app.
 
 ```shell

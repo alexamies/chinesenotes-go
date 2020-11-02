@@ -27,6 +27,7 @@
     "webpack-cli": "latest"
   },
   "dependencies": {
-    "material-components-web": "latest"
+    "material-components-web": "^7.0.0",
+    "rxjs": "^6.6.3"
   }
 }

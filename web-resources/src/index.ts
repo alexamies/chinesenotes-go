@@ -1,64 +1,29 @@
-// Respond to a click on Chinese text to show vocabulary dialog.
-const corpusTextDiv = document.getElementById('CorpusTextDiv');
+/**
+ * Licensed  under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 
-if (corpusTextDiv) {
-  corpusTextDiv.addEventListener('click', (evt) => {
-  	console.log(`Got a click from ${evt.target}`);
-    if (evt == null || evt.target == null) {
-      console.log('evt is null');
-      return;
-    }
-    const elem = evt.target as HTMLElement;
-  	if (!elem.innerText || !elem.title) {
-  		console.log(`Either no text or no equiv for event target ${evt.target}`);
-  		return;
-  	}
-    let dialog = document.getElementById('dialog');
-    if (!dialog) {
-      dialog = document.createElement('dialog');
-      dialog.id = 'dialog';
-      if (elem.parentElement == null) {
-        console.log('elem.parentElement is null');
-        return;
-      }
-      elem.parentElement.appendChild(dialog);
-    }
-    const diag = dialog as HTMLDialogElement;
-    if (typeof diag.show !== 'function') {
-      alert('Cannot show a dialog in this browser');
-      return;
-    }
-    let vocabDialogCn = document.getElementById('vocabDialogCn');
-    if (!vocabDialogCn) {
-      vocabDialogCn = document.createElement('p');
-      vocabDialogCn.id = 'vocabDialogCn';
-      vocabDialogCn.innerText = elem.innerText;
-      diag.appendChild(vocabDialogCn);
-    }
-    vocabDialogCn.innerText = elem.innerText;
+import { CNotes } from "./CNotes";
+import { CNotesMenu } from "./CNotesMenu";
 
-    let vocabDialogEn = document.getElementById('vocabDialogEn');
-    if (!vocabDialogEn) {
-      vocabDialogEn = document.createElement('p');
-      vocabDialogEn.id = 'vocabDialogEn';
-      diag.appendChild(vocabDialogEn);
-    }
-    vocabDialogEn.innerText = elem.title;
+declare const __VERSION__: string;
 
-    let okButton = document.getElementById('okButton');
-    if (!okButton) {
-      okButton = document.createElement('button');
-      okButton.id = 'okButton';
-      okButton.innerText = 'OK';
-      diag.appendChild(okButton);
-      okButton.addEventListener('click', () => {
-        diag.close();
-      });
-    }
-    diag.style.position = 'relative;';
-    console.log(`X: ${evt.clientX}, Y:  ${evt.clientY}`);
-    diag.style.left = '20px;';
-    diag.style.top = '20px;';
-    diag.show();
-  });
-}
+/**
+ * Entry point for all pages.
+ */
+console.log(`App version: ${ __VERSION__ }, online: ${ navigator.onLine }`);
+const menu = new CNotesMenu();
+menu.init();
+// Initialize the dictionary
+const app = new CNotes();
+app.init();
