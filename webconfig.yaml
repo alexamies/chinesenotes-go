@@ -1,21 +1,12 @@
 # Configuration file for web application
 
 # Directory for Go templates for dynamically rendered pages
-TemplateDir: templates
+#TemplateDir: templates
 # For Material Design Web components
-#TemplateDir: web-resources
+TemplateDir: web-resources
 
 # Title for Go generated HTML pages
 Title: Chinese Notes Translation Portal
-
-# The ID of the Google Sheet for new vocabulary
-NewVocabSheetID: 
-
-# The ID of the Google Sheet for library users
-UsersSheetID: 
-
-# The ID of the Google Sheet for collection titles
-TitlesSheetID: 
 
 # The ID of a user to send mail from
 FromEmail: do_not_reply@example.com

@@ -9,6 +9,8 @@ $mdc-theme-on-primary: #FFF;
 @use "@material/drawer/mdc-drawer";
 @use "@material/list/mdc-list";
 
+@include dialog.core-styles;
+
 html, body {
   max-width: 1000px;
 }

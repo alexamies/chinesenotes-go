@@ -250,22 +250,201 @@ const fullTextSearchTmpl = `
 </html>
 `
 
+// Page not found
+const notFoundTmpl = `
+<!DOCTYPE html>
+<html lang="en">
+  %s
+  <body>
+    %s
+    %s
+    <main>
+      <p>Sorry we could not find that page</p>
+    </main>
+    %s
+  <body>
+</html>
+`
+
+// Admin page
+const adminPortalTmpl = `
+<!DOCTYPE html>
+<html lang="en">
+  %s
+  <body>
+    %s
+    %s
+    <main>
+      <p>Under construction</p>
+    </main>
+    %s
+  <body>
+</html>
+`
+
+// Admin page
+const indexAuthTmpl = `
+<!DOCTYPE html>
+<html lang="en">
+  %s
+  <body>
+    %s
+    %s
+    <main>
+      <p>
+        Enter Chinese text into the input field below to find each word and its
+        English equivalent.
+      </p>
+      <form name="findForm" method="post" action="/find/">
+        <div>
+          <label for="findInput">Search for</label>
+          <input type="text" name="query" size="40" required/>
+          <button type="submit">Find</button>
+        </div>
+      </form>
+      <ul
+        <li><a href="/loggedin/changepassword">Change password</a></li>
+        <li><a href="/loggedin/logout_form">Logout</a></li>
+      </ul>
+    </main>
+    %s
+  <body>
+</html>
+`
+
+// Admin page
+const changePasswordTmpl = `
+<!DOCTYPE html>
+<html lang="en">
+  %s
+  <body>
+    %s
+    %s
+    <main>
+      <h2>Translation Portal Change Password</h2>
+      {{if or .ShowNewForm (not .ChangeSuccessful)}}
+      <div id="ChangePasswordBar">
+        <form id="ChangePasswordForm" name="login" action="/loggedin/submitcpwd"
+              method="post">
+          <p>
+            <label for="OldPassword">Old Password</label>
+            <input id="OldPassword" name="OldPassword" type="password" required/>
+          </p>
+          <p>
+            <label for="Password">New Password</label>
+            <input id="Password" name="Password" type="password" required/>
+          </p>
+          <p>
+            <input id="ChangeButton" nam="ChangeButton" type="submit"
+                   value="Change Password"/>
+          </p>
+        </form>
+      </div>
+      {{ end }}
+      {{if .ChangeSuccessful}}
+      <div id="PasswordChangedBar">
+        You password has been changed
+      </div>
+      {{else}}
+        {{if not .OldPasswordValid}}
+        <div id="ErrorDiv">Your old password is incorrect</div>
+        {{else}}
+        <div id="ErrorDiv">There was an error changing your password</div>
+        {{ end }}
+      {{ end }}
+    </main>
+    %s
+  <body>
+</html>
+`
+
+const loggedOutTmp = `
+<!DOCTYPE html>
+<html lang="en">
+  %s
+  <body>
+    %s
+    %s
+    <main>
+      <h2>Logged out</h2>
+      <p>See you again sometime.</p>
+      <p><a href="/">Log in</a> again.</p>
+    </main>
+    %s
+  <body>
+</html>
+`
+
+const logoutTmp = `
+<!DOCTYPE html>
+<html lang="en">
+  %s
+  <body>
+    %s
+    %s
+    <main>
+      <h2>Logout</h2>
+      <p>If you log out then you will have to log back in again to use the portal.</p>
+      <form name="logoutForm" method="post" action="/loggedin/logout">
+        <div>
+          <button type="submit">Logout</button>
+        </div>
+      </form>
+      <p>No, go <a href="/">Home</a> instead.</p>
+    </main>
+    %s
+  <body>
+</html>
+`
+
+const loginTmp = `
+<!DOCTYPE html>
+<html lang="en">
+  %s
+  <body>
+    %s
+    %s
+    <main>
+      <h2>Login</h2>
+      <div id="LoginBar">
+        <form id="LoginForm" name="login" action="/loggedin/login"
+              method="post">
+          Login:
+          <label for="UserName">User Name</label>
+          <input id="UserName" name="UserName" type="text" required/>
+          <label for="Password">Password</label>
+          <input id="Password" name="Password" type="password" required/>
+          <input id="LoginButton" nam="LoginButton" type="submit"
+               value="Login"/>
+        </form>
+      </div>
+      <div id="ErrorDiv"></div>
+      <p>
+        <a href="/loggedin/request_reset_form">Forgot username or password</a>
+      </p>
+    </main>
+    %s
+  <body>
+</html>
+`
+
 const useFileTmp = `Use template file %s %s %s %s `
 
 // newTemplateMap builds the template map
 func newTemplateMap(webConfig config.WebAppConfig) map[string]*template.Template {
 	tNames := map[string]string{
-    "404.html": useFileTmp,
-    "change_password_form.html": useFileTmp,
+    "404.html": notFoundTmpl,
+    "admin_portal.html": adminPortalTmpl,
+    "change_password_form.html": changePasswordTmpl,
     "find_results.html": findResultsTmpl,
     "findtm.html": findTMTmpl,
     "full_text_search.html": fullTextSearchTmpl,
     "index.html": indexTmpl,
-		"index_auth.html": useFileTmp,
+		"index_auth.html": indexAuthTmpl,
     "library.html": libraryTmpl,
-    "logged_out.html": useFileTmp,
-    "login_form.html": useFileTmp,
-    "logout.html": useFileTmp,
+    "logged_out.html": loggedOutTmp,
+    "login_form.html": loginTmp,
+    "logout.html": logoutTmp,
     "request_reset_form.html": useFileTmp,
     "request_password_confirmation.html": useFileTmp,
     "request_password_form.html": useFileTmp,

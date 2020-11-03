@@ -56,17 +56,13 @@
 
       <main class="main-content" id="main-content">
         <div class="mdc-top-app-bar--fixed-adjust">
-          <p>
-            Enter Chinese text into the input field below to find each word and its
-            English equivalent.
-          </p>
-          <form name="findForm" method="post" action="/find/">
-            <div>
-              <label for="findInput">Search for</label>
-              <input type="text" name="query" size="40" required/>
-              <button type="submit">Find</button>
-            </div>
-          </form>
+          <h2>Library</h2>
+          <ul>
+            {{ range $index, $entry := .Data.ColIEntries }}
+              <li><a href="{{ $entry.GlossFile }}">{{ $entry.Title }}</a></li>
+            {{ end }}
+          </ul>
+          <p><a href="{{ .Data.AnalysisPage }}">Corpus vocabulary analysis</a></p>
         </div>
       </main>
       <footer class="page-footer">
