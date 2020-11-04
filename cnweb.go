@@ -61,8 +61,8 @@ type htmlContent struct {
 	ErrorMsg string
 	Results *find.QueryResults
 	TMResults *transmemory.Results
+	Data interface{}
 }
-
 
 // Content for change password page
 type ChangePasswordHTML struct {
@@ -795,8 +795,16 @@ func portalLibraryHandler(w http.ResponseWriter, r *http.Request) {
 
 // Display form to request a password reset
 func requestResetFormHandler(w http.ResponseWriter, r *http.Request) {
-	content := identity.RequestResetResult{true, false, true,
+	data := identity.RequestResetResult{true, false, true,
 		identity.InvalidUser(), ""}
+	title := webConfig.GetVarWithDefault("Title", defTitle)
+	content := htmlContent {
+		Title: title,
+		ErrorMsg: "",
+		Results: nil,
+		TMResults: nil,
+		Data: data,
+	}
 	displayPage(w, "request_reset_form.html", content)
 }
 
@@ -823,7 +831,15 @@ func requestResetHandler(w http.ResponseWriter, r *http.Request) {
     if strings.Contains(r.Header.Get("Accept"), "application/json") {
     	sendJSON(w, result)
 	} else {
-		displayPage(w, "request_reset_form.html", result)
+		title := webConfig.GetVarWithDefault("Title", defTitle)
+		content := htmlContent {
+			Title: title,
+			ErrorMsg: "",
+			Results: nil,
+			TMResults: nil,
+			Data: result,
+		}
+		displayPage(w, "request_reset_form.html", content)
 	}
 }
 

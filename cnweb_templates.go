@@ -428,7 +428,111 @@ const loginTmp = `
 </html>
 `
 
-const useFileTmp = `Use template file %s %s %s %s `
+const requestResetTmp = `
+<!DOCTYPE html>
+<html lang="en">
+  %s
+  <body>
+    %s
+    %s
+    <main>
+      <h2>Request Reset Password</h2>
+      <p>
+        If you have forgotton your username or password, you may use this page to
+        find your username or request of your password.
+      </p>
+      {{if .Data.ShowNewForm}}
+      <div id="RequestResetBar">
+        <form id="RequestResetForm" name="RequestResetForm"
+              action="/loggedin/request_reset" method="post">
+          <p>
+            <label for="Email">Email Address</label>
+            <input id="Email" name="Email" type="text" required/>
+          </p>
+          <p>
+            <input id="RequestResetButton" nam="RequestResetButton" type="submit"
+                   value="Request Password Reset"/>
+          </p>
+        </form>
+      </div>
+      {{ end }}
+      {{if .Data.RequestResetSuccess}}
+      <div id="SentResetSuccessfulBar">
+        An email has been sent for password reset. Please check your inbox.
+      </div>
+      {{else}}
+        {{if not .Data.EmailValid}}
+        <div id="ErrorDiv">We do not have that email address on file.</div>
+        {{end}}
+        {{if not .Data.ShowNewForm}}
+        <div id="ErrorDiv">There was an error with your request.</div>
+        {{end}}
+      {{end}}
+    </main>
+    %s
+  <body>
+</html>
+`
+
+const resetConfTmp = `
+<!DOCTYPE html>
+<html lang="en">
+  %s
+  <body>
+    %s
+    %s
+    <main>
+      <h2>Reset Password Confirmation</h2>
+      {{if .ResetPasswordSuccessful}}
+      <div id="ResetPasswordSuccessfulBar">
+        Your password has been reset. <a href="/">Login</a>.
+      </div>
+      {{else}}
+        <div id="ErrorDiv">
+          There was an error with your request.
+          <a href="/">Try again</a>.
+        </div>
+      {{ end }}
+    </main>
+    %s
+  <body>
+</html>
+`
+
+const resetFormTmp = `
+<!DOCTYPE html>
+<html lang="en">
+  %s
+  <body>
+    %s
+    %s
+    <main>
+      <h2>Reset Password</h2>
+      {{if eq .Token ""}}
+      <div id="NoToken">
+        There was a problem with your request. Please try again.
+      </div>
+      {{else}}
+      <div id="ResetPasswordBar">
+        <form id="ResetPasswordForm" name="ResetPasswordForm"
+              action="/loggedin/reset_password_submit" method="post">
+          <input id="Token" name="Token" type="hidden" value="{{.Token}}"/>
+          <p>
+            <label for="NewPassword">New Password</label>
+            <input id="NewPassword" name="NewPassword" type="password" required/>
+          </p>
+          <p>
+            <input id="ResetPasswordButton" nam="ResetPasswordButton" type="submit"
+                   value="Reset Password"/>
+          </p>
+        </form>
+      </div>
+      {{ end }}
+    </main>
+    %s
+  <body>
+</html>
+`
 
 // newTemplateMap builds the template map
 func newTemplateMap(webConfig config.WebAppConfig) map[string]*template.Template {
@@ -445,10 +549,9 @@ func newTemplateMap(webConfig config.WebAppConfig) map[string]*template.Template
     "logged_out.html": loggedOutTmp,
     "login_form.html": loginTmp,
     "logout.html": logoutTmp,
-    "request_reset_form.html": useFileTmp,
-    "request_password_confirmation.html": useFileTmp,
-    "request_password_form.html": useFileTmp,
-    "reset_password_form.html": useFileTmp,
+    "request_reset_form.html": requestResetTmp,
+    "reset_password_confirmation.html": resetConfTmp,
+    "reset_password_form.html": resetFormTmp,
 	}
   templateMap := make(map[string]*template.Template)
   templDir := webConfig.GetVar("TemplateDir")

@@ -96,15 +96,14 @@ Run the web server
 Navigate to http://localhost:8080
 
 You can change styles by changing the CSS settings in the file `web/styles.css`.
-
-You can do a lot of customization by editing the HTML templates in the
-`templates` directory. Make sure that the `TemplateDir` parameter is set
-in the `webconfig.yaml` file for this to take effect.
-
 The webconfig.yaml file and HTML tempates in /templates allow some additional
 customization. The HTML interface is very basic, just enough for minimal
-testing. For a real web site you should use HTML templates with JavaScript line
-at https://github.com/alexamies/chinesenotes.com
+testing. See the [web-resources](web-resources/README.md) directory for
+customization of template files. Make sure that the `TemplateDir` parameter is
+set in the `webconfig.yaml` file for this to take effect.
+Another approach is to use AJAX communicate with the web app with complete
+customization of the web user interface, as in
+https://github.com/alexamies/chinesenotes.com .
 
 ### Development testing
 
@@ -179,7 +178,10 @@ https://github.com/alexamies/chinesenotes.com/tree/master/web-resources
 Q: Why would I use a dictionary and translation memory to translate Chinese
 text instead of machine translation?
 
-A: To translate literature, especially classical literature and Buddhist texts,
+A: This project is based around the idea of using linguistic assets, including
+a dictionary, named entity database, and translation memory, to aid in
+translation.
+To translate literature, especially classical literature and Buddhist texts,
 and to prepare for publishing you will need to thoroughly understand what you
 are the source Chinese text.
 
