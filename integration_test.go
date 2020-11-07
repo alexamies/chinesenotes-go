@@ -25,8 +25,6 @@ import (
 	"github.com/alexamies/chinesenotes-go/dictionary"
 	"github.com/alexamies/chinesenotes-go/fileloader"
 	"github.com/alexamies/chinesenotes-go/identity"
-	"github.com/alexamies/chinesenotes-go/mail"
-	"github.com/alexamies/chinesenotes-go/webconfig"
 )
 
 var integration = flag.Bool("integration", false, "run an integration test")
@@ -134,8 +132,8 @@ func TestSendPasswordReset(t *testing.T) {
 		FullName: "Alex Test",
 		Role: "tester",
 	}
-	c := webconfig.InitWeb()
-	err := mail.SendPasswordReset(userInfo, "", c)
+	c := config.InitWeb()
+	err := identity.SendPasswordReset(userInfo, "", c)
 	if err != nil {
 		t.Fatalf("TestSendPasswordReset: Error, %v", err)
 	}
@@ -143,7 +141,7 @@ func TestSendPasswordReset(t *testing.T) {
 
 // TestWebconfigInit test config initialization
 func TestWebconfigInit(t *testing.T) {
-	c := webconfig.InitWeb()
+	c := config.InitWeb()
 	if c.ConfigVars == nil {
 		t.Error("c.ConfigVars == nil")
 	}

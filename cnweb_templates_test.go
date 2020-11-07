@@ -92,7 +92,7 @@ func TestNewTemplateMap(t *testing.T) {
 		},
   }
   for _, tc := range tests {
-		templates := newTemplateMap(webconfig.WebAppConfig{})
+		templates := newTemplateMap(config.WebAppConfig{})
 		tmpl, ok := templates[tc.templateName]
 		if !ok {
 			t.Fatalf("%s, template not found: %s", tc.name, tc.templateName)

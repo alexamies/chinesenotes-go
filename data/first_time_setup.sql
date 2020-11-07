@@ -1,7 +1,7 @@
 /**
  * Firsttime only setup relational database
  * 
- * Change password value before executing
+ * Change values for cnotest_test and password before executing
  */
 
 USE mysql;

@@ -26,10 +26,10 @@ import (
 )
 
 func initDBCon() (*sql.DB, error) {
-	if !webconfig.UseDatabase() {
+	if !config.UseDatabase() {
 		return nil, nil
 	}
-	conString := webconfig.DBConfig()
+	conString := config.DBConfig()
 	return sql.Open("mysql", conString)
 }
 

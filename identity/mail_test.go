@@ -24,14 +24,14 @@ import (
 // Test package initialization, which requires a database connection
 func TestSendPasswordResetExpectError(t *testing.T) {
 	t.Log("TestSendPasswordResetExpectError: Begin unit test")
-	userInfo := identity.UserInfo{
+	userInfo := UserInfo{
 		UserID: 100,
 		UserName: "test",
 		Email: "alex@chinesenotes.com",
 		FullName: "Alex Test",
 		Role: "tester",
 	}
-	c := webconfig.WebAppConfig{}
+	c := config.WebAppConfig{}
 	err := SendPasswordReset(userInfo, "", c)
 	if err == nil {
 		t.Fatal("TestSendPasswordResetExpectError: Expect error with no config")

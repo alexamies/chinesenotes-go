@@ -23,7 +23,7 @@ import (
 
 // Test check login method
 func TestChangePassword(t *testing.T) {
-	if !webconfig.PasswordProtected() {
+	if !config.PasswordProtected() {
 		return
 	}
 	ctx := context.Background()
@@ -47,7 +47,7 @@ func TestChangePassword(t *testing.T) {
 
 // Test check login method
 func TestCheckLogin1(t *testing.T) {
-	if !webconfig.PasswordProtected() {
+	if !config.PasswordProtected() {
 		return
 	}
 	ctx := context.Background()
@@ -67,7 +67,7 @@ func TestCheckLogin1(t *testing.T) {
 
 // Test check login method
 func TestCheckLogin2(t *testing.T) {
-	if !webconfig.PasswordProtected() {
+	if !config.PasswordProtected() {
 		return
 	}
 	ctx := context.Background()
@@ -87,7 +87,7 @@ func TestCheckLogin2(t *testing.T) {
 
 // Test CheckSession function with expected result that session does not exist
 func TestCheckSession1(t *testing.T) {
-	if !webconfig.PasswordProtected() {
+	if !config.PasswordProtected() {
 		return
 	}
 	ctx := context.Background()
@@ -106,7 +106,7 @@ func TestCheckSession1(t *testing.T) {
 
 // Test CheckSession function with session that does exist
 func TestCheckSession2(t *testing.T) {
-	if !webconfig.PasswordProtected() {
+	if !config.PasswordProtected() {
 		return
 	}
 	ctx := context.Background()
@@ -133,7 +133,7 @@ func TestCheckSession2(t *testing.T) {
 
 // Test CheckSession function with session that does exist
 func TestCheckSession3(t *testing.T) {
-	if !webconfig.PasswordProtected() {
+	if !config.PasswordProtected() {
 		return
 	}
 	ctx := context.Background()
@@ -159,7 +159,7 @@ func TestCheckSession3(t *testing.T) {
 }
 
 func TestGetUser(t *testing.T) {
-	if !webconfig.PasswordProtected() {
+	if !config.PasswordProtected() {
 		return
 	}
 	ctx := context.Background()
@@ -189,7 +189,7 @@ func TestNewSessionId(t *testing.T) {
 
 // Test Logout method
 func TestLogout(t *testing.T) {
-	if !webconfig.PasswordProtected() {
+	if !config.PasswordProtected() {
 		return
 	}
 	ctx := context.Background()
@@ -203,7 +203,7 @@ func TestLogout(t *testing.T) {
 }
 
 func TestRequestPasswordReset(t *testing.T) {
-	if !webconfig.PasswordProtected() {
+	if !config.PasswordProtected() {
 		return
 	}
 	ctx := context.Background()
@@ -219,7 +219,7 @@ func TestRequestPasswordReset(t *testing.T) {
 }
 
 func TestPasswordReset(t *testing.T) {
-	if !webconfig.PasswordProtected() {
+	if !config.PasswordProtected() {
 		return
 	}
 	ctx := context.Background()
@@ -235,7 +235,7 @@ func TestPasswordReset(t *testing.T) {
 }
 
 func TestSaveSession(t *testing.T) {
-	if !webconfig.PasswordProtected() {
+	if !config.PasswordProtected() {
 		return
 	}
 	ctx := context.Background()

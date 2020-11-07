@@ -179,7 +179,7 @@ Q: Why would I use a dictionary and translation memory to translate Chinese
 text instead of machine translation?
 
 A: This project is based around the idea of using linguistic assets, including
-a dictionary, named entity database, and translation memory, to aid in
+a dictionary, named entity database, and translation memory,   to aid in
 translation.
 To translate literature, especially classical literature and Buddhist texts,
 and to prepare for publishing you will need to thoroughly understand what you
@@ -301,8 +301,8 @@ Load the data into the database
 
 ```sql
 use cnotest_test;
-LOAD DATA LOCAL INFILE 'cndata/grammar.txt' INTO TABLE grammar CHARACTER SET utf8mb4 LINES TERMINATED BY '\r\n';
-LOAD DATA LOCAL INFILE 'cndata/topics.txt' INTO TABLE topics CHARACTER SET utf8mb4 LINES TERMINATED BY '\r\n';
+LOAD DATA LOCAL INFILE 'cndata/grammar.txt' INTO TABLE grammar CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
+LOAD DATA LOCAL INFILE 'cndata/topics.txt' INTO TABLE topics CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
 LOAD DATA LOCAL INFILE 'cndata/words.txt' INTO TABLE words CHARACTER SET utf8mb4 LINES TERMINATED BY '\n' IGNORE 1 LINES;
 LOAD DATA LOCAL INFILE 'cnindex/tmindex_uni_domain.tsv' INTO TABLE tmindex_uni_domain CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
 LOAD DATA LOCAL INFILE 'cnindex/tmindex_unigram.tsv' INTO TABLE tmindex_unigram CHARACTER SET utf8mb4 LINES TERMINATED BY '\n';
@@ -453,8 +453,9 @@ VALUES (1, '[your hashed password]');
 ```
 
 Note that the password needs to be SHA-256 hashed before inserting. If the user
-forgets their password, there is a password recovery function. This requires
-setup of a SendGrid account.
+forgets their password, there is a password recovery function, which requires
+setup of a [SendGrid](https://sendgrid.com) account and generation of an
+API, which is stored in the env variable SENDGRID_API_KEY.
 
 Set the environment variable PROTECTED, the SITEDOMAIN variable for cookies:
 
@@ -483,6 +484,7 @@ DATABASE=[Your database name]
 MEMORY=400Mi
 TEXT_BUCKET=[Your GCS bucket name for text files]
 CNWEB_HOME=.
+SENDGRID_API_KEY=[Your API key]
 gcloud run deploy --platform=managed $SERVICE \
 --image $IMAGE \
 --region=$REGION \
@@ -497,6 +499,7 @@ gcloud run deploy --platform=managed $SERVICE \
 --set-env-vars CNREADER_HOME="/" \
 --set-env-vars PROTECTED="$PROTECTED" \
 --set-env-vars SITEDOMAIN="$SITEDOMAIN" \
+--set-env-vars SENDGRID_API_KEY="$SENDGRID_API_KEY"
 ```
 
 You will need to add the users manually using SQL statements. There is no
@@ -536,6 +539,7 @@ Run the command with no flags
 ```shell
 mkdir -p web/example_collection/
 mkdir -p web/analysis/example_collection
+export CNREADER_HOME=.
 go run github.com/alexamies/cnreader
 ```
 

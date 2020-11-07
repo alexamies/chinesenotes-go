@@ -61,10 +61,103 @@ func TestTokenize(t *testing.T) {
 		HeadwordId: 42,
 		Senses: []dicttypes.WordSense{},
 	}	
-	wdict := map[string]dicttypes.Word{quan.Simplified: quan}
-	token := TextToken{
-		Token:"全",
+	changahan := dicttypes.Word{
+		Simplified:"长阿含经",
+		Traditional: "長阿含經",
+		Pinyin: "Cháng Āhán Jīng",
+		HeadwordId: 43,
+		Senses: []dicttypes.WordSense{},
+	}	
+	xu := dicttypes.Word{
+		Simplified:"序",
+		Traditional: "",
+		Pinyin: "xù",
+		HeadwordId: 44,
+		Senses: []dicttypes.WordSense{},
+	}	
+	konglong := dicttypes.Word{
+		Simplified:"恐龙",
+		Traditional: "恐龍",
+		Pinyin: "kǒnglóng",
+		HeadwordId: 45,
+		Senses: []dicttypes.WordSense{},
+	}	
+	kong := dicttypes.Word{
+		Simplified:"恐",
+		Traditional: "恐",
+		Pinyin: "kǒnglóng",
+		HeadwordId: 46,
+		Senses: []dicttypes.WordSense{},
+	}	
+	longtou := dicttypes.Word{
+		Simplified:"龙头蛇尾",
+		Traditional: "龍頭蛇尾",
+		Pinyin: "lóng tóu shé wěi",
+		HeadwordId: 47,
+		Senses: []dicttypes.WordSense{},
+	}	
+	mingyue := dicttypes.Word{
+		Simplified:"明月",
+		Traditional: "",
+		Pinyin: "míngyuè",
+		HeadwordId: 48,
+		Senses: []dicttypes.WordSense{},
+	}	
+	qingfeng := dicttypes.Word{
+		Simplified:"清风",
+		Traditional: "清風",
+		Pinyin: "qīngfēng",
+		HeadwordId: 49,
+		Senses: []dicttypes.WordSense{},
+	}	
+	wdict := map[string]dicttypes.Word{
+		quan.Simplified: quan,
+		changahan.Simplified: changahan,
+		changahan.Traditional: changahan,
+		xu.Simplified: xu,
+		konglong.Simplified: konglong,
+		konglong.Traditional: konglong,
+		kong.Simplified: kong,
+		kong.Traditional: kong,
+		longtou.Simplified: longtou,
+		longtou.Traditional: longtou,
+		mingyue.Simplified: mingyue,
+		qingfeng.Simplified: qingfeng,
+		qingfeng.Traditional: qingfeng,
+	}
+	q := TextToken{
+		Token: "全",
 		DictEntry: quan,
+		Senses: []dicttypes.WordSense{},
+	}
+	c := TextToken{
+		Token: "長阿含經",
+		DictEntry: changahan,
+		Senses: []dicttypes.WordSense{},
+	}
+	x := TextToken{
+		Token: "序",
+		DictEntry: xu,
+		Senses: []dicttypes.WordSense{},
+	}
+	k := TextToken{
+		Token: "恐",
+		DictEntry: kong,
+		Senses: []dicttypes.WordSense{},
+	}
+	lt := TextToken{
+		Token: "龍頭蛇尾",
+		DictEntry: longtou,
+		Senses: []dicttypes.WordSense{},
+	}
+	my := TextToken{
+		Token: "明月",
+		DictEntry: mingyue,
+		Senses: []dicttypes.WordSense{},
+	}
+	qf := TextToken{
+		Token: "清風",
+		DictEntry: qingfeng,
 		Senses: []dicttypes.WordSense{},
 	}
 	tokenizer := DictTokenizer{wdict}
@@ -81,7 +174,22 @@ func TestTokenize(t *testing.T) {
 		{
 			name: "One token",
 			in: "全", 
-			want: []TextToken{token},
+			want: []TextToken{q},
+		},
+		{
+			name: "Two tokens",
+			in: "長阿含經序", 
+			want: []TextToken{c, x},
+		},
+		{
+			name: "Overlapping words with R2L winning",
+			in: "恐龍頭蛇尾", 
+			want: []TextToken{k, lt},
+		},
+		{
+			name: "Two 2 character words",
+			in: "明月清風", 
+			want: []TextToken{my, qf},
 		},
 	}
 	for _, tc := range testCases {
@@ -89,173 +197,6 @@ func TestTokenize(t *testing.T) {
   	if !reflect.DeepEqual(tc.want, got)  {
   		t.Errorf("%s, expected %v, got %v", tc.name, tc.want, got)
   	}
-	}
-}
-
-// Simple two word test
-func TestTokenize2a(t *testing.T) {
-	dict := map[string]dicttypes.Word{}
-	s1 := "长阿含经"
-	t1 := "長阿含經"
-	w1 := dicttypes.Word{}
-	w1.Simplified = s1
-	w1.Traditional = t1
-	w1.Pinyin = "Cháng Āhán Jīng"
-	w1.HeadwordId = 29679
-	dict[s1] = w1
-	dict[t1] = w1
-	s2 := "序"
-	t2 := "\\N"
-	w2 := dicttypes.Word{}
-	w2.Simplified = s2
-	w2.Traditional = t2
-	w2.Pinyin = "xù "
-	w2.HeadwordId = 6213
-	dict[s2] = w2
-	dict[t2] = w2
-	tokenizer := DictTokenizer{dict}
-	chunk := "長阿含經序"
-	tokens := tokenizer.Tokenize(chunk)
-	expect := 2
-	if len(tokens) != expect {
-		t.Error("TestTokenize2a: expect list of two tokens, got ", tokens)
-	}
-	if tokens[0].Token != "長阿含經" {
-		t.Error("TestTokenize2a: tokens[0].Token = 長阿含經, got ", tokens[0].Token)
-	}
-	if tokens[1].Token != "序" {
-		t.Error("TestTokenize2a: tokens[1].Token = 序, got ",
-			tokens[1].Token)
-	}
-}
-
-// Harder test, overlapping words with R2L winning
-func TestTokenize2b(t *testing.T) {
-	dict := map[string]dicttypes.Word{}
-	s1 := "恐龙"
-	t1 := "恐龍"
-	w1 := dicttypes.Word{}
-	w1.Simplified = s1
-	w1.Traditional = t1
-	w1.Pinyin = "kǒnglóng"
-	w1.HeadwordId = 75439
-	dict[s1] = w1
-	dict[t1] = w1
-	s2 := "龙头蛇尾"
-	t2 := "龍頭蛇尾"
-	w2 := dicttypes.Word{}
-	w2.Simplified = s2
-	w2.Traditional = t2
-	w2.Pinyin = "lóng tóu shé wěi"
-	w2.HeadwordId = 106010
-	dict[s2] = w2
-	dict[t2] = w2
-	tokenizer := DictTokenizer{dict}
-	chunk := "恐龍頭蛇尾"
-	tokens := tokenizer.Tokenize(chunk)
-	expect := 2
-	if len(tokens) != expect {
-		t.Error("TestTokenize2b: expect list of two tokens, got ", tokens)
-	}
-	if tokens[0].Token != "恐" {
-		t.Error("TestTokenize2b: tokens[0].Token = 恐, got ", tokens[0].Token)
-	}
-	if tokens[1].Token != "龍頭蛇尾" {
-		t.Error("TestTokenize2b: tokens[1].Token = 龍頭蛇尾, got ",
-			tokens[1].Token)
-	}
-}
-
-// Harder test, overlapping words with R2L winning
-func TestTokenize2c(t *testing.T) {
-	dict := map[string]dicttypes.Word{}
-	s1 := "华"
-	t1 := "華"
-	w1 := dicttypes.Word{}
-	w1.Simplified = s1
-	w1.Traditional = t1
-	w1.Pinyin = "huá"
-	w1.HeadwordId = 2865
-	dict[s1] = w1
-	dict[t1] = w1
-	s2 := "为"
-	t2 := "為"
-	w2 := dicttypes.Word{}
-	w2.Simplified = s2
-	w2.Traditional = t2
-	w2.Pinyin = "wèi"
-	w2.HeadwordId = 372
-	dict[s2] = w2
-	dict[t2] = w2
-	tokenizer := DictTokenizer{dict}
-	chunk := "華為"
-	tokens := tokenizer.Tokenize(chunk)
-	expect := 2
-	if len(tokens) != expect {
-		t.Error("TestTokenize2c: expect list of two tokens, got ", tokens)
-	}
-	if tokens[0].Token != "華" {
-		t.Error("TestTokenize2c: tokens[0].Token = 華, got ", tokens[0].Token)
-	}
-	if tokens[1].Token != "為" {
-		t.Error("TestTokenize2c: tokens[1].Token = 為, got ",
-			tokens[1].Token)
-	}
-}
-
-// Two 2 character words
-func TestTokenize2d(t *testing.T) {
-	dict := map[string]dicttypes.Word{}
-	s1 := "明月"
-	t1 := "\\N"
-	w1 := dicttypes.Word{}
-	w1.Simplified = s1
-	w1.Traditional = t1
-	w1.Pinyin = "míngyuè"
-	w1.HeadwordId = 11304
-	dict[s1] = w1
-	s2 := "清风"
-	t2 := "清風"
-	w2 := dicttypes.Word{}
-	w2.Simplified = s2
-	w2.Traditional = t2
-	w2.Pinyin = "qīngfēng"
-	w2.HeadwordId = 67740
-	dict[s2] = w2
-	dict[t2] = w2
-	tokenizer := DictTokenizer{dict}
-	chunk := "明月清風"
-	tokens := tokenizer.Tokenize(chunk)
-	expect := 2
-	if len(tokens) != expect {
-		t.Error("TestTokenize2d: expect list of two tokens, got ", tokens)
-	}
-	if tokens[0].Token != "明月" {
-		t.Error("TestTokenize2d: tokens[0].Token = 明月, got ", tokens[0].Token)
-	}
-	if tokens[1].Token != "清風" {
-		t.Error("TestTokenize2d: tokens[1].Token = 清風, got ",
-			tokens[1].Token)
-	}
-}
-
-// Single 3 character word
-func TestTokenize3a(t *testing.T) {
-	dict := map[string]dicttypes.Word{}
-	s1 := "未曾有"
-	t1 := "\\N"
-	w1 := dicttypes.Word{}
-	w1.Simplified = s1
-	w1.Traditional = t1
-	w1.Pinyin = "wèi céng yǒu"
-	w1.HeadwordId = 30356
-	dict[s1] = w1
-	tokenizer := DictTokenizer{dict}
-	chunk := s1
-	tokens := tokenizer.Tokenize(chunk)
-	expect := 1
-	if len(tokens) != expect &&  tokens[0].Token != chunk {
-		t.Error("TestTokenize3a: expect list of one token, got ", tokens)
 	}
 }
 

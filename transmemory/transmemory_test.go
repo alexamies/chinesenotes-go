@@ -24,7 +24,7 @@ import (
 )
 
 func initDBCon() (*sql.DB, error) {
-	conString := webconfig.DBConfig()
+	conString := config.DBConfig()
 	return sql.Open("mysql", conString)
 }
 

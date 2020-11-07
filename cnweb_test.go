@@ -76,7 +76,7 @@ func TestFindHandler(t *testing.T) {
 
 // Test site domain
 func TestGetSiteDomain(t *testing.T) {
-	domain := webconfig.GetSiteDomain()
+	domain := config.GetSiteDomain()
 	if domain != "localhost" {
 		t.Error("TestGetSiteDomain: domain = ", domain)
 	}
