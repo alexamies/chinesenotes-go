@@ -489,6 +489,7 @@ gcloud run deploy --platform=managed $SERVICE \
 --image $IMAGE \
 --region=$REGION \
 --memory="$MEMORY" \
+--allow-unauthenticated \
 --add-cloudsql-instances $INSTANCE_CONNECTION_NAME \
 --set-env-vars INSTANCE_CONNECTION_NAME="$INSTANCE_CONNECTION_NAME" \
 --set-env-vars DBUSER="$DBUSER" \
@@ -594,6 +595,7 @@ sudo docker run -it --rm -p 8080:8080 --name cn-portal \
   cn-portal-image
 ```
 
+Browse to the URL http://localhost:8080
 Test basic lookup with curl
 
 ```shell
