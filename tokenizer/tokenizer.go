@@ -43,14 +43,31 @@ type TextToken struct{
 // If the terms are not found in the dictionary then individual characters will
 // be returned. Compares left to right and right to left greedy methods, taking
 // the one with the least tokens.
-func (tokenizer DictTokenizer) Tokenize(fragment string) []TextToken {
-	//log.Printf("Tokenize: fragment = '%s'\n", fragment)
-	tokens1 := tokenizer.greedyLtoR(fragment)
-	tokens2 := tokenizer.greedyRtoL(fragment)
-	if len(tokens2) < len(tokens1) {
-		return tokens2
+// Long text is handled by breaking the string into segments delimited by
+// punctuation or non-Chinese characters.
+func (tokenizer DictTokenizer) Tokenize(text string) []TextToken {
+	log.Printf("Tokenize: text = '%s'\n", text)
+	tokens := []TextToken{}
+	segments := Segment(text)
+	for _, segment := range segments {
+		if segment.Chinese {
+			tokens1 := tokenizer.greedyLtoR(segment.Text)
+			tokens2 := tokenizer.greedyRtoL(segment.Text)
+			if len(tokens2) < len(tokens1) {
+				tokens = append(tokens, tokens2...)
+			} else {
+				tokens = append(tokens, tokens1...)
+			}
+		} else {
+			token := TextToken{
+				Token: segment.Text,
+				DictEntry: dicttypes.Word{},
+				Senses: nil,
+			}
+			tokens = append(tokens, token)
+		}
 	}
-	return tokens1
+	return tokens
 }
 
 // Tokenizes text with a greedy knapsack-like algorithm, scanning left to

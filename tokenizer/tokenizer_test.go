@@ -110,6 +110,62 @@ func TestTokenize(t *testing.T) {
 		HeadwordId: 49,
 		Senses: []dicttypes.WordSense{},
 	}	
+	liangwudi := dicttypes.Word{
+		Simplified:"梁武帝",
+		Traditional: "",
+		Pinyin: "liáng wǔ dì",
+		HeadwordId: 50,
+		Senses: []dicttypes.WordSense{},
+	}	
+	wen := dicttypes.Word{
+		Simplified:"问",
+		Traditional: "問",
+		Pinyin: "wèn",
+		HeadwordId: 51,
+		Senses: []dicttypes.WordSense{},
+	}	
+	damo := dicttypes.Word{
+		Simplified:"达磨",
+		Traditional: "達磨",
+		Pinyin: "Dámó",
+		HeadwordId: 52,
+		Senses: []dicttypes.WordSense{},
+	}	
+	yong := dicttypes.Word{
+		Simplified:"用",
+		Traditional: "",
+		Pinyin: "yòng",
+		HeadwordId: 53,
+		Senses: []dicttypes.WordSense{},
+	}	
+	gonglao := dicttypes.Word{
+		Simplified:"功劳",
+		Traditional: "功勞",
+		Pinyin: "gōngláo",
+		HeadwordId: 54,
+		Senses: []dicttypes.WordSense{},
+	}	
+	lai := dicttypes.Word{
+		Simplified:"来",
+		Traditional: "來",
+		Pinyin: "lái",
+		HeadwordId: 55,
+		Senses: []dicttypes.WordSense{},
+	}	
+	dixiao := dicttypes.Word{
+		Simplified:"抵消",
+		Traditional: "",
+		Pinyin: "dǐxiāo",
+		HeadwordId: 56,
+		Senses: []dicttypes.WordSense{},
+	}	
+	zuiguo := dicttypes.Word{
+		Simplified:"罪过",
+		Traditional: "罪過",
+		Pinyin: "zuìguò",
+		HeadwordId: 57,
+		Senses: []dicttypes.WordSense{},
+	}	
 	wdict := map[string]dicttypes.Word{
 		quan.Simplified: quan,
 		changahan.Simplified: changahan,
@@ -124,6 +180,19 @@ func TestTokenize(t *testing.T) {
 		mingyue.Simplified: mingyue,
 		qingfeng.Simplified: qingfeng,
 		qingfeng.Traditional: qingfeng,
+		liangwudi.Simplified: liangwudi,
+		wen.Simplified: wen,
+		wen.Traditional: wen,
+		damo.Simplified: damo,
+		damo.Traditional: damo,
+		yong.Simplified: yong,
+		gonglao.Simplified: gonglao,
+		gonglao.Traditional: gonglao,
+		lai.Simplified: lai,
+		lai.Traditional: lai,
+		dixiao.Simplified: dixiao,
+		zuiguo.Simplified: zuiguo,
+		zuiguo.Traditional: zuiguo,
 	}
 	q := TextToken{
 		Token: "全",
@@ -160,6 +229,56 @@ func TestTokenize(t *testing.T) {
 		DictEntry: qingfeng,
 		Senses: []dicttypes.WordSense{},
 	}
+	lwd := TextToken{
+		Token: "梁武帝",
+		DictEntry: liangwudi,
+		Senses: []dicttypes.WordSense{},
+	}
+	w := TextToken{
+		Token: "問",
+		DictEntry: wen,
+		Senses: []dicttypes.WordSense{},
+	}
+	dm := TextToken{
+		Token: "達磨",
+		DictEntry: damo,
+		Senses: []dicttypes.WordSense{},
+	}
+	y := TextToken{
+		Token: "用",
+		DictEntry: yong,
+		Senses: []dicttypes.WordSense{},
+	}
+	gl := TextToken{
+		Token: "功勞",
+		DictEntry: gonglao,
+		Senses: []dicttypes.WordSense{},
+	}
+	l := TextToken{
+		Token: "來",
+		DictEntry: lai,
+		Senses: []dicttypes.WordSense{},
+	}
+	dx := TextToken{
+		Token: "抵消",
+		DictEntry: dixiao,
+		Senses: []dicttypes.WordSense{},
+	}
+	zg := TextToken{
+		Token: "罪過",
+		DictEntry: zuiguo,
+		Senses: []dicttypes.WordSense{},
+	}
+	period := TextToken{
+		Token: "。",
+		DictEntry: dicttypes.Word{},
+		Senses: nil,
+	}
+	nums := TextToken{
+		Token: "1234",
+		DictEntry: dicttypes.Word{},
+		Senses: nil,
+	}
 	tokenizer := DictTokenizer{wdict}
 	testCases := []struct {
 		name string
@@ -191,129 +310,31 @@ func TestTokenize(t *testing.T) {
 			in: "明月清風", 
 			want: []TextToken{my, qf},
 		},
+		{
+			name: "Three words of different lengths",
+			in: "梁武帝問達磨", 
+			want: []TextToken{lwd, w, dm},
+		},
+		{
+			name: "Five words",
+			in: "用功勞來抵消罪過", 
+			want: []TextToken{y, gl, l, dx, zg},
+		},
+		{
+			name: "Chinese with punctuation",
+			in: "用功勞來抵消罪過。", 
+			want: []TextToken{y, gl, l, dx, zg, period},
+		},
+		{
+			name: "Numbers and words",
+			in: "明月1234清風。", 
+			want: []TextToken{my, nums, qf, period},
+		},
 	}
 	for _, tc := range testCases {
 		got := tokenizer.Tokenize(tc.in)
   	if !reflect.DeepEqual(tc.want, got)  {
   		t.Errorf("%s, expected %v, got %v", tc.name, tc.want, got)
   	}
-	}
-}
-
-// Three words of different lengths
-func TestTokenize3b(t *testing.T) {
-	dict := map[string]dicttypes.Word{}
-	s1 := "梁武帝"
-	t1 := "\\N"
-	w1 := dicttypes.Word{}
-	w1.Simplified = s1
-	w1.Traditional = t1
-	w1.Pinyin = "liáng wǔ dì"
-	w1.HeadwordId = 96375
-	dict[s1] = w1
-	dict[t1] = w1
-	s2 := "问"
-	t2 := "問"
-	w2 := dicttypes.Word{}
-	w2.Simplified = s2
-	w2.Traditional = t2
-	w2.Pinyin = "wèn"
-	w2.HeadwordId = 3723
-	dict[s2] = w2
-	dict[t2] = w2
-	s3 := "达磨"
-	t3 := "達磨"
-	w3 := dicttypes.Word{}
-	w3.Simplified = s3
-	w3.Traditional = t3
-	w3.Pinyin = "Dámó"
-	w3.HeadwordId = 17723
-	dict[s3] = w3
-	dict[t3] = w3
-	tokenizer := DictTokenizer{dict}
-	chunk := "梁武帝問達磨"
-	tokens := tokenizer.Tokenize(chunk)
-	expect := 3
-	if len(tokens) != expect {
-		t.Error("TestTokenize3b: expect list of two tokens, got ", tokens)
-	}
-	if tokens[0].Token != "梁武帝" {
-		t.Error("TestTokenize3b: tokens[0].Token = 梁武帝, got ", tokens[0].Token)
-	}
-	if tokens[1].Token != "問" {
-		t.Error("TestTokenize3b: tokens[1].Token = 問, got ", tokens[1].Token)
-	}
-	if tokens[2].Token != "達磨" {
-		t.Error("TestTokenize3b: tokens[2].Token = 達磨, got ", tokens[2].Token)
-	}
-}
-
-// Five words 
-func TestTokenize5(t *testing.T) {
-	dict := map[string]dicttypes.Word{}
-	s1 := "用"
-	t1 := "\\N"
-	w1 := dicttypes.Word{}
-	w1.Simplified = s1
-	w1.Traditional = t1
-	w1.Pinyin = "yòng"
-	w1.HeadwordId = 721
-	dict[s1] = w1
-	s2 := "功劳"
-	t2 := "功勞"
-	w2 := dicttypes.Word{}
-	w2.Simplified = s2
-	w2.Traditional = t2
-	w2.Pinyin = "gōngláo"
-	w2.HeadwordId = 12162
-	dict[s2] = w2
-	dict[t2] = w2
-	s3 := "来"
-	t3 := "來"
-	w3 := dicttypes.Word{}
-	w3.Simplified = s3
-	w3.Traditional = t3
-	w3.Pinyin = "lái"
-	w3.HeadwordId = 370
-	dict[s3] = w3
-	dict[t3] = w3
-	s4 := "抵消"
-	t4 := "\\N"
-	w4 := dicttypes.Word{}
-	w4.Simplified = s4
-	w4.Traditional = t4
-	w4.Pinyin = "dǐxiāo"
-	w4.HeadwordId = 13197
-	dict[s4] = w4
-	s5 := "罪过"
-	t5 := "罪過"
-	w5 := dicttypes.Word{}
-	w5.Simplified = s5
-	w5.Traditional = t5
-	w5.Pinyin = "zuìguò"
-	w5.HeadwordId = 69248
-	dict[s5] = w5
-	dict[t5] = w5
-	tokenizer := DictTokenizer{dict}
-	chunk := "用功勞來抵消罪過"
-	tokens := tokenizer.Tokenize(chunk)
-	expect := 5
-	if len(tokens) != expect {
-		t.Error("TestTokenize5: expect list of two tokens, got ", tokens)
-	}
-	if tokens[0].Token != s1 {
-		t.Error("TestTokenize5: unexpected tokens[0].Token ", tokens[0].Token)
-	}
-	if tokens[1].Token != t2 {
-		t.Error("TestTokenize5: unexpected tokens[1].Token ", tokens[1].Token)
-	}
-	if tokens[2].Token != t3 {
-		t.Error("TestTokenize5: unexpected tokens[2].Token ", tokens[2].Token)
-	}
-	if tokens[3].Token != s4 {
-		t.Error("TestTokenize5: unexpected tokens[3].Token ", tokens[3].Token)
-	}
-	if tokens[4].Token != t5 {
-		t.Error("TestTokenize5: unexpected tokens[4].Token ", tokens[4].Token)
 	}
 }
