@@ -447,8 +447,7 @@ func showQueryResults(w http.ResponseWriter, results *find.QueryResults,
 	var tmpl *template.Template
 	var err error 
 	if fullText {
-		const fileName = "templates/full_text_search.html"
-		tmpl, err = template.New("full_text_search.html").ParseFiles(fileName)
+		tmpl = templates["full_text_search.html"]
 	} else {
 		tmpl = templates["find_results.html"]
 	}
