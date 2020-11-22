@@ -93,10 +93,19 @@ func loadDictReader(r io.Reader, wdict map[string]dicttypes.Word,
 		english := row[4]
 		grammar := row[5]
 		conceptCN := row[6]
+		if conceptCN == "\\N" {
+			conceptCN = ""
+		}
 		concept := row[7]
+		if concept == "\\N" {
+			concept = ""
+		}
 		domainCN := row[8]
 		domain :=  row[9]
 		subdomain :=  row[11]
+		if subdomain == "\\N" {
+			subdomain = ""
+		}
 		// If subdomain, aka parent, should be avoided, then skip
 		if _, ok := avoidSub[subdomain]; ok {
 			continue

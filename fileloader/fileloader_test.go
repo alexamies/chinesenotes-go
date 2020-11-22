@@ -44,6 +44,9 @@ func TestLoadDictReader(t *testing.T) {
 	const inputOneEntry = `# comment
 2	邃古	\N	suìgǔ	remote antiquity	noun	\N	\N	现代汉语	Modern Chinese	\N	\N	\N	\N	(CC-CEDICT '邃古'; Guoyu '邃古')	2
 `
+	const inputEmptyNotes = `# comment
+2	邃古	\N	suìgǔ	remote antiquity	noun	\N	\N	现代汉语	Modern Chinese	\N	\N	\N	\N	\N	2
+`
 	type test struct {
 		name string
 		input string
@@ -53,6 +56,9 @@ func TestLoadDictReader(t *testing.T) {
 		expectPinyin string
 		expectNoSenses int
 		expectDomain string
+		expectConcept string
+		expectSubdomain string		
+		expectNotes string		
   }
   tests := []test{
 		{
@@ -64,6 +70,9 @@ func TestLoadDictReader(t *testing.T) {
 			expectPinyin: "",
 			expectNoSenses: 0,
 			expectDomain: "",
+			expectConcept: "",
+			expectSubdomain: "",
+			expectNotes: "",
 		},
 		{
 			name: "One entry",
@@ -74,6 +83,22 @@ func TestLoadDictReader(t *testing.T) {
 			expectPinyin: "suìgǔ",
 			expectNoSenses: 1,
 			expectDomain: "Modern Chinese",
+			expectConcept: "",
+			expectSubdomain: "",
+			expectNotes: "(CC-CEDICT '邃古'; Guoyu '邃古')",
+		},
+		{
+			name: "Empty notes",
+			input: inputEmptyNotes,
+			expectError: false,
+			expectSize: 1,
+			exampleSimp: "邃古",
+			expectPinyin: "suìgǔ",
+			expectNoSenses: 1,
+			expectDomain: "Modern Chinese",
+			expectConcept: "",
+			expectSubdomain: "",
+			expectNotes: "",
 		},
   }
   for _, tc := range tests {
@@ -106,6 +131,15 @@ func TestLoadDictReader(t *testing.T) {
 		s := w.Senses[0]
 		if tc.expectDomain != s.Domain {
 			t.Errorf("%s: expectDomain %s != %s", tc.name, tc.expectDomain, s.Domain)
+		}
+		if tc.expectConcept != s.Concept {
+			t.Errorf("%s: Concept '%s' != %s", tc.name, tc.expectConcept, s.Concept)
+		}
+		if tc.expectSubdomain != s.Subdomain {
+			t.Errorf("%s: Subdomain '%s' != %s", tc.name, tc.expectSubdomain, s.Subdomain)
+		}
+		if tc.expectNotes != s.Notes {
+			t.Errorf("%s: Notes '%s' != %s", tc.name, tc.expectNotes, s.Notes)
 		}
 	}
 }

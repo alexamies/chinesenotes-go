@@ -55,10 +55,9 @@ Set an environment variable to let the app know where its home is
 export CNWEB_HOME=.
 ```
 
-Get the web app and run it
+Run the app
 
 ```shell
-go get github.com/alexamies/chinesenotes-go
 go run github.com/alexamies/chinesenotes-go
 ```
 
@@ -592,6 +591,7 @@ Run it locally with minimal features (C-E dictionary lookp only) enabled
 
 ```shell
 sudo docker run -it --rm -p 8080:8080 --name cn-portal \
+  -e CNWEB_HOME=$CNWEB_HOME \
   cn-portal-image
 ```
 
@@ -645,8 +645,8 @@ docker stop cn-app
 Push to Google Container Registry
 
 ```shell
-docker tag cn-app-image gcr.io/$PROJECT/cn-app-image:$TAG
-docker -- push gcr.io/$PROJECT/cn-app-image:$TAG
+docker tag cn-app-image gcr.io/$PROJECT/cn-app-image:$BUILD_ID
+docker push gcr.io/$PROJECT/cn-app-image:$BUILD_ID
 ```
 
 ## Go module for Chinese text processing
