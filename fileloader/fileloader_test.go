@@ -47,6 +47,11 @@ func TestLoadDictReader(t *testing.T) {
 	const inputEmptyNotes = `# comment
 2	邃古	\N	suìgǔ	remote antiquity	noun	\N	\N	现代汉语	Modern Chinese	\N	\N	\N	\N	\N	2
 `
+	const inputTwoEntries = `# comment
+2	邃古	\N	suìgǔ	remote antiquity	noun	\N	\N	现代汉语	Modern Chinese	\N	\N	\N	\N	\N	2
+25172	平地	\N	píngdì	flat land	noun	\N	\N	现代汉语	Modern Chinese	地理学	Geography	\N	\N	(CC-CEDICT '平地'; Guoyu '平地' 1)	25172
+`
+
 	type test struct {
 		name string
 		input string
@@ -100,7 +105,20 @@ func TestLoadDictReader(t *testing.T) {
 			expectSubdomain: "",
 			expectNotes: "",
 		},
-  }
+		{
+			name: "Subdomain not empty",
+			input: inputTwoEntries,
+			expectError: false,
+			expectSize: 2,
+			exampleSimp: "平地",
+			expectPinyin: "píngdì",
+			expectNoSenses: 1,
+			expectDomain: "Modern Chinese",
+			expectConcept: "",
+			expectSubdomain: "Geography",
+			expectNotes: "(CC-CEDICT '平地'; Guoyu '平地' 1)",
+		},
+   }
   for _, tc := range tests {
 		wdict := make(map[string]dicttypes.Word)
 		r := strings.NewReader(tc.input)

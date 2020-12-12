@@ -110,6 +110,10 @@ func loadDictReader(r io.Reader, wdict map[string]dicttypes.Word,
 		if _, ok := avoidSub[subdomain]; ok {
 			continue
 		}
+		subdomainCN :=  row[12]
+		if subdomainCN == "\\N" {
+			subdomainCN = ""
+		}
 		image := row[12]
 		mp3 := row[13]
 		notes := row[14]
@@ -146,6 +150,8 @@ func loadDictReader(r io.Reader, wdict map[string]dicttypes.Word,
 		ws.Concept = concept
 		ws.DomainCN = domainCN
 		ws.Domain = domain
+		ws.Subdomain = subdomain
+		ws.SubdomainCN = subdomainCN
 		// log.Println("loadDictFile, %s domain: %s\n", simp, domain)
 		ws.Image = image
 		ws.MP3 = mp3
