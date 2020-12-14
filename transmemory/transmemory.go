@@ -401,18 +401,17 @@ func printTopResults(query string, matches []*tmResult) {
 		log.Printf("transmemory.Search no results")
 		return
 	}
-	var sb strings.Builder
-	sb.WriteString("\nTerm, Has Pinyin, In Notes, Unigram count, Hamming, " +
-			"Substring, Combined\n")
+	log.Printf("\nQuery, Term, Has Pinyin, In Notes, Unigram count, " +
+			"Hamming, Substring, Combined\n")
 	for i, match := range matches {
 		if i == 10 {
 			break
 		}
-		m := fmt.Sprintf("%d: %s, %d, %d, %d, %d, %d, %f\n", i, match.term,
-			match.hasPinyin, match.inNotes, match.unigramCount, match.hamming,
-			match.isSubstring, match.combinedScore)
-		sb.WriteString(m)
+		log.Printf("transmemory.Search result: %s, %d: %s, %d, %d, %d, %d, " +
+				"%d, %f\n", query, i,
+				match.term, match.hasPinyin, match.inNotes, match.unigramCount,
+				match.hamming, match.isSubstring, match.combinedScore)
 	}
-	log.Printf("transmemory.printTopResults, query: %s, matchs (%d):\n%s\n",
-			query, len(matches), sb.String())
+	log.Printf("transmemory.printTopResults, query: %s, matchs (%d): ",
+			query, len(matches))
 }

@@ -578,6 +578,28 @@ Start up the web app again and view the pages:
 ./chinesenotes-go
 ```
 
+Copy the text files to an object store. The only one currently supported is
+Google Cloud Storage (GCS):
+
+```
+TEXT_BUCKET={your txt bucket}
+# First time
+gsutil mb gs://$TEXT_BUCKET
+gsutil -m rsync -d -r corpus gs://$TEXT_BUCKET
+```
+
+If you are using Cloud Run then the application automatically has access to GCS.
+To enable the web application to access the storage system for other platforms,
+create a service account with a GCS Storage Object Admin role and download the
+JSON credentials file, as described in 
+[Create service account credentials](https://cloud.google.com/kubernetes-engine/docs/tutorials/authenticating-to-cloud-platform).
+Assuming that you saved the file in the current working directory as 
+credentials.json, create a local environment variable for local testing
+
+```
+export GOOGLE_APPLICATION_CREDENTIALS=$PWD/credentials.json
+```
+
 ## Containerize the app and run locally against a databsae
 
 If you are not using Google Cloud, you can follow these instructions to
