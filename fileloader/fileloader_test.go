@@ -51,6 +51,13 @@ func TestLoadDictReader(t *testing.T) {
 2	邃古	\N	suìgǔ	remote antiquity	noun	\N	\N	现代汉语	Modern Chinese	\N	\N	\N	\N	\N	2
 25172	平地	\N	píngdì	flat land	noun	\N	\N	现代汉语	Modern Chinese	地理学	Geography	\N	\N	(CC-CEDICT '平地'; Guoyu '平地' 1)	25172
 `
+	const inputMultipleSenses = `# comment
+25172	平地	\N	píngdì	flat land	noun	\N	\N	现代汉语	Modern Chinese	地理学	Geography	\N	\N	(CC-CEDICT '平地'; Guoyu '平地' 1)	25172
+31834	平地	\N	píngdì	a plain	noun	\N	\N	现代汉语	Modern Chinese	地理学	Geography	\N	\N	(CC-CEDICT '平地'; Guoyu '平地' 2)	25172
+`
+	const inputTradDifferent = `# comment
+8422	汉语	漢語	hànyǔ	Chinese language	noun	\N	\N	现代汉语	Modern Chinese	\N	\N	\N	\N	\N	8422
+`
 
 	type test struct {
 		name string
@@ -117,6 +124,32 @@ func TestLoadDictReader(t *testing.T) {
 			expectConcept: "",
 			expectSubdomain: "Geography",
 			expectNotes: "(CC-CEDICT '平地'; Guoyu '平地' 1)",
+		},
+		{
+			name: "Multiple senses",
+			input: inputMultipleSenses,
+			expectError: false,
+			expectSize: 1,
+			exampleSimp: "平地",
+			expectPinyin: "píngdì",
+			expectNoSenses: 2,
+			expectDomain: "Modern Chinese",
+			expectConcept: "",
+			expectSubdomain: "Geography",
+			expectNotes: "(CC-CEDICT '平地'; Guoyu '平地' 1)",
+		},
+		{
+			name: "Traditional different to simplified",
+			input: inputTradDifferent,
+			expectError: false,
+			expectSize: 2,
+			exampleSimp: "漢語",
+			expectPinyin: "hànyǔ",
+			expectNoSenses: 1,
+			expectDomain: "Modern Chinese",
+			expectConcept: "",
+			expectSubdomain: "",
+			expectNotes: "",
 		},
    }
   for _, tc := range tests {
