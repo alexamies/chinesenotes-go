@@ -407,7 +407,7 @@ func printTopResults(query string, matches []*tmResult) {
 		if i == 10 {
 			break
 		}
-		log.Printf("transmemory.printTopResults result: %s, %d: %s, %d, %d, %d, %d, " +
+		log.Printf("transmemory.printTopResults result: %s, %d, %s, %d, %d, %d, %d, " +
 				"%d, %f\n", query, i,
 				match.term, match.hasPinyin, match.inNotes, match.unigramCount,
 				match.hamming, match.isSubstring, match.combinedScore)
