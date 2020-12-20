@@ -964,7 +964,7 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	results, err := tmSearcher.Search(ctx, q, d, wdict)
+	results, err := tmSearcher.Search(ctx, q, d, true, wdict)
 	if err != nil {
 		log.Printf("main.translationMemory error searching, %v", err)
 		http.Error(w, "Internal Error", http.StatusInternalServerError)

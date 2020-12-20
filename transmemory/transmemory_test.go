@@ -81,39 +81,13 @@ func mockDict() map[string]dicttypes.Word {
 	return wdict
 }
 
-func TestAddMatches(t *testing.T) {
-	wdict := mockDict()
-	type test struct {
-		name string
-		matches1 []*tmResult
-		matches2 []*tmResult
-		expect []*tmResult
-  }
-	var matches1, matches2, expect []*tmResult
-  tests := []test{
-		{
-			name: "Empty set",
-			matches1: matches1,
-			matches2: matches2,
-			expect: expect,
-		},
-  }
-  for _, tc := range tests {
-		result := addMatches(tc.matches1, tc.matches2, wdict)
-		if len(tc.expect) != len(result) {
-			t.Fatalf("%s: expected len %d, got %d", tc.name, len(tc.expect),
-				len(result))
-		}
-	}
-}
-
 // Test getChars function
 func TestCombineResults(t *testing.T) {
 	type test struct {
 		name string
 		query string
-		matches []*tmResult
-		expect []string
+		matches []tmResult
+		expectLen int
   }
   // for query 結實
   mPartial := tmResult{
@@ -132,8 +106,7 @@ func TestCombineResults(t *testing.T) {
 		term: "開花結實",
 		unigramCount: 2,
   }
-  matches := []*tmResult{&mPartial, &mExact, &mPoor, &mLong}
-  expect := []string{"結實", "結",  "實", "開花結實"}
+  matches := []tmResult{mPartial, mExact, mPoor, mLong}
   // For query 把手拽不入
   mLong1 := tmResult{
 		term: "大方廣入如來智德不思議經",
@@ -143,47 +116,40 @@ func TestCombineResults(t *testing.T) {
 		term: "從門入者不是家珍",
 		unigramCount: 2,
   }
-  lMatches := []*tmResult{&mLong1, &mLong2}
-  lExpect := []string{"從門入者不是家珍", "大方廣入如來智德不思議經"}
+  lMatches := []tmResult{mLong1, mLong2}
   tests := []test{
 		{
 			name: "happy path",
 			query: "結實",
 			matches: matches,
-			expect: expect,
+			expectLen: 4,
 		},
 		{
 			name: "long strings",
 			query: "把手拽不入",
 			matches: lMatches,
-			expect: lExpect,
+			expectLen: 0,
 		},
   }
-  var pinyinMatches []*tmResult
+  var pinyinMatches []tmResult
   wdict := mockDict()
   for _, tc := range tests {
 		result := combineResults(tc.query, tc.matches, pinyinMatches, wdict)
-		if len(tc.expect) != len(result) {
-			t.Errorf("%s: expected len %d, got %d", tc.name, len(tc.expect),
+		if tc.expectLen != len(result) {
+			t.Errorf("%s: expected len %d, got %d", tc.name, tc.expectLen,
 				len(result))
 			continue
-		}
-		for i, term := range tc.expect {
-			if term != result[i].Traditional {
-				t.Errorf("%s, query: %s, %d: expected %s, got %s",
-						tc.name, tc.query, i, term, result[i].Traditional)
-			}
 		}
 	}
 }
 
 // Test getChars function
-func TestCombineScores(t *testing.T) {
+func TestPredictRelevance(t *testing.T) {
 	type test struct {
 		name string
 		query string
-		match *tmResult
-		expect float64
+		match tmResult
+		expect bool
   }
   mPartial := tmResult{
 		term: "結",
@@ -195,15 +161,16 @@ func TestCombineScores(t *testing.T) {
 		unigramCount: 2,
 		hamming: 0,
   }
+  mMostlyMatching := tmResult{
+		term: "一指禪",
+		unigramCount: 3,
+		hamming: 2,
+  }
   mNoOverlap := tmResult{
 		term: "",
 		unigramCount: 0,
 		hamming: 2,
   }
-  const normalUni = 2.0 / 5.0
-  const normalHamming = 12 / 5.0
-  const expectLong = normalUni * uniCountWeight +
-  		normalHamming * hammingWeight
   mLong := tmResult{
 		term: "大方廣入如來智德不思議經)",
 		unigramCount: 2,
@@ -211,34 +178,40 @@ func TestCombineScores(t *testing.T) {
   }
   tests := []test{
 		{
-			name: "Happy path",
+			name: "Partial match",
 			query: "結實",
-			match: &mPartial,
-			expect: 0.0,
+			match: mPartial,
+			expect: true,
 		},
 		{
-			name: "Same",
+			name: "Exact match",
 			query: "結實",
-			match: &mExact,
-			expect: 1.0,
+			match: mExact,
+			expect: true,
+		},
+		{
+			name: "Mostly matching",
+			query: "一指頭禪",
+			match: mMostlyMatching,
+			expect: true,
 		},
 		{
 			name: "differenter and differenter",
 			query: "結實",
-			match: &mNoOverlap,
-			expect: -1.0,
+			match: mNoOverlap,
+			expect: false,
 		},
 		{
 			name: "long example",
 			query: "把手拽不入",
-			match: &mLong,
-			expect: expectLong,
+			match: mLong,
+			expect: false,
 		},
    }
   for _, tc := range tests {
-		result := combineScores(tc.query, tc.match)
+		result := predictRelevance(tc.query, tc.match)
 		if tc.expect != result {
-			t.Errorf("%s: expected %f, got %f", tc.name, tc.expect,
+			t.Errorf("%s: expected %t, got %t", tc.name, tc.expect,
 					result)
 		}
 	}
@@ -386,7 +359,7 @@ func TestSearch(t *testing.T) {
 		},
   }
   for _, tc := range tests {
-		results, err := searcher.Search(ctx, tc.query, tc.domain, wdict)
+		results, err := searcher.Search(ctx, tc.query, tc.domain, true, wdict)
 		if err != nil {
 			t.Fatalf("%s: error calling search: %v", tc.name, err)
 		}
