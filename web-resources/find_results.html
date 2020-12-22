@@ -65,7 +65,7 @@
             </div>
           </form>
           {{if .Results}}
-          <h4>Results</h4>
+          <h4>Terms</h4>
           <div>
             {{ range $term := .Results.Terms }}
             <div>
@@ -89,6 +89,26 @@
             </div>
             {{ end }}
           </div>
+            {{if .Results.SimilarTerms}}
+          <h4>Similar Expressions</h4>
+          <div>
+              {{ range $term := .Results.SimilarTerms }}
+            <div>
+              <span class="dict-entry-headword">{{ $term.QueryText }}</span>
+              <span class="dict-entry-pinyin">{{ $term.DictEntry.Pinyin }}</span>
+                {{ range $ws := $term.DictEntry.Senses }}
+              <p>
+                  {{if ne $ws.Pinyin "\\N"}}<span class="dict-entry-pinyin">{{ $ws.Pinyin }}</span>{{end}}
+                  {{if ne $ws.Grammar "\\N"}}<span class="dict-entry-grammar">{{ $ws.Grammar }}</span>{{end}}
+                  {{if ne $ws.English "\\N"}}<span class="dict-entry-definition">{{ $ws.English }}</span>{{end}}
+                  {{if ne $ws.Domain "\\N"}}<div class="dict-entry-domain">Domain: {{ $ws.Domain }}</div>{{end}}
+                  {{if ne $ws.Notes "\\N"}}<div class="dict-entry-notes">Notes: {{ $ws.Notes }}</div>{{end}}
+              </p>
+                {{ end }}
+            </div>
+              {{ end }}
+          </div>
+            {{ end }}
           {{ end }}
         </div>
       </main>

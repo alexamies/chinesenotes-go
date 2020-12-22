@@ -61,7 +61,14 @@ Run the app
 go run github.com/alexamies/chinesenotes-go
 ```
 
-Navigate to http://localhost:8080 with your browser. Enter some Chinese words
+When you see the output 
+
+```
+...
+Starting http server on port :8080
+```
+
+navigate to http://localhost:8080 with your browser. Enter some Chinese words
 and see the English equivalents. With no environment settings the dictionary
 will be loaded from the Net.
 
@@ -155,12 +162,6 @@ of Chinese Notes.
 For the corpus structure see
 https://github.com/alexamies/chinesenotes.com/tree/master/data/corpus
 
-For compiling the index see
-https://github.com/alexamies/chinesenotes.com/blob/master/bin/cnreader.sh
-
-For loading the index into the database see
-https://github.com/alexamies/chinesenotes.com/tree/master/index
-
 ### Integration with a rich JavaScript web client (optional)
 
 For web resources to give a higher quality user experience than the basic Go
@@ -178,11 +179,10 @@ Q: Why would I use a dictionary and translation memory to translate Chinese
 text instead of machine translation?
 
 A: This project is based around the idea of using linguistic assets, including
-a dictionary, named entity database, and translation memory,   to aid in
-translation.
-To translate literature, especially classical literature and Buddhist texts,
-and to prepare for publishing you will need to thoroughly understand what you
-are the source Chinese text.
+a dictionary, named entity database, and translation memory, to aid in
+translation. To translate literature, especially classical literature and
+Buddhist texts, and to prepare for publishing you will need to thoroughly
+understand what you are the source Chinese text.
 
 Q: Can I use the Chinese Notes Translation Portal software for my own project?
 

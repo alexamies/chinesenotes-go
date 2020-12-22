@@ -81,7 +81,7 @@ func mockDict() map[string]dicttypes.Word {
 	return wdict
 }
 
-// Test getChars function
+// Test combineResults function
 func TestCombineResults(t *testing.T) {
 	type test struct {
 		name string
@@ -143,7 +143,70 @@ func TestCombineResults(t *testing.T) {
 	}
 }
 
-// Test getChars function
+// Test combineResultsNoSubstrings function
+func TestcombineResultsNoSubstrings(t *testing.T) {
+	type test struct {
+		name string
+		query string
+		matches []tmResult
+		expectLen int
+  }
+  // for query 結實
+  mPartial := tmResult{
+		term: "結",
+		unigramCount: 1,
+  }
+  mExact := tmResult{
+		term: "結實",
+		unigramCount: 2,
+  }
+  mPoor := tmResult{
+		term: "實",
+		unigramCount: 1,
+  }
+  mLong := tmResult{
+		term: "開花結實",
+		unigramCount: 2,
+  }
+  matches := []tmResult{mPartial, mExact, mPoor, mLong}
+  // For query 把手拽不入
+  mLong1 := tmResult{
+		term: "大方廣入如來智德不思議經",
+		unigramCount: 2,
+  }
+  mLong2 := tmResult{
+		term: "從門入者不是家珍",
+		unigramCount: 2,
+  }
+  lMatches := []tmResult{mLong1, mLong2}
+  tests := []test{
+		{
+			name: "happy path",
+			query: "結實",
+			matches: matches,
+			expectLen: 1,
+		},
+		{
+			name: "long strings",
+			query: "把手拽不入",
+			matches: lMatches,
+			expectLen: 0,
+		},
+  }
+  var pinyinMatches []tmResult
+  wdict := mockDict()
+  for _, tc := range tests {
+		result := combineResultsNoSubstrings(tc.query, tc.matches,
+				pinyinMatches, wdict)
+		if tc.expectLen != len(result) {
+			t.Errorf("%s: expected len %d, got %d", tc.name, tc.expectLen,
+				len(result))
+			continue
+		}
+	}
+}
+
+// Test predictRelevance function
 func TestPredictRelevance(t *testing.T) {
 	type test struct {
 		name string
@@ -209,7 +272,7 @@ func TestPredictRelevance(t *testing.T) {
 		},
    }
   for _, tc := range tests {
-		result := predictRelevance(tc.query, tc.match)
+		result := predictRelevance(tc.query, tc.match, uniCountDP, hammingDistDP)
 		if tc.expect != result {
 			t.Errorf("%s: expected %t, got %t", tc.name, tc.expect,
 					result)

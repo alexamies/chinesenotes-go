@@ -133,7 +133,7 @@ const findResultsTmpl = `
         </div>
       </form>
       {{if .Results}}
-      <h4>Results</h4>
+      <h4>Terms</h4>
       <div>
         {{ range $term := .Results.Terms }}
         <div>
@@ -157,6 +157,18 @@ const findResultsTmpl = `
           </div>
         {{ end }}
       </div>
+        {{if .Results.SimilarTerms}}
+        <h4>similar Terms</h4>
+        <div>
+          {{ range $term := .Results.SimilarTerms }}
+          <ol>
+            <li>
+              <span class="dict-entry-headword">{{ $term.QueryText }}</span>
+            </li>
+          </ol>
+          {{ end }}
+        </div>
+        {{ end }}
       {{ end }}
     </main>
     %s

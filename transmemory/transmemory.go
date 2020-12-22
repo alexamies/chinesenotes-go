@@ -26,10 +26,17 @@ import (
 
 const (
 	maxUnigram = 8
-	// Decision point from decision tree training for Unicode count divided by query length
+	maxResultsSubstrings = 10
+	maxResultsNoSubstrings = 3
+	// Decision point from decision tree classification training for Unicode count
+	// divided by query length
 	uniCountDP float64 = 0.37
-	// Decision point from decision tree training for Hamming distance divided by query length
-	hammingDP float64 = 0.59
+	// Decision point from training for Hamming distance divided by query length
+	hammingDistDP float64 = 0.59
+	// Decision point from training with substrings excluded for Unicode count
+	uniCountNoSubstringDP float64 = 0.46
+	// Decision point from training with substrings excluded for Hamming distance
+	hammingNoSubstringDP float64 = 0.63
 )
 
 // Encapsulates search recults
@@ -227,7 +234,7 @@ func (searcher *Searcher) queryUnigram(ctx context.Context, chars []string,
 //   wdict The full dictionary
 // Retuns
 //   A slice of approximate results
-func (searcher *Searcher) Search(ctx context.Context,
+func (searcher Searcher) Search(ctx context.Context,
 		query string,
 		domain string,
 		includeSubstrings bool,
@@ -238,7 +245,11 @@ func (searcher *Searcher) Search(ctx context.Context,
 		return nil, fmt.Errorf("Search query error:\n%v", err)
 	}
 	pinyinMatches, err := searcher.queryPinyin(ctx, query, domain, wdict)
-	words := combineResults(query, matches, pinyinMatches, wdict)
+	if includeSubstrings {
+		words := combineResults(query, matches, pinyinMatches, wdict)
+		return &Results{words}, nil
+	}
+	words := combineResultsNoSubstrings(query, matches, pinyinMatches, wdict)
 	return &Results{words}, nil
 }
 
@@ -257,7 +268,7 @@ func combineResults(query string,
 	for _, m := range matches {
 		m.hamming = hammingDist(query, m.term)
 		m.isSubstring = eitherSubstring(query, m.term)
-		if predictRelevance(query, m) {
+		if predictRelevance(query, m, uniCountDP, hammingDistDP) {
 			m.relevant = 1
 		} else {
 			m.relevant = 0
@@ -267,7 +278,7 @@ func combineResults(query string,
 	for _, m := range pinyinMatches {
 		m.hamming = hammingDist(query, m.term)
 		m.isSubstring = eitherSubstring(query, m.term)
-		if predictRelevance(query, m) {
+		if predictRelevance(query, m, uniCountDP, hammingDistDP) {
 			m.relevant = 1
 		} else {
 			m.relevant = 0
@@ -278,10 +289,10 @@ func combineResults(query string,
 	for _, v := range relevantMap {
 		allMatches = append(allMatches, v)
 	}
-	printTopResults(query, allMatches)
+	printResults(query, allMatches, "with substrings")
 	relevantMatches := []tmResult{}
 	for _, m := range allMatches {
-		if m.relevant == 1 {
+		if m.relevant == 1 && len(relevantMatches) < maxResultsSubstrings {
 			relevantMatches = append(relevantMatches, m)
 		}
 	}
@@ -294,13 +305,76 @@ func combineResults(query string,
 			words = append(words, word)
 		}
 	}
+	log.Printf("transmemory.combineResults, query: %s, matchs (%d): ", query,
+			len(words))
+	return words
+}
+
+// Combines matches with dictionary defintions, excluding substrings.
+// It is ok for the query to be a substring of a similar term but not the other
+// way around.
+func combineResultsNoSubstrings(query string,
+		matches, pinyinMatches []tmResult,
+		wdict map[string]dicttypes.Word) []dicttypes.Word {
+	relevantMap := map[string]tmResult{}
+	for _, m := range matches {
+		m.hamming = hammingDist(query, m.term)
+		if strings.Contains(m.term, query) {
+			m.isSubstring = 1
+		}
+		if predictRelevance(query, m, uniCountNoSubstringDP,
+				hammingNoSubstringDP) {
+			m.relevant = 1
+		} else {
+			m.relevant = 0
+		}
+		relevantMap[m.term] = m
+	}
+	for _, m := range pinyinMatches {
+		m.hamming = hammingDist(query, m.term)
+		if strings.Contains(m.term, query) {
+			m.isSubstring = 1
+		}
+		if predictRelevance(query, m, uniCountNoSubstringDP,
+				hammingNoSubstringDP) {
+			m.relevant = 1
+		} else {
+			m.relevant = 0
+		}
+		relevantMap[m.term] = m
+	}
+	allMatches := []tmResult{}
+	for _, v := range relevantMap {
+		if !strings.Contains(query, v.term) {
+			allMatches = append(allMatches, v)
+		}
+	}
+	printResults(query, allMatches, "substrings excluded")
+	relevantMatches := []tmResult{}
+	for _, m := range allMatches {
+		if m.relevant == 1  && len(relevantMatches) < maxResultsNoSubstrings {
+			relevantMatches = append(relevantMatches, m)
+		}
+	}
+	sort.Slice(relevantMatches, func(i, j int) bool {
+		return relevantMatches[i].unigramCount > relevantMatches[j].unigramCount
+	})
+	var words []dicttypes.Word
+	for _, match := range relevantMatches {
+		// log.Printf("transmemory.combineResultsNoSubstrings, words: %s",match.term)
+		if word, ok := wdict[match.term]; ok {
+			words = append(words, word)
+		}
+	}
+	log.Printf("transmemory.combineResultsNoSubstrings, query: %s, matchs (%d): ",
+			query, len(words))
 	return words
 }
 
 // Predict relevance based on decision tree analysis
 // Returns
 //   bool - true if relevant, false if not relevant
-func predictRelevance(query string, m tmResult) bool {
+func predictRelevance(query string, m tmResult, uniDP, hammingDP float64) bool {
 	l := len([]rune(query))
 	if l == 0 {
 		return false
@@ -310,10 +384,7 @@ func predictRelevance(query string, m tmResult) bool {
 	}
 	normalUni := float64(m.unigramCount) / float64(l)
 	normalHamming := float64(m.hamming) / float64(l)
-	//log.Printf("transmemory.predictRelevance, query: %s, term: %s, " +
-	//		"normalUni: %f, normalHamming: %f: ", query, m.term, normalUni,
-	//		normalHamming)
-  if normalUni >= uniCountDP && normalHamming <= hammingDP {
+  if normalUni >= uniDP && normalHamming <= hammingDP {
   	return true
   }
   return false
@@ -379,9 +450,9 @@ func eitherSubstring(s1, s2 string) int {
 }
 
 // Prints top search results
-func printTopResults(query string, matches []tmResult) {
+func printResults(query string, matches []tmResult, description string) {
 	if len(matches) == 0 {
-		log.Printf("transmemory.Search no results")
+		log.Printf("transmemory.printResults no results")
 		return
 	}
 	log.Printf("\nQuery, rank, Term, Has Pinyin, In Notes, Unigram count, " +
@@ -394,6 +465,6 @@ func printTopResults(query string, matches []tmResult) {
 				"%d, %d, %d\n", query, i, m.term, m.hasPinyin, m.inNotes,
 				m.unigramCount, m.hamming, m.isSubstring, m.relevant)
 	}
-	log.Printf("transmemory.printTopResults, query: %s, matchs (%d): ",
-			query, len(matches))
+	log.Printf("transmemory.printResults %s, query: %s, matchs (%d): ",
+			description, query, len(matches))
 }

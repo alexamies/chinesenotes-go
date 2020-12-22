@@ -91,6 +91,7 @@ type QueryResults struct {
 	Collections []Collection
 	Documents []Document
 	Terms []TextSegment
+	SimilarTerms []TextSegment
 }
 
 func NewDocFinder(ctx context.Context, database *sql.DB) DocFinder {
@@ -608,7 +609,16 @@ func (df DatabaseDocFinder) FindDocuments(ctx context.Context,
 	}
 
 	if df.database == nil {
-		return &QueryResults{query, "", 0, 0, nil, nil, terms}, nil
+		return &QueryResults{
+			Query: query,
+			CollectionFile: "",
+			NumCollections: 0,
+			NumDocuments: 0,
+			Collections: nil,
+			Documents: nil,
+			Terms: terms,
+			SimilarTerms: nil,
+		}, nil
 	}
 
 	nCol, err := df.countCollections(ctx, query)
@@ -623,7 +633,16 @@ func (df DatabaseDocFinder) FindDocuments(ctx context.Context,
 	nDoc := len(documents)
 	log.Printf("FindDocuments, query %s, nTerms %d, collection %d, doc count %d: ",
 			query, len(terms), nCol, nDoc)
-	return &QueryResults{query, "", nCol, nDoc, collections, documents, terms}, nil
+	return &QueryResults{
+		Query: query,
+		CollectionFile: "",
+		NumCollections: nCol, 
+		NumDocuments: nDoc,
+		Collections: collections,
+		Documents: documents,
+		Terms: terms,
+		SimilarTerms: nil,
+	}, nil
 }
 
 // FindDocumentsInCol returns a QueryResults object containing matching collections, documents,
@@ -658,7 +677,16 @@ func (df DatabaseDocFinder) FindDocumentsInCol(ctx context.Context,
 	nDoc := len(documents)
 	log.Printf("FindDocumentsInCol, query %s, nTerms %d, collection %d, doc count %d ",
 			query, len(terms), 1, nDoc)
-	return &QueryResults{query, col_gloss_file, 1, nDoc, []Collection{}, documents, terms}, err
+	return &QueryResults{
+		Query: query,
+		CollectionFile: col_gloss_file,
+		NumCollections: 1,
+		NumDocuments: nDoc,
+		Collections: []Collection{},
+		Documents: documents,
+		Terms: terms,
+		SimilarTerms: nil,
+	}, err
 }
 
 // Returns the headword words in the query (only a single word based on Chinese

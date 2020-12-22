@@ -351,6 +351,31 @@ func findDocs(response http.ResponseWriter, request *http.Request, fullText bool
 		return
 	}
 
+	// Add similar results from translation memory
+	if !fullText && tmSearcher != nil && len([]rune(q)) > 1 {
+		tmResults, err := tmSearcher.Search(ctx, q, "", false, wdict)
+		if err != nil {
+			// Not essential to the main request
+			log.Printf("main.findDocs translation memory error, ignoring: %v", err)
+		} else if len(tmResults.Words) > 0 {
+			similarTerms := []find.TextSegment{}
+			for _, w := range tmResults.Words {
+				chinese := w.Simplified
+				if w.Simplified != w.Traditional {
+					chinese += " (" + w.Traditional + ")"
+				}
+				seg := find.TextSegment{
+					QueryText: chinese,
+					DictEntry: w,
+				}
+				similarTerms = append(similarTerms, seg)
+			}
+			results.SimilarTerms = similarTerms
+			log.Printf("main.findDocs, for query %s, found %d similar phrases",
+					q, len(results.SimilarTerms))
+		}
+	}
+
 	if config.PasswordProtected() {
 		sessionInfo := enforceValidSession(response, request)
 		if !sessionInfo.Valid {
@@ -437,6 +462,7 @@ func showQueryResults(w http.ResponseWriter, results *find.QueryResults,
 			Collections: results.Collections,
 			Documents: docs,
 			Terms: results.Terms,
+			SimilarTerms: results.SimilarTerms,
 		}
 	}
 	title := webConfig.GetVarWithDefault("Title", defTitle)
