@@ -271,13 +271,12 @@ func TestTokenize(t *testing.T) {
 	}
 	period := TextToken{
 		Token: "。",
-		DictEntry: dicttypes.Word{},
-		Senses: nil,
 	}
 	nums := TextToken{
 		Token: "1234",
-		DictEntry: dicttypes.Word{},
-		Senses: nil,
+	}
+	comma := TextToken{
+		Token: "，",
 	}
 	tokenizer := DictTokenizer{wdict}
 	testCases := []struct {
@@ -329,6 +328,11 @@ func TestTokenize(t *testing.T) {
 			name: "Numbers and words",
 			in: "明月1234清風。", 
 			want: []TextToken{my, nums, qf, period},
+		},
+		{
+			name: "With comma",
+			in: "明月，清風。", 
+			want: []TextToken{my, comma, qf, period},
 		},
 	}
 	for _, tc := range testCases {

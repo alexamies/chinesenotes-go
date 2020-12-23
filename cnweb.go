@@ -361,7 +361,7 @@ func findDocs(response http.ResponseWriter, request *http.Request, fullText bool
 			similarTerms := []find.TextSegment{}
 			for _, w := range tmResults.Words {
 				chinese := w.Simplified
-				if w.Simplified != w.Traditional {
+				if ((len(w.Traditional) > 0) && (w.Traditional != "\\N")) {
 					chinese += " (" + w.Traditional + ")"
 				}
 				seg := find.TextSegment{

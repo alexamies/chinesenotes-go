@@ -61,8 +61,6 @@ func (tokenizer DictTokenizer) Tokenize(text string) []TextToken {
 		} else {
 			token := TextToken{
 				Token: segment.Text,
-				DictEntry: dicttypes.Word{},
-				Senses: nil,
 			}
 			tokens = append(tokens, token)
 		}

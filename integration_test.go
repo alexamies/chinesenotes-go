@@ -41,6 +41,7 @@ func TestMain(m *testing.M) {
 		os.Exit(m.Run())
 	}
 	fmt.Println("Skipping integration test")
+	os.Clearenv()
 }
 
 // Test trivial query with empty dictionary
