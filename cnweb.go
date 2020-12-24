@@ -352,7 +352,8 @@ func findDocs(response http.ResponseWriter, request *http.Request, fullText bool
 	}
 
 	// Add similar results from translation memory
-	if !fullText && tmSearcher != nil && len([]rune(q)) > 1 {
+	if (!fullText && (tmSearcher != nil) && (len([]rune(q)) > 1) &&
+			(len(results.Terms) > 1)) {
 		tmResults, err := tmSearcher.Search(ctx, q, "", false, wdict)
 		if err != nil {
 			// Not essential to the main request
