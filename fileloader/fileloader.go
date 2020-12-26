@@ -116,12 +116,13 @@ func loadDictReader(r io.Reader, wdict map[string]dicttypes.Word,
 		}
 		image := row[12]
 		mp3 := row[13]
-		notes := row[14]
-		if notes == "\\N" {
-			notes = ""
-		}
+		notes := ""
 		hwId := 0
 		if len(row) == 16 {
+			notes = row[14]
+			if notes == "\\N" {
+				notes = ""
+			}
 			hwIdInt, err := strconv.ParseInt(row[15], 10, 0)
 			if err != nil {
 				log.Printf("loadDictFile, id: %d, simp: %s, trad: %s, " + 
