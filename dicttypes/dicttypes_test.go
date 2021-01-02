@@ -105,68 +105,118 @@ func TestIsProperNoun(t *testing.T) {
 
 // Trival test for headword sorting
 func TestWords(t *testing.T) {
-	hw0 := makeHW0()
-	hw1 := makeHW1()
-	hws := Words{hw1, hw0}
-	sort.Sort(hws)
-	firstWord := hws[0].Pinyin[0]
-	pinyinExpected := hw0.Pinyin[0]
-	if pinyinExpected != firstWord {
-		t.Error("dictionary.TestHeadwords1: Expected pinyin ", pinyinExpected,
-			", got", firstWord)
-	}
-}
-
-// Better test for headword sorting
-func TestHeadwords2(t *testing.T) {
+	type test struct {
+		name string
+		input Words
+		expectFirst string
+		expectSecond string
+  }
 	hw0 := makeHW0()
 	hw1 := makeHW1()
 	hw2 := makeHW2()
-	hws := Words{hw2, hw1, hw0}
-	sort.Sort(hws)
-	firstWord := hws[0].Pinyin[0]
-	pinyinExpected := hw0.Pinyin[0]
-	if pinyinExpected != firstWord {
-		t.Error("dictionary.TestHeadwords2: Expected pinyin ", pinyinExpected,
-			", got", firstWord)
+  tests := []test{
+		{
+			name: "happy path",
+			input: Words{hw1, hw0},
+			expectFirst: hw0.Pinyin,
+			expectSecond: hw1.Pinyin,
+		},
+		{
+			name: "slightly longer",
+			input: Words{hw2, hw1, hw0},
+			expectFirst: hw0.Pinyin,
+			expectSecond: hw1.Pinyin,
+		},
 	}
-	secondWord := hws[1].Pinyin[0]
-	secondExpected := hw1.Pinyin[0]
-	if secondExpected != secondWord {
-		t.Error("dictionary.TestHeadwords2: 2nd expected pinyin ",
-			secondExpected,	", got", secondWord)
-	}
-}
-
-// Test removal of tones from Pinyin
-func TestNormalizePinyin0(t *testing.T) {
-	pinyin := "guó"
-	noTones := normalizePinyin(pinyin)
-	expected := "guo"
-	if expected != noTones {
-		t.Error("dictionary.TestNormalizePinyin0: expected noTones ",
-			expected, ", got", noTones)
-	}
-}
-
-// Test removal of tones from Pinyin
-func TestNormalizePinyin1(t *testing.T) {
-	pinyin := "Sān Bǎo"
-	noTones := normalizePinyin(pinyin)
-	expected := "san bao"
-	if expected != noTones {
-		t.Error("dictionary.TestNormalizePinyin1: expected noTones ",
-			expected, ", got", noTones)
+  for _, tc := range tests {
+		sort.Sort(tc.input)
+		first := tc.input[0].Pinyin
+		if tc.expectFirst != first {
+			t.Errorf("TestWords %s: expectFirst got %s, expected %s", tc.name, first,
+					tc.expectFirst)
+		}
+		second := tc.input[1].Pinyin
+		if tc.expectSecond != second {
+			t.Errorf("TestWords %s: expectSecond got %s, expected %s", tc.name,
+					second, tc.expectSecond)
+		}
 	}
 }
 
 // Test removal of tones from Pinyin
-func TestNormalizePinyin2(t *testing.T) {
-	pinyin := "Ēmítuó"
-	noTones := normalizePinyin(pinyin)
-	expected := "emituo"
-	if expected != noTones {
-		t.Error("dictionary.TestNormalizePinyin1: expected noTones ",
-			expected, ", got", noTones)
+func TestNormalizePinyin(t *testing.T) {
+	type test struct {
+		name string
+		input string
+		expect string
+  }
+  tests := []test{
+		{
+			name: "happy path",
+			input: "guó",
+			expect: "guo",
+		},
+		{
+			name: "two syllables",
+			input: "Sān Bǎo",
+			expect: "san bao",
+		},
+		{
+			name: "accent on upper case letter",
+			input: "Ēmítuó",
+			expect: "emituo",
+		},
+	}
+  for _, tc := range tests {
+		noTones := normalizePinyin(tc.input)
+		if noTones != tc.expect {
+			t.Errorf("TestNormalizePinyin %s: got %s but expected %s ", tc.name,
+				noTones, tc.expect)
+		}
+	}
+}
+
+// Test IsQuote
+func TestIsQuote(t *testing.T) {
+	type test struct {
+		name string
+		input Word
+		expect bool
+  }
+	w := Word{
+		HeadwordId: 1,
+		Simplified: "国",
+		Traditional: "國",
+		Pinyin: "guó",
+		Senses: []WordSense{},
+	}
+	ws := WordSense{
+		Notes: "Quote: something in a book",
+	}
+	quote := Word{
+		HeadwordId: 2,
+		Simplified: "心与道一",
+		Traditional: "心與道一",
+		Pinyin: "xīn yǔ dào yī",
+		Senses: []WordSense{ws},
+	}
+  tests := []test{
+		{
+			name: "Not a quote",
+			input: w,
+			expect: false,
+		},
+		{
+			name: "Is a quote",
+			input: quote,
+			expect: true,
+		},
+	}
+  for _, tc := range tests {
+		got := tc.input.IsQuote()
+		if got != tc.expect {
+			t.Errorf("TestIsQuote %s: got %t but expected %t ", tc.name,
+				got, tc.expect)
+		}
 	}
 }

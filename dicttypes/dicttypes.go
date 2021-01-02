@@ -105,6 +105,15 @@ func (w Word) IsProperNoun() bool {
 	return float64(count) / float64(len(w.Senses)) > 0.5
 }
 
+// IsQuote tests whether the term is a quotation.
+// Note for quotations are prefixed by Quote: 
+func (w Word) IsQuote() bool {
+	if len(w.Senses) == 1 {
+		return strings.HasPrefix(w.Senses[0].Notes, "Quote:")
+	}
+	return false
+}
+
 func (hwArr Words) Len() int {
 	return len(hwArr)
 }
