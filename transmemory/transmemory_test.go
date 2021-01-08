@@ -71,6 +71,20 @@ func mockDict() map[string]dicttypes.Word {
 		HeadwordId: 1235,
 		Senses: []dicttypes.WordSense{},
 	}
+	w7 := dicttypes.Word{
+		Simplified: "事实求是",
+		Traditional: "事實求是",
+		Pinyin: "shìshíqiúshì",
+		HeadwordId: 116908,
+		Senses: []dicttypes.WordSense{},
+	}
+	w8 := dicttypes.Word{
+		Simplified: "截断天下人舌头",
+		Traditional: "截斷天下人舌頭",
+		Pinyin: "jiéduàn tiānxià rén shétou ",
+		HeadwordId: 2000599,
+		Senses: []dicttypes.WordSense{},
+	}
 	wdict := make(map[string]dicttypes.Word)
 	wdict[w1.Traditional] = w1
 	wdict[w2.Traditional] = w2
@@ -78,6 +92,10 @@ func mockDict() map[string]dicttypes.Word {
 	wdict[w4.Traditional] = w4
 	wdict[w5.Traditional] = w5
 	wdict[w6.Traditional] = w6
+	wdict[w7.Simplified] = w7
+	wdict[w7.Traditional] = w7
+	wdict[w8.Simplified] = w8
+	wdict[w8.Traditional] = w8
 	return wdict
 }
 
@@ -86,6 +104,7 @@ func TestCombineResults(t *testing.T) {
 	type test struct {
 		name string
 		query string
+		pinyinMatches []tmResult
 		matches []tmResult
 		expectLen int
   }
@@ -97,6 +116,7 @@ func TestCombineResults(t *testing.T) {
   mExact := tmResult{
 		term: "結實",
 		unigramCount: 2,
+		hasPinyin: 1,
   }
   mPoor := tmResult{
 		term: "實",
@@ -107,6 +127,7 @@ func TestCombineResults(t *testing.T) {
 		unigramCount: 2,
   }
   matches := []tmResult{mPartial, mExact, mPoor, mLong}
+
   // For query 把手拽不入
   mLong1 := tmResult{
 		term: "大方廣入如來智德不思議經",
@@ -117,24 +138,53 @@ func TestCombineResults(t *testing.T) {
 		unigramCount: 2,
   }
   lMatches := []tmResult{mLong1, mLong2}
+
+  // Simplified is a match of traditional 事實求是
+  mShishiqiushi := tmResult{
+		term: "事實求是",
+		unigramCount: 4,
+		hasPinyin: 1,
+  }
+  mSimplified := tmResult{
+		term: "事实求是",
+		unigramCount: 3,
+		hasPinyin: 1,
+  }
+
+  // Run tests
   tests := []test{
 		{
-			name: "happy path",
+			name: "Happy path",
 			query: "結實",
+			pinyinMatches: []tmResult{},
 			matches: matches,
 			expectLen: 4,
 		},
 		{
 			name: "long strings",
 			query: "把手拽不入",
+			pinyinMatches: []tmResult{},
 			matches: lMatches,
 			expectLen: 0,
 		},
+		{
+			name: "Simplified match",
+			query: "事實求是",
+			pinyinMatches: []tmResult{},
+			matches: []tmResult{mSimplified},
+			expectLen: 1,
+		},
+		{
+			name: "No dup for simplified and traditional",
+			query: "事實求是",
+			pinyinMatches: []tmResult{mSimplified},
+			matches: []tmResult{mShishiqiushi},
+			expectLen: 1,
+		},
   }
-  var pinyinMatches []tmResult
   wdict := mockDict()
   for _, tc := range tests {
-		result := combineResults(tc.query, tc.matches, pinyinMatches, wdict)
+		result := combineResults(tc.query, tc.matches, tc.pinyinMatches, wdict)
 		if tc.expectLen != len(result) {
 			t.Errorf("%s: expected len %d, got %d", tc.name, tc.expectLen,
 				len(result))
@@ -148,6 +198,7 @@ func TestcombineResultsNoSubstrings(t *testing.T) {
 	type test struct {
 		name string
 		query string
+		pinyinMatches []tmResult
 		matches []tmResult
 		expectLen int
   }
@@ -168,7 +219,8 @@ func TestcombineResultsNoSubstrings(t *testing.T) {
 		term: "開花結實",
 		unigramCount: 2,
   }
-  matches := []tmResult{mPartial, mExact, mPoor, mLong}
+  matches := []tmResult{mPartial, mExact,  mPoor, mLong}
+
   // For query 把手拽不入
   mLong1 := tmResult{
 		term: "大方廣入如來智德不思議經",
@@ -179,25 +231,52 @@ func TestcombineResultsNoSubstrings(t *testing.T) {
 		unigramCount: 2,
   }
   lMatches := []tmResult{mLong1, mLong2}
+
+  // Simplified and trad matches of 坐斷天下人舌頭
+  mCutoff := tmResult{
+		term: "截斷天下人舌頭",
+		unigramCount: 6,
+  }
+  mSimplified := tmResult{
+		term: "截断天下人舌头",
+		unigramCount: 4,
+  }
+
+  // Run tests
   tests := []test{
 		{
 			name: "happy path",
 			query: "結實",
+			pinyinMatches: []tmResult{},
 			matches: matches,
 			expectLen: 1,
 		},
 		{
 			name: "long strings",
 			query: "把手拽不入",
+			pinyinMatches: []tmResult{},
 			matches: lMatches,
 			expectLen: 0,
 		},
+		{
+			name: "Simplified match",
+			query: "坐斷天下人舌頭",
+			pinyinMatches: []tmResult{},
+			matches: []tmResult{mSimplified},
+			expectLen: 1,
+		},
+		{
+			name: "No dup for simplified and traditional",
+			query: "坐斷天下人舌頭",
+			pinyinMatches: []tmResult{},
+			matches: []tmResult{mCutoff, mSimplified},
+			expectLen: 1,
+		},
   }
-  var pinyinMatches []tmResult
   wdict := mockDict()
   for _, tc := range tests {
 		result := combineResultsNoSubstrings(tc.query, tc.matches,
-				pinyinMatches, wdict)
+				tc.pinyinMatches, wdict)
 		if tc.expectLen != len(result) {
 			t.Errorf("%s: expected len %d, got %d", tc.name, tc.expectLen,
 				len(result))

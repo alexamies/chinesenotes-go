@@ -290,15 +290,27 @@ func combineResults(query string,
 		allMatches = append(allMatches, v)
 	}
 	printResults(query, allMatches, "with substrings")
-	relevantMatches := []tmResult{}
+
+	// Eliminate dups with a map since simplified and traditional may both match
+	uMap := map[int]tmResult{}
 	for _, m := range allMatches {
-		if m.relevant == 1 && len(relevantMatches) < maxResultsSubstrings {
-			relevantMatches = append(relevantMatches, m)
+		if m.relevant == 1 && len(uMap) < maxResultsSubstrings {
+			if w, ok := wdict[m.term]; ok {
+				uMap[w.HeadwordId] = m
+			}
 		}
+	}
+
+	// Sort for most relevant based on unigram count
+	relevantMatches := []tmResult{}
+	for _, m := range uMap {
+		relevantMatches = append(relevantMatches, m)
 	}
 	sort.Slice(matches, func(i, j int) bool {
 		return matches[i].unigramCount > matches[j].unigramCount
 	})
+
+	// Transform into a slice of Words
 	var words []dicttypes.Word
 	for _, match := range relevantMatches {
 		if word, ok := wdict[match.term]; ok {
@@ -350,11 +362,21 @@ func combineResultsNoSubstrings(query string,
 		}
 	}
 	printResults(query, allMatches, "substrings excluded")
-	relevantMatches := []tmResult{}
+
+	// Eliminate dups with a map since simplified and traditional may both match
+	uMap := map[int]tmResult{}
 	for _, m := range allMatches {
-		if m.relevant == 1  && len(relevantMatches) < maxResultsNoSubstrings {
-			relevantMatches = append(relevantMatches, m)
+		if m.relevant == 1 && len(uMap) < maxResultsSubstrings {
+			if w, ok := wdict[m.term]; ok {
+				uMap[w.HeadwordId] = m
+			}
 		}
+	}
+
+	// Sort for most relevant based on unigram count
+	relevantMatches := []tmResult{}
+	for _, m := range uMap {
+		relevantMatches = append(relevantMatches, m)
 	}
 	sort.Slice(relevantMatches, func(i, j int) bool {
 		return relevantMatches[i].unigramCount > relevantMatches[j].unigramCount
