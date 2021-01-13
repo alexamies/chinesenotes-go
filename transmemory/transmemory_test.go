@@ -194,7 +194,7 @@ func TestCombineResults(t *testing.T) {
 }
 
 // Test combineResultsNoSubstrings function
-func TestcombineResultsNoSubstrings(t *testing.T) {
+func TestCombineResultsNoSubstrings(t *testing.T) {
 	type test struct {
 		name string
 		query string
@@ -285,13 +285,13 @@ func TestcombineResultsNoSubstrings(t *testing.T) {
 	}
 }
 
-// Test predictRelevance function
+// Test predictRelevance function (not normalized for query length)
 func TestPredictRelevance(t *testing.T) {
 	type test struct {
 		name string
 		query string
 		match tmResult
-		expect bool
+		expect int
   }
   mPartial := tmResult{
 		term: "結",
@@ -323,37 +323,111 @@ func TestPredictRelevance(t *testing.T) {
 			name: "Partial match",
 			query: "結實",
 			match: mPartial,
-			expect: true,
+			expect: 0,
 		},
 		{
 			name: "Exact match",
 			query: "結實",
 			match: mExact,
-			expect: true,
+			expect: 0,
 		},
 		{
 			name: "Mostly matching",
 			query: "一指頭禪",
 			match: mMostlyMatching,
-			expect: true,
+			expect: 1,
 		},
 		{
 			name: "differenter and differenter",
 			query: "結實",
 			match: mNoOverlap,
-			expect: false,
+			expect: 0,
 		},
 		{
 			name: "long example",
 			query: "把手拽不入",
 			match: mLong,
-			expect: false,
+			expect: 0,
 		},
    }
   for _, tc := range tests {
-		result := predictRelevance(tc.query, tc.match, uniCountDP, hammingDistDP)
+		result := predictRelevance(tc.query, tc.match)
 		if tc.expect != result {
-			t.Errorf("%s: expected %t, got %t", tc.name, tc.expect,
+			t.Errorf("%s: query %s expected %d, got %d", tc.name, tc.query, tc.expect,
+					result)
+		}
+	}
+}
+
+// Test predictRelevance function, normalized for query length
+func TestPredictRelevanceNorm(t *testing.T) {
+	type test struct {
+		name string
+		query string
+		match tmResult
+		expect int
+  }
+  mPartial := tmResult{
+		term: "結",
+		unigramCount: 1,
+		hamming: 1,
+  }
+  mExact := tmResult{
+		term: "結實",
+		unigramCount: 2,
+		hamming: 0,
+  }
+  mMostlyMatching := tmResult{
+		term: "一指禪",
+		unigramCount: 3,
+		hamming: 2,
+  }
+  mNoOverlap := tmResult{
+		term: "",
+		unigramCount: 0,
+		hamming: 2,
+  }
+  mLong := tmResult{
+		term: "大方廣入如來智德不思議經)",
+		unigramCount: 2,
+		hamming: 12,
+  }
+  tests := []test{
+		{
+			name: "Partial match",
+			query: "結實",
+			match: mPartial,
+			expect: 1,
+		},
+		{
+			name: "Exact match",
+			query: "結實",
+			match: mExact,
+			expect: 1,
+		},
+		{
+			name: "Mostly matching",
+			query: "一指頭禪",
+			match: mMostlyMatching,
+			expect: 1,
+		},
+		{
+			name: "differenter and differenter",
+			query: "結實",
+			match: mNoOverlap,
+			expect: 0,
+		},
+		{
+			name: "long example",
+			query: "把手拽不入",
+			match: mLong,
+			expect: 0,
+		},
+   }
+  for _, tc := range tests {
+		result := predictRelevanceNorm(tc.query, tc.match)
+		if tc.expect != result {
+			t.Errorf("%s: query %s expected %d, got %d", tc.name, tc.query, tc.expect,
 					result)
 		}
 	}

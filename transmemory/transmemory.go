@@ -28,15 +28,15 @@ const (
 	maxUnigram = 8
 	maxResultsSubstrings = 10
 	maxResultsNoSubstrings = 3
-	// Decision point from decision tree classification training for Unicode count
+	// Decision point from decision tree classification training for Unicode count / query len
 	// divided by query length
-	uniCountDP float64 = 0.37
-	// Decision point from training for Hamming distance divided by query length
-	hammingDistDP float64 = 0.59
-	// Decision point from training with substrings excluded for Unicode count
-	uniCountNoSubstringDP float64 = 0.46
-	// Decision point from training with substrings excluded for Hamming distance
-	hammingNoSubstringDP float64 = 0.63
+	uniCountMin float64 = 0.37
+	// Decision point from training for Hamming distance divided by query length / query len
+	hammingDistMax float64 = 0.59
+	// Decision point from training with substrings excluded for Unicode count (greater than or equal)
+	uniCountNoSubMin int = 3
+	// Decision point from training with substrings excluded for Hamming distance (less than or equal)
+	hammingNoSubMax int = 8
 )
 
 // Encapsulates search recults
@@ -268,21 +268,13 @@ func combineResults(query string,
 	for _, m := range matches {
 		m.hamming = hammingDist(query, m.term)
 		m.isSubstring = eitherSubstring(query, m.term)
-		if predictRelevance(query, m, uniCountDP, hammingDistDP) {
-			m.relevant = 1
-		} else {
-			m.relevant = 0
-		}
+		m.relevant = predictRelevanceNorm(query, m)
 		relevantMap[m.term] = m
 	}
 	for _, m := range pinyinMatches {
 		m.hamming = hammingDist(query, m.term)
 		m.isSubstring = eitherSubstring(query, m.term)
-		if predictRelevance(query, m, uniCountDP, hammingDistDP) {
-			m.relevant = 1
-		} else {
-			m.relevant = 0
-		}
+		m.relevant = predictRelevanceNorm(query, m)
 		relevantMap[m.term] = m
 	}
 	allMatches := []tmResult{}
@@ -334,12 +326,7 @@ func combineResultsNoSubstrings(query string,
 		if strings.Contains(m.term, query) {
 			m.isSubstring = 1
 		}
-		if predictRelevance(query, m, uniCountNoSubstringDP,
-				hammingNoSubstringDP) {
-			m.relevant = 1
-		} else {
-			m.relevant = 0
-		}
+		m.relevant = predictRelevance(query, m)
 		relevantMap[m.term] = m
 	}
 	for _, m := range pinyinMatches {
@@ -347,12 +334,7 @@ func combineResultsNoSubstrings(query string,
 		if strings.Contains(m.term, query) {
 			m.isSubstring = 1
 		}
-		if predictRelevance(query, m, uniCountNoSubstringDP,
-				hammingNoSubstringDP) {
-			m.relevant = 1
-		} else {
-			m.relevant = 0
-		}
+		m.relevant = predictRelevance(query, m)
 		relevantMap[m.term] = m
 	}
 	allMatches := []tmResult{}
@@ -366,7 +348,7 @@ func combineResultsNoSubstrings(query string,
 	// Eliminate dups with a map since simplified and traditional may both match
 	uMap := map[int]tmResult{}
 	for _, m := range allMatches {
-		if m.relevant == 1 && len(uMap) < maxResultsSubstrings {
+		if m.relevant == 1 && len(uMap) < maxResultsNoSubstrings {
 			if w, ok := wdict[m.term]; ok {
 				uMap[w.HeadwordId] = m
 			}
@@ -393,23 +375,40 @@ func combineResultsNoSubstrings(query string,
 	return words
 }
 
-// Predict relevance based on decision tree analysis
+// Predict relevance based on parameters (not normaized by query length)
 // Returns
-//   bool - true if relevant, false if not relevant
-func predictRelevance(query string, m tmResult, uniDP, hammingDP float64) bool {
+//   1 if relevant, 0 if not relevant
+func predictRelevance(query string, m tmResult) int {
 	l := len([]rune(query))
 	if l == 0 {
-		return false
+		return 0
 	}
 	if m.isSubstring == 1 || m.hasPinyin == 1 || m.inNotes == 1 {
-		return true
+		return 1
+	}
+  if m.unigramCount >= uniCountNoSubMin && m.hamming <= hammingNoSubMax {
+  	return 1
+  }
+  return 0
+}
+
+// Predict relevance based on parameters normaized by query length
+// Returns
+//   1 if relevant, 0 if not relevant
+func predictRelevanceNorm(query string, m tmResult) int {
+	l := len([]rune(query))
+	if l == 0 {
+		return 0
+	}
+	if m.isSubstring == 1 || m.hasPinyin == 1 || m.inNotes == 1 {
+		return 1
 	}
 	normalUni := float64(m.unigramCount) / float64(l)
 	normalHamming := float64(m.hamming) / float64(l)
-  if normalUni >= uniDP && normalHamming <= hammingDP {
-  	return true
+  if normalUni >= uniCountMin && normalHamming <= hammingDistMax {
+  	return 1
   }
-  return false
+  return 0
 }
 
 // Finds the pinyin for a given Chinese string
