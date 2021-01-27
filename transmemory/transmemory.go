@@ -383,7 +383,10 @@ func predictRelevance(query string, m tmResult) int {
 	if l == 0 {
 		return 0
 	}
-	if m.isSubstring == 1 || m.hasPinyin == 1 || m.inNotes == 1 {
+	if m.isSubstring == 1 || m.inNotes == 1 {
+		return 1
+	}
+	if m.unigramCount >= 1 && m.hasPinyin == 1 {
 		return 1
 	}
   if m.unigramCount >= uniCountNoSubMin && m.hamming <= hammingNoSubMax {
@@ -400,7 +403,10 @@ func predictRelevanceNorm(query string, m tmResult) int {
 	if l == 0 {
 		return 0
 	}
-	if m.isSubstring == 1 || m.hasPinyin == 1 || m.inNotes == 1 {
+	if m.isSubstring == 1 || m.inNotes == 1 {
+		return 1
+	}
+	if m.unigramCount >= 1 && m.hasPinyin == 1 {
 		return 1
 	}
 	normalUni := float64(m.unigramCount) / float64(l)

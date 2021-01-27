@@ -314,9 +314,21 @@ func TestPredictRelevance(t *testing.T) {
 		hamming: 2,
   }
   mLong := tmResult{
-		term: "大方廣入如來智德不思議經)",
+		term: "大方廣入如來智德不思議經",
 		unigramCount: 2,
 		hamming: 12,
+  }
+  mJizhuang := tmResult{
+		term: "基樁",
+		unigramCount: 0,
+		hamming: 2,
+		hasPinyin: 1,
+  }
+  mXinshui := tmResult{
+		term: "薪水",
+		unigramCount: 1,
+		hamming: 1,
+		hasPinyin: 1,
   }
   tests := []test{
 		{
@@ -348,6 +360,18 @@ func TestPredictRelevance(t *testing.T) {
 			query: "把手拽不入",
 			match: mLong,
 			expect: 0,
+		},
+		{
+			name: "pinyin match but no chars",
+			query: "齎裝",
+			match: mJizhuang,
+			expect: 0,
+		},
+		{
+			name: "pinyin match, one char",
+			query: "薪水",
+			match: mXinshui,
+			expect: 1,
 		},
    }
   for _, tc := range tests {
