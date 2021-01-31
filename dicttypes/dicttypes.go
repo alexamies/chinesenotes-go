@@ -114,6 +114,14 @@ func (w Word) IsQuote() bool {
 	return false
 }
 
+// hasNotesLabel tests whether the term has a label with the given value.
+func (w Word) hasNotesLabel(label string) bool {
+	if len(w.Senses) == 1 {
+		return strings.HasPrefix(w.Senses[0].Notes, label)
+	}
+	return false
+}
+
 func (hwArr Words) Len() int {
 	return len(hwArr)
 }

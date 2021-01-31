@@ -176,6 +176,54 @@ func TestNormalizePinyin(t *testing.T) {
 	}
 }
 
+// Test hasNotesLabel
+func TestHasNotesLabel(t *testing.T) {
+	type test struct {
+		name string
+		input Word
+		expect bool
+  }
+	ws1 := WordSense{
+		Notes: "Sanskrit equivalent: prajñā",
+	}
+	w1 := Word{
+		HeadwordId: 1,
+		Simplified: "般若",
+		Traditional: "\\N",
+		Pinyin: "bōrě",
+		Senses: []WordSense{ws1},
+	}
+	ws2 := WordSense{
+		Notes: "Something else",
+	}
+	w2 := Word{
+		HeadwordId: 2,
+		Simplified: "心与道一",
+		Traditional: "心與道一",
+		Pinyin: "xīn yǔ dào yī",
+		Senses: []WordSense{ws2},
+	}
+  tests := []test{
+		{
+			name: "Has Sanskrit",
+			input: w1,
+			expect: true,
+		},
+		{
+			name: "Has nothing interesting",
+			input: w2,
+			expect: false,
+		},
+	}
+  for _, tc := range tests {
+		got := tc.input.hasNotesLabel("Sanskrit equivalent:")
+		if got != tc.expect {
+			t.Errorf("TestHasNotesLabel %s: got %t but expected %t ", tc.name,
+				got, tc.expect)
+		}
+	}
+}
+
 // Test IsQuote
 func TestIsQuote(t *testing.T) {
 	type test struct {
@@ -220,3 +268,4 @@ func TestIsQuote(t *testing.T) {
 		}
 	}
 }
+
