@@ -216,7 +216,7 @@ func TestHasNotesLabel(t *testing.T) {
 		},
 	}
   for _, tc := range tests {
-		got := tc.input.hasNotesLabel("Sanskrit equivalent:")
+		got := tc.input.HasNotesLabel("Sanskrit equivalent:")
 		if got != tc.expect {
 			t.Errorf("TestHasNotesLabel %s: got %t but expected %t ", tc.name,
 				got, tc.expect)
