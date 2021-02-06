@@ -285,7 +285,7 @@ mysql --local-infile=1 -h localhost -u root -p
 
 ### Load dictionary data into the database
 
-The first time you run this execute the commands in first_time_setup.sql.
+The first time you run this execute the commands in `data/first_time_setup.sql`.
 
 Create the table definitions
 
@@ -419,10 +419,161 @@ gcloud run deploy --platform=managed $SERVICE \
 --set-env-vars CNREADER_HOME="/"
 ```
 
+### Custom Domain and SSL
+
+These instructions described how to setup a custom domain and SSL on Google
+Cloud with a Google Cloud Load Balancer and Cloud Run as a backend Network
+Endpoint Group (NEG). It is assumed that you already have the app deployed on
+Cloud Run using the instructions above.
+
+#### Configuring the load balancer
+
+Create a serverless NEG for the Cloud Run deployment
+
+```shell
+NEG=[name of NEG]
+gcloud compute network-endpoint-groups create $NEG \
+    --region=$REGION \
+    --network-endpoint-type=serverless \
+    --cloud-run-service=$SERVICE
+```
+
+Create a load balancer backend service
+
+```shell
+LB_SERVICE=[name of service]
+gcloud compute backend-services create $LB_SERVICE --global
+```
+
+Add the NEG to the backend service
+
+```shell
+gcloud beta compute backend-services add-backend $LB_SERVICE \
+    --global \
+    --network-endpoint-group=$NEG \
+    --network-endpoint-group-region=$REGION
+```
+
+Create a URL map as below, except if you are setting up a private portal with
+login required, see the instructions under password protecting the site below.
+
+```shell
+URL_MAP=[your url map name]
+gcloud compute url-maps create $URL_MAP \
+    --default-backend-bucket $BACKEND_BUCKET
+```
+
+Create a matcher for the NEG backend service
+
+```shell
+MATCHER_NAME=[your matcher name]
+gcloud compute url-maps add-path-matcher $URL_MAP \
+    --default-backend-bucket $BACKEND_BUCKET \
+    --path-matcher-name $MATCHER_NAME \
+    --path-rules="/find/*=$LB_SERVICE,/findadvanced/*=$LB_SERVICE,/findmedia/*=$LB_SERVICE,/findsubstring=$LB_SERVICE,/findtm=$LB_SERVICE"
+```
+
+Configure the target proxy
+
+```shell
+TARGET_PROXY=[your target proxy name]
+gcloud compute target-http-proxies create $TARGET_PROXY \
+    --url-map $URL_MAP
+
+STATIC_IP=[your static ip]
+gcloud compute addresses create $STATIC_IP --global
+
+FORWARDING_RULE=[your forwarding rule name]
+gcloud compute forwarding-rules create $FORWARDING_RULE \
+    --address $STATIC_IP \
+    --global \
+    --target-http-proxy $TARGET_PROXY \
+    --ports 80
+```
+
+Check the name of the forwarding-rule and url-map
+```
+gcloud compute forwarding-rules list
+gcloud compute url-maps list
+gcloud compute url-maps describe $URL_MAP
+```
+
+At this point you should be able to access the site via the static IP.
+
+```shell
+IP=[output from command above]
+curl http://${IP}
+```
+
+To update the load balancer
+
+```shell
+gcloud compute url-maps edit $URL_MAP
+```
+
+#### Custom domain
+
+Register your domain name. Create an A record pointing to the static IP created
+above. It may take time for the DNS record to propagate.
+
+At this point you should be able to access the site via the custom domain.
+
+```shell
+SITEDOMAIN=[output from command above]
+curl http://${SITEDOMAIN}
+```
+
+
+#### HTTPS Setup
+
+Create an SSL cert
+
+```shell
+SSL_CERTIFICATE_NAME=[your cert name]
+gcloud compute ssl-certificates create $SSL_CERTIFICATE_NAME \
+  --domains=$SITEDOMAIN \
+  --global
+```
+
+It may take some time to provision the cert.
+
+Create a target proxy
+
+```shell
+SSL_TARGET_PROXY=[your proxy]
+gcloud compute target-https-proxies create $SSL_TARGET_PROXY \
+    --url-map=$URL_MAP \
+    --ssl-certificates=$SSL_CERTIFICATE_NAME
+```
+
+Create a forwarding rule
+
+```shell
+SSL_FORWARDING_RULE=[your forwarding rule]
+gcloud compute forwarding-rules create $SSL_FORWARDING_RULE \
+    --address $STATIC_IP \
+    --ports=443 \
+    --global \
+    --target-https-proxy $SSL_TARGET_PROXY
+```
+
+It may take a few minutes to update the load balancer.
+
+At this point you should be able to access the site via the custom domain with
+HTTPS.
+
+```shell
+curl https://${SITEDOMAIN}
+```
+
+
 ## Password protecting the web app
 
-To set up the translation portal with password protection, first configure
-the database:
+To set up the translation portal with password protection, a database and
+HTTPS are required. Cryptographically hashed passwords are stored in the
+database. Cookies are used to maintain a session.
+
+First configure the database:
 
 ```shell
 docker exec -it mariadb bash
@@ -510,6 +661,25 @@ For additional customization you can change the title of the portal with the
 edit the templates under the /templates directory.
 For the even more customization, just use the portal server JSON API to driver
 a JavaScript client.
+
+For a custom domain, follow the instructions above, except there is no backend
+bucket. Instead all the static content is included in the container. So when
+seting up the load balancer, create the URL map as
+
+```shell
+gcloud compute url-maps create $URL_MAP \
+  --default-service $LB_SERVICE
+```
+
+Create a matcher for the NEG backend service with the command below
+
+```shell
+MATCHER_NAME=[your matcher name]
+gcloud compute url-maps add-path-matcher $URL_MAP \
+    --default-service $LB_SERVICE \
+    --path-matcher-name $MATCHER_NAME \
+    --path-rules="/find/*=$LB_SERVICE,/findadvanced/*=$LB_SERVICE,/findmedia/*=$LB_SERVICE,/findsubstring=$LB_SERVICE,/findtm=$LB_SERVICE"
+```
 
 ## Corpus content and full text search
 

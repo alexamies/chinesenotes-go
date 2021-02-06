@@ -45,6 +45,7 @@ func InitConfig() AppConfig {
 	if len(cnReaderHome) != 0 {
 		projectHome = cnReaderHome
 	}
+	log.Printf("InitConfig projectHome: %s\n", projectHome)
 	c := AppConfig{
 		ProjectHome: projectHome,
 	}
@@ -52,7 +53,7 @@ func InitConfig() AppConfig {
 	var err error
 	configVars, err := readConfig(projectHome)
 	if err != nil {
-		log.Printf("error reading app config, using defaults: %v\n", err)
+		log.Printf("InitConfig, error reading config, using defaults: %v\n", err)
 		configVars = make(map[string]string)
 	}
 	c.ConfigVars = configVars
