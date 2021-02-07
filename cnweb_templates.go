@@ -111,6 +111,49 @@ const libraryTmpl = `
       <p>
         Placeholder for a library of digital texts.
       </p>
+      <form name="findForm" method="post" action="/find/">
+        <div>
+          <label for="findInput">Search for</label>
+          <input type="text" name="query" size="40" required/>
+          <input type="hidden" name="title" value="title"/>
+          <button type="submit">Find title</button>
+        </div>
+      </form>
+    </main>
+    %s
+  <body>
+</html>
+`
+
+const docResultsTmpl = `
+<!DOCTYPE html>
+<html lang="en">
+  %s
+  <body>
+    %s
+    %s
+    <main>
+      <form name="findForm" method="post" action="/find/">
+        <div>
+          <label for="findInput">Search for</label>
+          <input type="text" name="query" size="40" required value="{{.Results.Query}}"/>
+          <button type="submit">Find</button>
+        </div>
+      </form>
+      {{if .Results}}
+        <h4>Matching documents</h4>
+        <div>
+          {{ range $doc := .Results.Documents }}
+          <div>
+            <details open>
+              <summary>
+                <span class="dict-entry-headword"><a href='{{$doc.GlossFile}}'>{{ $doc.Title }}</a><</span>
+              </summary>
+            </details>
+          </div>
+          {{ end }}
+        </div>
+      {{ end }}
     </main>
     %s
   <body>
@@ -552,6 +595,7 @@ func newTemplateMap(webConfig config.WebAppConfig) map[string]*template.Template
     "404.html": notFoundTmpl,
     "admin_portal.html": adminPortalTmpl,
     "change_password_form.html": changePasswordTmpl,
+    "doc_results.html": docResultsTmpl,
     "find_results.html": findResultsTmpl,
     "findtm.html": findTMTmpl,
     "full_text_search.html": fullTextSearchTmpl,

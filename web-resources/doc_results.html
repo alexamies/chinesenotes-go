@@ -56,21 +56,29 @@
 
       <main class="main-content" id="main-content">
         <div class="mdc-top-app-bar--fixed-adjust">
-          <h2>Library</h2>
+          <p>Search again</p>
           <form name="findForm" method="post" action="/find/">
             <div>
               <label for="findInput">Search for</label>
-              <input type="text" name="query" size="40" required/>
-              <input type="hidden" name="title" value="title"/>
-              <button type="submit">Find title</button>
+              <input type="text" name="query" size="40" required value="{{.Results.Query}}"/>
+              <input type="hidden" name="title"/>
+              <button type="submit">Find</button>
             </div>
           </form>
-          <ul>
-            {{ range $index, $entry := .Data.ColIEntries }}
-              <li><a href="{{ $entry.GlossFile }}">{{ $entry.Title }}</a></li>
+          {{if .Results}}
+          <h4>Matching documents</h4>
+          <div>
+            {{ range $doc := .Results.Documents }}
+            <div>
+              <details open>
+                <summary>
+                  <span class="dict-entry-headword"><a href='{{$doc.GlossFile}}'>{{ $doc.Title }}</a></span>
+                </summary>
+              </details>
+            </div>
             {{ end }}
-          </ul>
-          <p><a href="{{ .Data.AnalysisPage }}">Corpus vocabulary analysis</a></p>
+          </div>
+          {{ end }}
         </div>
       </main>
       <footer class="page-footer">

@@ -346,6 +346,7 @@ func findDocs(response http.ResponseWriter, request *http.Request, fullText bool
 		q = getSingleValue(request, "text")
 	}
 	findTitle := getSingleValue(request, "title")
+	log.Printf("main.findDocs q: %s, title: %s", q, findTitle)
 
 	var results *find.QueryResults
 	c := getSingleValue(request, "collection")
@@ -412,8 +413,14 @@ func findDocs(response http.ResponseWriter, request *http.Request, fullText bool
 
 	// Return HTML if method is post
 	if acceptHTML(request) {
-		showQueryResults(response, results, fullText)
-    return
+		templateFile := "find_results.html"
+		if len(findTitle) > 0 {
+			templateFile = "doc_results.html"
+		} else if fullText {
+			templateFile = "full_text_search.html"
+		}
+		showQueryResults(response, results, templateFile)
+		return
 	}
 
 	// Return JSON
@@ -456,7 +463,7 @@ func getSingleValue(r *http.Request, key string) string {
 
 // showQueryResults displays query results on a HTML page
 func showQueryResults(w http.ResponseWriter, results *find.QueryResults,
-		fullText bool) {
+		templateFile string) {
 	res := results
 	staticDir := appConfig.GetVar("GoStaticDir")
 	log.Printf("showQueryResults, staticDir: %s", staticDir)
@@ -478,6 +485,7 @@ func showQueryResults(w http.ResponseWriter, results *find.QueryResults,
 				Similarity: doc.Similarity,
 				ContainsTerms: doc.ContainsTerms,
 				MatchDetails: doc.MatchDetails,
+				TitleCNMatch: doc.TitleCNMatch,
 			}
 			docs = append(docs, d)
 		}
@@ -499,11 +507,7 @@ func showQueryResults(w http.ResponseWriter, results *find.QueryResults,
 	}
 	var tmpl *template.Template
 	var err error 
-	if fullText {
-		tmpl = templates["full_text_search.html"]
-	} else {
-		tmpl = templates["find_results.html"]
-	}
+	tmpl = templates[templateFile]
 	if err != nil {
 		log.Printf("showQueryResults: error parsing template %v", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)

@@ -57,8 +57,17 @@
       <main class="main-content" id="main-content">
         <div class="mdc-top-app-bar--fixed-adjust">
           <p>
-            Placeholder for a library of digital texts.
+            Placeholder for a library of digital texts. Try searching on
+            document tiles below.
           </p>
+          <form name="findForm" method="post" action="/find/">
+            <div>
+              <label for="findInput">Search for</label>
+              <input type="text" name="query" size="40" required/>
+              <input type="hidden" name="title" value="title"/>
+              <button type="submit">Find title</button>
+            </div>
+          </form>
        </div>
       </main>
       <footer class="page-footer">
