@@ -83,6 +83,7 @@ type Document struct {
 	SimTitle, SimWords, SimBigram, SimBitVector, Similarity float64
 	ContainsTerms []string
 	MatchDetails fulltext.MatchingText
+	TitleCNMatch bool
 }
 
 type QueryResults struct {

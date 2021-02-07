@@ -39,7 +39,10 @@ import (
 	"github.com/alexamies/chinesenotes-go/transmemory"
 )
 
-const defTitle = "Chinese Notes Translation Portal"
+const (
+	defTitle = "Chinese Notes Translation Portal"
+	titleIndexFN = "documents.tsv"
+)
 
 var (
 	appConfig config.AppConfig
@@ -53,6 +56,7 @@ var (
 	authenticator *identity.Authenticator
 	mediaSearcher *media.MediaSearcher
 	templates map[string]*template.Template
+	docTitleFinder find.DocTitleFinder
 )
 
 // Content for HTML template
@@ -113,7 +117,23 @@ func initApp(ctx context.Context) error {
 		}
 	}
 	templates = newTemplateMap(webConfig)
+
 	return nil
+}
+
+// Initialize the document title finder
+func initDocTitleFinder() {
+	if docTitleFinder != nil {
+		return
+	}
+	titleFileName := "index/" + titleIndexFN
+	r, err := os.Open(titleFileName)
+	if err != nil {
+		log.Printf("initDocTitleFinder: Error opening %s: %v", titleFileName, err)
+		return
+	}
+	defer r.Close()
+	docTitleFinder = find.NewDocTitleFinder(r)
 }
 
 // Starting point for the Administration Portal
@@ -296,8 +316,8 @@ func enforceValidSession(w http.ResponseWriter, r *http.Request) identity.Sessio
 }
 
 // Finds documents matching the given query with search in text body
-func findAdvanced(response http.ResponseWriter, request *http.Request) {
-	log.Println("findAdvanced, enter")
+func findFullText(response http.ResponseWriter, request *http.Request) {
+	log.Println("findFullText, enter")
 	q := getSingleValue(request, "query")
 	if len(q) == 0 {
 		q = getSingleValue(request, "text")
@@ -309,7 +329,7 @@ func findAdvanced(response http.ResponseWriter, request *http.Request) {
 				Title: title,
 			}
 			if !config.UseDatabase() {
-				log.Println("findAdvanced database is needed for this feature")
+				log.Println("findFullText database is needed for this feature")
 				content.ErrorMsg = "Full text search is not configured"
 			}
 			displayPage(response, "full_text_search.html", content)
@@ -325,6 +345,7 @@ func findDocs(response http.ResponseWriter, request *http.Request, fullText bool
 	if len(q) == 0 {
 		q = getSingleValue(request, "text")
 	}
+	findTitle := getSingleValue(request, "title")
 
 	var results *find.QueryResults
 	c := getSingleValue(request, "collection")
@@ -341,6 +362,9 @@ func findDocs(response http.ResponseWriter, request *http.Request, fullText bool
 	var err error
 	if len(c) > 0 {
 		results, err = df.FindDocumentsInCol(ctx, dictSearcher, parser, q, c)
+	} else 	if len(findTitle) > 0 {
+		initDocTitleFinder()
+		results, err = docTitleFinder.FindDocuments(ctx, q)
 	} else {
 		results, err = df.FindDocuments(ctx, dictSearcher, parser, q, fullText)
 	}
@@ -1028,7 +1052,7 @@ func main() {
 
 	http.HandleFunc("/#", findHandler)
 	http.HandleFunc("/find/", findHandler)
-	http.HandleFunc("/findadvanced/", findAdvanced)
+	http.HandleFunc("/findadvanced/", findFullText)
 	http.HandleFunc("/findmedia", mediaDetailHandler)
 	http.HandleFunc("/findsubstring", findSubstring)
 	http.HandleFunc("/findtm", translationMemory)
