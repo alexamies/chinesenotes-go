@@ -27,6 +27,7 @@
     "webpack-cli": "latest"
   },
   "dependencies": {
+    "@alexamies/chinesedict-js": "^0.1.21",
     "material-components-web": "^7.0.0",
     "rxjs": "^6.6.3"
   }

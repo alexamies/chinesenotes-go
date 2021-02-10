@@ -344,6 +344,36 @@ DELETE FROM words;
 
 Restart the web application.
 
+### JavaScript Integration
+
+The `web-resources` directory has sufficient JavaScript for the meu system
+and display of vocabulary dialog in HTML pages. Building the JavaScript bundle
+requires installation of Node.js. The bundle is compiled from TypeScript.
+
+To build it
+
+```shell
+cd web-resources
+npm install
+npm run-script build
+cp dist/cnotes-compiled.* ../web/
+cd ..
+```
+
+The JavaScript code depends on a JSON bundle of the dictionary. This requies
+Python 3 to build. It can be created and saved to the right location with the
+command
+
+```shell
+python3 bin/words2json.py "data/words.txt" web/words.json
+```
+
+Try starting the app, navigating to the library and clicking on a term. The
+JavaScript enables a popover dialog like shown below.
+
+![screenshot of dictionary dialog](doc/vocab_dialog.png)
+
+
 ## Deploy to Cloud Run with a Cloud SQL databsae
 
 The steps here describe how to deploy and run on Google Cloud with Cloud Run,
