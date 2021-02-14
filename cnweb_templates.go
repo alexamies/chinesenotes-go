@@ -235,7 +235,7 @@ const findTMTmpl = `
       <form name="findForm" method="post" action="/findtm">
         <div>
           <label for="findInput">Search for</label>
-          <input type="text" name="query" size="40" required/>
+          <input type="text" name="query" size="40" required value="{{.Query}}"/>
           <button type="submit">Find</button>
         </div>
       </form>
@@ -284,7 +284,7 @@ const fullTextSearchTmpl = `
       <form name="findForm" method="post" action="/findadvanced/">
         <div>
           <label for="findInput">Search for</label>
-          <input type="text" name="query" size="40" required/>
+          <input type="text" name="query" size="40" required value="{{.Results.Query}}"/>
           <button type="submit">Find</button>
         </div>
       </form>

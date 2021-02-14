@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -62,8 +63,9 @@ var (
 // Content for HTML template
 type htmlContent struct {
 	Title string
+	Query string
 	ErrorMsg string
-	Results *find.QueryResults
+	Results find.QueryResults
 	TMResults *transmemory.Results
 	Data interface{}
 }
@@ -441,8 +443,12 @@ func findDocs(response http.ResponseWriter, request *http.Request, fullText bool
 		} else if fullText {
 			templateFile = "full_text_search.html"
 		}
-		showQueryResults(response, results, templateFile)
-		return
+		err = showQueryResults(response, *results, templateFile)
+		if err != nil {
+			log.Printf("main.findDocs Error displaying results: %v", err)
+			http.Error(response, "Internal error", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// Return JSON
@@ -484,8 +490,8 @@ func getSingleValue(r *http.Request, key string) string {
 }
 
 // showQueryResults displays query results on a HTML page
-func showQueryResults(w http.ResponseWriter, results *find.QueryResults,
-		templateFile string) {
+func showQueryResults(w io.Writer, results find.QueryResults,
+		templateFile string) error {
 	res := results
 	staticDir := appConfig.GetVar("GoStaticDir")
 	log.Printf("showQueryResults, staticDir: %s", staticDir)
@@ -511,7 +517,7 @@ func showQueryResults(w http.ResponseWriter, results *find.QueryResults,
 			}
 			docs = append(docs, d)
 		}
-		res = &find.QueryResults{
+		res = find.QueryResults{
 			Query: results.Query,
 			CollectionFile: staticDir + "/" + results.CollectionFile,
 			NumCollections: results.NumCollections,
@@ -531,20 +537,16 @@ func showQueryResults(w http.ResponseWriter, results *find.QueryResults,
 	var err error 
 	tmpl = templates[templateFile]
 	if err != nil {
-		log.Printf("showQueryResults: error parsing template %v", err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
+		return fmt.Errorf("showQueryResults: error parsing template %v", err)
 	}
 	if tmpl == nil {
-		log.Println("showQueryResults: Template is nil")
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
+		return fmt.Errorf("showQueryResults: %s", "Template is nil")
 	}
 	err = tmpl.Execute(w, content)
 	if err != nil {
-		log.Printf("showQueryResults: error rendering template %v", err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return fmt.Errorf("showQueryResults: error rendering template %v", err)
 	}
+	return nil
 }
 
 // findHandler finds documents matching the given query.
@@ -879,7 +881,6 @@ func requestResetFormHandler(w http.ResponseWriter, r *http.Request) {
 	content := htmlContent {
 		Title: title,
 		ErrorMsg: "",
-		Results: nil,
 		TMResults: nil,
 		Data: data,
 	}
@@ -913,7 +914,6 @@ func requestResetHandler(w http.ResponseWriter, r *http.Request) {
 		content := htmlContent {
 			Title: title,
 			ErrorMsg: "",
-			Results: nil,
 			TMResults: nil,
 			Data: result,
 		}
@@ -1052,6 +1052,7 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 	if acceptHTML(r) {
 		content := htmlContent{
 			Title: title,
+			Query: q,
 			TMResults: results,
 		}
 		displayPage(w, "findtm.html", content)

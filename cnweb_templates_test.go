@@ -86,7 +86,7 @@ func TestNewTemplateMap(t *testing.T) {
 			templateName: "find_results.html",
 			content: htmlContent{
 				Title: title,
-				Results: &results,
+				Results: results,
 			},
 			want: english,
 		},

@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/alexamies/chinesenotes-go/config"
+	"github.com/alexamies/chinesenotes-go/find"
 )
 
 // TestMain runs integration tests if the flag -integration is set
@@ -174,6 +175,39 @@ func TestCustom404(t *testing.T) {
 	}
 }
 
+func TestDisplayPage(t *testing.T) {
+	const query = "邃古"
+	tMContent := htmlContent{
+		Title: "XYZ",
+		Query: query,
+	}
+	type test struct {
+		name string
+		url string
+		template string
+		content interface{}
+		expectContains string
+  }
+  tests := []test{
+		{
+			name: "Translation memory query results shows the query",
+			url: "/findtm",
+			template: "findtm.html",
+			content: tMContent,
+			expectContains: query,
+		},
+  }
+  for _, tc := range tests {
+		w := httptest.NewRecorder()
+		displayPage(w, tc.template, tc.content)
+		result := w.Body.String()
+		if !strings.Contains(result, tc.expectContains) {
+			t.Errorf("TestDisplayPage %s: got %q, want contains %q, ", tc.name,
+					result, tc.expectContains)
+ 		}
+ 	}
+}
+
 // TestFindHandler tests finding a word.
 func TestFindHandler(t *testing.T) {
 	type test struct {
@@ -195,7 +229,8 @@ func TestFindHandler(t *testing.T) {
 		findHandler(w, r)
 		result := w.Body.String()
 		if !strings.Contains(result, tc.expectContains) {
-			t.Errorf("%s: expectContains %q, got %q", tc.name, tc.expectContains, result)
+			t.Errorf("TestFindHandler %s: expectContains %q, got %q", tc.name,
+					tc.expectContains, result)
  		}
  	}
 }
@@ -206,6 +241,41 @@ func TestGetSiteDomain(t *testing.T) {
 	if domain != "localhost" {
 		t.Error("TestGetSiteDomain: domain = ", domain)
 	}
+}
+
+func TestShowQueryResults(t *testing.T) {
+	type test struct {
+		name string
+		query string
+		template string
+		expectContains string
+  }
+  tests := []test{
+		{
+			name: "Query is shown in results",
+			query: "大庾嶺",
+			template: "find_results.html",
+			expectContains: "大庾嶺",
+		},
+		{
+			name: "Query is shown in full text results",
+			query: "大庾嶺",
+			template: "full_text_search.html",
+			expectContains: "大庾嶺",
+		},
+	}
+  for _, tc := range tests {
+		w := httptest.NewRecorder()
+		results := find.QueryResults{
+			Query: tc.query,
+		}
+		showQueryResults(w, results, tc.template)
+		result := w.Body.String()
+		if !strings.Contains(result, tc.expectContains) {
+			t.Errorf("TestShowQueryResults %s: got %q, want %q, ", tc.name, result,
+					tc.expectContains)
+ 		}
+  }
 }
 
 // TestTranslationMemory tests translationMemory function.
