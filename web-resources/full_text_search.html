@@ -70,12 +70,13 @@
           </form>
           {{ end }}
           {{if .Results}}
-          <h4>Results</h4>
+          <h3>Results</h3>
            {{if .Results.Documents}}
             <ul>
               {{ range $doc := .Results.Documents }}
               <li>
-                <a href="{{ $doc.GlossFile }}">{{ $doc.Title }}</a>
+                <h4><a href="{{ $doc.GlossFile }}">{{ $doc.Title }}</a></h4>
+                <p>{{ $doc.MatchDetails.Snippet }}</p>
               </li>
               {{ end }}
             </ul>

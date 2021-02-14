@@ -84,7 +84,7 @@ func initApp(ctx context.Context) error {
 	if config.UseDatabase() {
 		database, err = initDBCon()
 		if err != nil {
-			return fmt.Errorf("initApp unable to connect to database: \n%v\n", err)
+			return fmt.Errorf("initApp unable to connect to database: %v", err)
 		}
 	}
 	dictSearcher = dictionary.NewSearcher(ctx, database)
@@ -92,28 +92,28 @@ func initApp(ctx context.Context) error {
 	if len(cnReaderHome) > 0 {
 		wdict, err = dictionary.LoadDict(ctx, database, appConfig)
 		if err != nil {
-			return fmt.Errorf("main.init() unable to load dictionary locally: \n%v", err)
+			return fmt.Errorf("main.init() unable to load dictionary locally: %v", err)
 		}
 	} else {
 		// Load from web for zero-config Quickstart
   	const url = "https://github.com/alexamies/chinesenotes.com/blob/master/data/words.txt?raw=true"
 		wdict, err = fileloader.LoadDictURL(appConfig, url)
 		if err != nil {
-			return fmt.Errorf("main.init() unable to load dictionary from net: \n%v", err)
+			return fmt.Errorf("main.init() unable to load dictionary from net: %v", err)
 		}
 	}
 	parser = find.MakeQueryParser(wdict)
 	if database != nil {
 		tmSearcher, err = transmemory.NewSearcher(ctx, database)
 		if err != nil {
-			return fmt.Errorf("main.init() unable to create new TM searcher: \n%v\n", err)
+			return fmt.Errorf("main.init() unable to create new TM searcher: %v", err)
 		}
 	}
 	df = find.NewDocFinder(ctx, database)
 	if config.PasswordProtected() {
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			return fmt.Errorf("init authenticator not initialized, \n%v", err)
+			return fmt.Errorf("init authenticator not initialized, %v", err)
 		}
 	}
 	templates = newTemplateMap(webConfig)
@@ -122,29 +122,37 @@ func initApp(ctx context.Context) error {
 }
 
 // Initialize the document title finder
-func initDocTitleFinder() {
+func initDocTitleFinder() (find.DocTitleFinder, error) {
 	if docTitleFinder != nil {
-		return
+		return docTitleFinder, nil
 	}
-	titleFileName := "index/" + titleIndexFN
+	titleFileName := appConfig.IndexDir() + "/" + titleIndexFN
 	r, err := os.Open(titleFileName)
 	if err != nil {
-		log.Printf("initDocTitleFinder: Error opening %s: %v", titleFileName, err)
-		return
+		return nil, fmt.Errorf("initDocTitleFinder: Error opening %s: %v",
+				titleFileName, err)
 	}
 	defer r.Close()
 	docTitleFinder = find.NewDocTitleFinder(r)
+	return docTitleFinder, nil
 }
 
 // Starting point for the Administration Portal
 func adminHandler(w http.ResponseWriter, r *http.Request) {
+	d := os.Getenv("DATABASE")
+	if len(d) == 0 {
+		log.Printf("adminHandler databsae not initialized")
+		http.Error(w, "Not authorized", http.StatusForbidden)
+		return 
+	}
 	ctx := context.Background()
 	if authenticator == nil {
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			log.Printf("adminHandler authenticator not initialized, \n%v\n", err)
+			log.Printf("adminHandler authenticator not initialized, %v", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
+			return
 		}
 	}
 	sessionInfo := identity.InvalidSession()
@@ -176,12 +184,18 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 
 // Process a change password request
 func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
+	d := os.Getenv("DATABASE")
+	if len(d) == 0 {
+		log.Printf("changePasswordHandler databsae not initialized")
+		http.Error(w, "Not authorized", http.StatusForbidden)
+		return 
+	}
 	ctx := context.Background()
 	if authenticator == nil {
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			log.Printf("changePasswordHandler authenticator not initialized, \n%v\n", err)
+			log.Printf("changePasswordHandler authenticator not initialized, %v", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
@@ -208,6 +222,12 @@ func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
 
 // Display change password form
 func changePasswordFormHandler(w http.ResponseWriter, r *http.Request) {
+	d := os.Getenv("DATABASE")
+	if len(d) == 0 {
+		log.Printf("changePasswordFormHandler databsae not initialized")
+		http.Error(w, "Not authorized", http.StatusForbidden)
+		return 
+	}
 	sessionInfo := enforceValidSession(w, r)
 	if sessionInfo.Authenticated == 1 {
 		title := webConfig.GetVarWithDefault("Title", defTitle)
@@ -244,7 +264,7 @@ func displayPage(w http.ResponseWriter, templateName string, content interface{}
 // displayHome shows a simple page, for health checks and testing.
 // End users may also to see this when accessing direct from the browser
 func displayHome(w http.ResponseWriter, r *http.Request) {
-	log.Printf("displayHome: url %s\n", r.URL.Path)
+	log.Printf("displayHome: url %s", r.URL.Path)
 
 	// Tell health check probes that we are alive
 	if !acceptHTML(r) {
@@ -262,7 +282,7 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 			var err error
 			authenticator, err = identity.NewAuthenticator(ctx)
 			if err != nil {
-				log.Printf("displayHome: authenticator not initialized, \n%v\n", err)
+				log.Printf("displayHome: authenticator not initialized, %v", err)
 				http.Error(w, "Server error", http.StatusInternalServerError)
 				return
 			}
@@ -295,7 +315,7 @@ func enforceValidSession(w http.ResponseWriter, r *http.Request) identity.Sessio
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			log.Printf("enforceValidSession authenticator not initialized, \n%v\n", err)
+			log.Printf("enforceValidSession authenticator not initialized, %v", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
@@ -355,7 +375,7 @@ func findDocs(response http.ResponseWriter, request *http.Request, fullText bool
 		log.Println("main.findDocs re-initializing app")
 		err := initApp(ctx)
 		if err != nil {
-			log.Printf("findDocs error: \n%v\n", err)
+			log.Printf("findDocs error: %v", err)
 			http.Error(response, "Internal error", http.StatusInternalServerError)
 			return
 		}
@@ -364,8 +384,10 @@ func findDocs(response http.ResponseWriter, request *http.Request, fullText bool
 	if len(c) > 0 {
 		results, err = df.FindDocumentsInCol(ctx, dictSearcher, parser, q, c)
 	} else 	if len(findTitle) > 0 {
-		initDocTitleFinder()
-		results, err = docTitleFinder.FindDocuments(ctx, q)
+		docTitleFinder, err := initDocTitleFinder()
+		if err != nil {
+			results, err = docTitleFinder.FindDocuments(ctx, q)
+		}
 	} else {
 		results, err = df.FindDocuments(ctx, dictSearcher, parser, q, fullText)
 	}
@@ -527,7 +549,7 @@ func showQueryResults(w http.ResponseWriter, results *find.QueryResults,
 
 // findHandler finds documents matching the given query.
 func findHandler(response http.ResponseWriter, request *http.Request) {
-	log.Printf("findHandler: url %s\n", request.URL.Path)
+	log.Printf("findHandler: url %s", request.URL.Path)
 	findDocs(response, request, false)
 }
 
@@ -573,8 +595,8 @@ func findSubstring(response http.ResponseWriter, request *http.Request) {
 // Health check for monitoring or load balancing system, checks reachability
 func healthcheck(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "OK")
-	fmt.Fprintf(w, "Using a database: %t\n", config.UseDatabase())
-	fmt.Fprintf(w, "Password protected: %t\n", config.PasswordProtected())
+	fmt.Fprintf(w, "Using a database: %t", config.UseDatabase())
+	fmt.Fprintf(w, "Password protected: %t", config.PasswordProtected())
 }
 
 func initDBCon() (*sql.DB, error) {
@@ -584,7 +606,7 @@ func initDBCon() (*sql.DB, error) {
 
 // Display library page for digital texts
 func library(w http.ResponseWriter, r *http.Request) {
-	log.Printf("library: url %s\n", r.URL.Path)
+	log.Printf("library: url %s", r.URL.Path)
 
 	title := webConfig.GetVarWithDefault("Title", defTitle)
 	content := htmlContent{
@@ -596,7 +618,7 @@ func library(w http.ResponseWriter, r *http.Request) {
 			var err error
 			authenticator, err = identity.NewAuthenticator(ctx)
 			if err != nil {
-				log.Printf("displayHome: authenticator not initialized, \n%v\n", err)
+				log.Printf("displayHome: authenticator not initialized, %v", err)
 				http.Error(w, "Server error", http.StatusInternalServerError)
 				return
 			}
@@ -634,7 +656,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			log.Printf("loginHandler authenticator not initialized, \n%v\n", err)
+			log.Printf("loginHandler authenticator not initialized, %v", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
@@ -665,7 +687,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		if (err != nil) || !sessionInfo.Valid {
 			sessionid := identity.NewSessionId()
 			domain := config.GetSiteDomain()
-			log.Printf("loginHandler: setting new session %s\n for domain %s",
+			log.Printf("loginHandler: setting new session %s for domain %s",
 				sessionid, domain)
 			cookie := &http.Cookie{
         		Name: "session",
@@ -707,7 +729,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			log.Printf("loginHandler authenticator not initialized, \n%v\n", err)
+			log.Printf("loginHandler authenticator not initialized, %v", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
@@ -784,7 +806,7 @@ func portalHandler(w http.ResponseWriter, r *http.Request) {
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			log.Printf("portalHandler: authenticator not initialized, \n%v\n", err)
+			log.Printf("portalHandler: authenticator not initialized, %v", err)
 			http.Error(w, "Server error", http.StatusInternalServerError)
 		}
 	}
@@ -809,13 +831,13 @@ func portalHandler(w http.ResponseWriter, r *http.Request) {
 
 // portalLibraryHandler handles static but private pages
 func portalLibraryHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("portalLibraryHandler: url %s\n", r.URL.Path)
+	log.Printf("portalLibraryHandler: url %s", r.URL.Path)
 	ctx := context.Background()
 	if authenticator == nil {
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			log.Printf("portalLibraryHandler: authenticator not initialized, \n%v\n", err)
+			log.Printf("portalLibraryHandler: authenticator not initialized, %v", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
@@ -824,7 +846,7 @@ func portalLibraryHandler(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
 	} else {
-		log.Printf("portalLibraryHandler error getting cookie: %v\n", err)
+		log.Printf("portalLibraryHandler error getting cookie: %v", err)
 		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
 	}
@@ -835,15 +857,15 @@ func portalLibraryHandler(w http.ResponseWriter, r *http.Request) {
 		filename := portalLibHome + "/" + filepart
 		_, err := os.Stat(filename)
 		if err != nil {
-			log.Printf("portalLibraryHandler os.Stat error: %v for file %s\n",
+			log.Printf("portalLibraryHandler os.Stat error: %v for file %s",
 					err, filename)
 			custom404(w, r, filename)
 			return
 		}
-		log.Printf("portalLibraryHandler: serving file %s\n", filename)
+		log.Printf("portalLibraryHandler: serving file %s", filename)
 		http.ServeFile(w, r, filename)
 	} else {
-		log.Printf("portalLibraryHandler %s with role %s not authorized\n",
+		log.Printf("portalLibraryHandler %s with role %s not authorized",
 			user.UserName, user.Role)
 		http.Error(w, "Not authorized", http.StatusForbidden)
 	}
@@ -871,7 +893,7 @@ func requestResetHandler(w http.ResponseWriter, r *http.Request) {
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			log.Printf("requestResetHandler: authenticator not initialized: %v\n", err)
+			log.Printf("requestResetHandler: authenticator not initialized: %v", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
@@ -880,7 +902,7 @@ func requestResetHandler(w http.ResponseWriter, r *http.Request) {
 	if result.RequestResetSuccess {
 		err := identity.SendPasswordReset(result.User, result.Token, webConfig)
 		if err != nil {
-			log.Printf("requestResetHandler: could not send password reset: %v\n", err)
+			log.Printf("requestResetHandler: could not send password reset: %v", err)
 			result.RequestResetSuccess = false
 		}
 	}
@@ -918,7 +940,7 @@ func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			log.Printf("resetPasswordHandler: authenticator not initialized, \n%v\n", err)
+			log.Printf("resetPasswordHandler: authenticator not initialized, %v", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
@@ -955,7 +977,7 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 		var err error
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			log.Printf("sessionHandler: authenticator not initialized, \n%v\n", err)
+			log.Printf("sessionHandler: authenticator not initialized, %v", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
@@ -1016,7 +1038,7 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 	if tmSearcher == nil {
 		err := initApp(ctx)
 		if err != nil {
-			log.Printf("findDocs error: \n%v\n", err)
+			log.Printf("findDocs error: %v", err)
 			http.Error(w, "Internal error", http.StatusInternalServerError)
 			return
 		}
@@ -1051,7 +1073,7 @@ func main() {
 	ctx := context.Background()
 	err := initApp(ctx)
 	if err != nil {
-		log.Printf("main() error for initApp: \n%v\n", err)
+		log.Printf("main() error for initApp: %v", err)
 	}
 
 	http.HandleFunc("/#", findHandler)
@@ -1080,10 +1102,10 @@ func main() {
 	http.Handle("/web/", http.StripPrefix("/web/", fs))
 	http.HandleFunc("/", displayHome)
 	portStr := ":" + strconv.Itoa(config.GetPort())
-	log.Printf("cnweb.main Starting http server on port %s\n", portStr)
+	log.Printf("cnweb.main Starting http server on port %s", portStr)
 	err = http.ListenAndServe(portStr, nil)
 	if err != nil {
-		log.Printf("main() error for starting server: \n%v\n", err)
+		log.Printf("main() error for starting server: %v", err)
 		os.Exit(1)
 	}
 }

@@ -15,9 +15,7 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"flag"
-	"log"
 	"os"
 	"testing"
 
@@ -29,23 +27,12 @@ import (
 
 var integration = flag.Bool("integration", false, "run an integration test")
 
-// TestMain runs integration tests if the flag -integration is set
-func TestMain(m *testing.M) {
-	flag.Parse()
-	if *integration {
-		err := os.Setenv("CNREADER_HOME", ".")
-		if err != nil {
-			log.Fatalf("could not unset CNREADER_HOME: %v", err)
-		}
-		fmt.Println("Running integration test")
-		os.Exit(m.Run())
-	}
-	fmt.Println("Skipping integration test")
-	os.Clearenv()
-}
-
 // Test trivial query with empty dictionary
 func TestLoadDict(t *testing.T) {
+	cnReaderHome := os.Getenv("CNREADER_HOME")
+	if len(cnReaderHome) == 0 {
+		t.Skip("TestSendPasswordReset: skipping, CNREADER_HOME not defined")
+	}
 	fnames := []string{"data/testdict.tsv"}
 	appConfig := config.AppConfig{
 		LUFileNames: fnames,
@@ -95,6 +82,10 @@ func TestLoadDict(t *testing.T) {
 
 // TestLoadDictFile tests loading of a dictionary file
 func TestLoadDictFile(t *testing.T) {
+	cnReaderHome := os.Getenv("CNREADER_HOME")
+	if len(cnReaderHome) == 0 {
+		t.Skip("TestSendPasswordReset: skipping, CNREADER_HOME not defined")
+	}
 	fnames := []string{"data/testdict.tsv"}
 	appConfig := config.AppConfig{
 		LUFileNames: fnames,
@@ -125,7 +116,10 @@ func TestLoadDictFile(t *testing.T) {
 
 // TestSendPasswordReset tests sending a password reset
 func TestSendPasswordReset(t *testing.T) {
-	t.Log("TestSendPasswordReset: Begin unit tests")
+	cnReaderHome := os.Getenv("CNREADER_HOME")
+	if len(cnReaderHome) == 0 {
+		t.Skip("TestSendPasswordReset: skipping, CNREADER_HOME not defined")
+	}
 	userInfo := identity.UserInfo{
 		UserID: 100,
 		UserName: "test",

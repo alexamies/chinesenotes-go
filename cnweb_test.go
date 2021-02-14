@@ -13,6 +13,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -22,10 +23,15 @@ import (
 	"github.com/alexamies/chinesenotes-go/config"
 )
 
+// TestMain runs integration tests if the flag -integration is set
+func TestMain(m *testing.M) {
+	os.Clearenv()
+	os.Exit(m.Run())
+}
+
 // TestDisplayHome tests the default HTTP handler.
 func TestDisplayHome(t *testing.T) {
 	t.Logf("TestDisplayHome: Begin unit tests\n")
-	os.Unsetenv("PROTECTED")
 	type test struct {
 		name string
 		expectContains string
@@ -43,9 +49,129 @@ func TestDisplayHome(t *testing.T) {
 		displayHome(w, r)
 		result := w.Body.String()
 		if !strings.Contains(result, tc.expectContains) {
-			t.Errorf("%s: expectContains %q, got %q", tc.name, tc.expectContains, result)
+			t.Errorf("TestDisplayHome %s: expectContains %q, got %q", tc.name,
+					tc.expectContains, result)
  		}
  	}
+}
+
+func TestInitDocTitleFinder(t *testing.T) {
+	type test struct {
+		name string
+		expectError bool
+  }
+  tests := []test{
+		{
+			name: "Expect error, project home not set",
+			expectError: true,
+		},
+  }
+  for _, tc := range tests {
+  	_, err := initDocTitleFinder()
+  	if tc.expectError && err == nil {
+  		t.Errorf("TestInitDocTitleFinder %s: expectError but got nil", tc.name)
+  	} else if !tc.expectError && err != nil {
+			t.Errorf("TestInitDocTitleFinder %s: unexpected error: %v", tc.name, err)
+  	}
+	}
+}
+
+func TestAdminHandler(t *testing.T) {
+	type test struct {
+		name string
+		expectContains string
+  }
+  tests := []test{
+		{
+			name: "Expect error, app not configed and user has no session",
+			expectContains: "Not authorized",
+		},
+  }
+  for _, tc := range tests {
+  	url := "/loggedin/admin"
+		r := httptest.NewRequest(http.MethodGet, url, nil)
+		w := httptest.NewRecorder()
+  	adminHandler(w, r)
+		result := w.Body.String()
+		if !strings.Contains(result, tc.expectContains) {
+			t.Errorf("TestAdminHandler %s: expectContains %q, got %q", tc.name,
+					tc.expectContains, result)
+ 		}
+	}
+}
+
+func TestChangePasswordHandler(t *testing.T) {
+	type test struct {
+		name string
+		expectContains string
+  }
+  tests := []test{
+		{
+			name: "Expect error, app not configed and user has no session",
+			expectContains: "Not authorized",
+		},
+  }
+  for _, tc := range tests {
+  	url := "/loggedin/submitcpwd"
+		r := httptest.NewRequest(http.MethodGet, url, nil)
+		w := httptest.NewRecorder()
+  	changePasswordHandler(w, r)
+		result := w.Body.String()
+		if !strings.Contains(result, tc.expectContains) {
+			t.Errorf("TestChangePasswordHandler %s: expectContains %q, got %q",
+					tc.name, tc.expectContains, result)
+ 		}
+	}
+}
+
+func TestChangePasswordFormHandler(t *testing.T) {
+	type test struct {
+		name string
+		expectContains string
+  }
+  tests := []test{
+		{
+			name: "Expect error, app not configed and user has no session",
+			expectContains: "Not authorized",
+		},
+  }
+  for _, tc := range tests {
+  	url := "/loggedin/changepassword"
+		r := httptest.NewRequest(http.MethodGet, url, nil)
+		w := httptest.NewRecorder()
+  	changePasswordFormHandler(w, r)
+		result := w.Body.String()
+		if !strings.Contains(result, tc.expectContains) {
+			t.Errorf("TestChangePasswordFormHandler %s: expectContains %q, got %q",
+					tc.name, tc.expectContains, result)
+ 		}
+	}
+}
+
+func TestCustom404(t *testing.T) {
+	ctx := context.Background()
+	initApp(ctx)
+	type test struct {
+		name string
+		expectContains string
+  }
+  tests := []test{
+		{
+			name: "Expect not found",
+			expectContains: "Not found",
+		},
+  }
+  for _, tc := range tests {
+  	url := "/xyz"
+		r := httptest.NewRequest(http.MethodGet, url, nil)
+		w := httptest.NewRecorder()
+  	custom404(w, r, "/xyz")
+		result := w.Body.String()
+		if !strings.Contains(result, tc.expectContains) {
+			t.Errorf("TestCustom404 %s: expectContains %q, got %q",
+					tc.name, tc.expectContains, result)
+ 		}
+	}
 }
 
 // TestFindHandler tests finding a word.
@@ -84,6 +210,10 @@ func TestGetSiteDomain(t *testing.T) {
 
 // TestTranslationMemory tests translationMemory function.
 func TestTranslationMemory(t *testing.T) {
+	db := os.Getenv("DATABASE")
+	if len(db) == 0 {
+		t.Skip("TestTranslationMemory: skipping, DATABASE not defined")
+	}
 	type test struct {
 		name string
 		query string

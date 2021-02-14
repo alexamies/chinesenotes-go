@@ -97,6 +97,11 @@ func (c AppConfig) DictionaryDir() string {
 	return c.ProjectHome + "/data"
 }
 
+// IndexDir gets the name of the directory containing the dictionary files
+func (c AppConfig) IndexDir() string {
+	return c.ProjectHome + "/index"
+}
+
 // GetVar gets a configuration variable value
 func (c AppConfig) GetVar(key string) string {
 	val, ok := c.ConfigVars[key]

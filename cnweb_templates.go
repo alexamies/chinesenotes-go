@@ -255,8 +255,12 @@ const findTMTmpl = `
             {{ end }}
           </ol>
         </li>
+        {{ else }}
+          <p>No results found</p>
         {{ end }}
       </ul>
+      {{ else }}
+        <p>No results found</p>
       {{ end }}
     </main>
     %s
@@ -286,12 +290,13 @@ const fullTextSearchTmpl = `
       </form>
       {{ end }}
       {{if .Results}}
-      <h4>Results</h4>
+      <h3>Results</h3>
        {{if .Results.Documents}}
         <ul>
           {{ range $doc := .Results.Documents }}
           <li>
-            <a href="{{ $doc.GlossFile }}">{{ $doc.Title }}</a>
+            <h4><a href="{{ $doc.GlossFile }}">{{ $doc.Title }}</a></h4>
+            <p>{{ $doc.MatchDetails.Snippet }}</p>
           </li>
           {{ end }}
         </ul>
@@ -314,7 +319,7 @@ const notFoundTmpl = `
     %s
     %s
     <main>
-      <p>Sorry we could not find that page</p>
+      <p>Not found. Sorry we could not find that page</p>
     </main>
     %s
   <body>
@@ -611,8 +616,8 @@ func newTemplateMap(webConfig config.WebAppConfig) map[string]*template.Template
 	}
   templateMap := make(map[string]*template.Template)
   templDir := webConfig.GetVar("TemplateDir")
-  log.Printf("newTemplateMap, using TemplateDir: %s", templDir)
 	if len(templDir) > 0 {
+    log.Printf("newTemplateMap, using TemplateDir: %s", templDir)
 		for tName, defTmpl := range tNames {
 			fileName := templDir + "/" + tName
 			var tmpl *template.Template
@@ -630,6 +635,7 @@ func newTemplateMap(webConfig config.WebAppConfig) map[string]*template.Template
 		for tName, defTmpl := range tNames {
       t := fmt.Sprintf(defTmpl, head, header, nav, footer)
 			tmpl := template.Must(template.New(tName).Parse(t))
+      log.Printf("newTemplateMap: added default %s", tName)
 			templateMap[tName] = tmpl
 		}
 	}
