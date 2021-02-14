@@ -917,11 +917,11 @@ func main() {
 Run unit tests with the command
 
 ```shell
-go test ./... -cover
+go test ./... -coverprofile=coverage.out
 ```
 
-Run an integration test with the command
+View test coverage with the command
 
 ```shell
-go test -integration ./... -cover
+go tool cover -html=coverage.out
 ```

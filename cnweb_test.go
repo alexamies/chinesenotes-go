@@ -13,7 +13,6 @@
 package main
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -22,6 +21,7 @@ import (
 
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/find"
+	"github.com/alexamies/chinesenotes-go/identity"
 )
 
 // TestMain runs integration tests if the flag -integration is set
@@ -32,21 +32,30 @@ func TestMain(m *testing.M) {
 
 // TestDisplayHome tests the default HTTP handler.
 func TestDisplayHome(t *testing.T) {
+	templates = newTemplateMap(webConfig)
 	t.Logf("TestDisplayHome: Begin unit tests\n")
 	type test struct {
 		name string
+		acceptHeader string
 		expectContains string
   }
   tests := []test{
 		{
-			name: "Show home",
+			name: "Does not accept HTML",
+			acceptHeader: "application/json",
 			expectContains: "OK",
+		},
+		{
+			name: "Show home",
+			acceptHeader: "text/html",
+			expectContains: "<title>Chinese Notes Translation Portal</title>",
 		},
   }
   for _, tc := range tests {
   	url := "/"
 		r := httptest.NewRequest(http.MethodGet, url, nil)
 		w := httptest.NewRecorder()
+		r.Header.Add("Accept", tc.acceptHeader)
 		displayHome(w, r)
 		result := w.Body.String()
 		if !strings.Contains(result, tc.expectContains) {
@@ -54,6 +63,7 @@ func TestDisplayHome(t *testing.T) {
 					tc.expectContains, result)
  		}
  	}
+ 	templates = nil
 }
 
 func TestInitDocTitleFinder(t *testing.T) {
@@ -150,8 +160,7 @@ func TestChangePasswordFormHandler(t *testing.T) {
 }
 
 func TestCustom404(t *testing.T) {
-	ctx := context.Background()
-	initApp(ctx)
+	templates = newTemplateMap(webConfig)
 	type test struct {
 		name string
 		expectContains string
@@ -173,9 +182,11 @@ func TestCustom404(t *testing.T) {
 					tc.name, tc.expectContains, result)
  		}
 	}
+	templates = nil
 }
 
 func TestDisplayPage(t *testing.T) {
+	templates = newTemplateMap(webConfig)
 	const query = "邃古"
 	tMContent := htmlContent{
 		Title: "XYZ",
@@ -203,6 +214,100 @@ func TestDisplayPage(t *testing.T) {
 		result := w.Body.String()
 		if !strings.Contains(result, tc.expectContains) {
 			t.Errorf("TestDisplayPage %s: got %q, want contains %q, ", tc.name,
+					result, tc.expectContains)
+ 		}
+ 	}
+	templates = nil
+}
+
+func TestEnforceValidSession(t *testing.T) {
+	type test struct {
+		name string
+		url string
+		expectContains string
+  }
+  tests := []test{
+		{
+			name: "Find something",
+			url: "/find/",
+			expectContains: "Not authorized",
+		},
+  }
+  for _, tc := range tests {
+		r := httptest.NewRequest(http.MethodGet, tc.url, nil)
+		w := httptest.NewRecorder()
+		enforceValidSession(w, r)
+		result := w.Body.String()
+		if !strings.Contains(result, tc.expectContains) {
+			t.Errorf("TestEnforceValidSession %s: got %q but want contains %q",
+					tc.name, result, tc.expectContains)
+ 		}
+ 	}
+}
+
+func TestFindDocs(t *testing.T) {
+	type test struct {
+		name string
+		url string
+		query string
+		expectContains string
+		fullText bool
+  }
+  tests := []test{
+		{
+			name: "Find a title",
+			url: "/find/",
+			query: "蓮花寺",
+			expectContains: "蓮花寺",
+			fullText: false,
+		},
+  }
+  for _, tc := range tests {
+  	url := tc.url + "?query=" + tc.query
+		r := httptest.NewRequest(http.MethodGet, url, nil)
+		w := httptest.NewRecorder()
+		findDocs(w, r, tc.fullText)
+		result := w.Body.String()
+		if !strings.Contains(result, tc.expectContains) {
+			t.Errorf("TestFindDocs %s: got %q but want contains %q", tc.name,
+					result, tc.expectContains)
+ 		}
+ 	}
+}
+
+func TestFindFullText(t *testing.T) {
+	type test struct {
+		name string
+		url string
+		query string
+		acceptHeader string
+		expectContains string
+  }
+  tests := []test{
+		{
+			name: "Return HTML",
+			url: "/findadvanced/",
+			query: "",
+			acceptHeader: `text/html`,
+			expectContains: `<h2>Full Text Search</h2>`,
+		},
+		{
+			name: "Return JSON",
+			url: "/findadvanced/",
+			query: "佛牙寺",
+			acceptHeader: `application/json`,
+			expectContains: `"Query":"佛牙寺"`,
+		},
+  }
+  for _, tc := range tests {
+  	url := tc.url + "?query=" + tc.query
+		r := httptest.NewRequest(http.MethodGet, url, nil)
+		r.Header.Add("Accept", tc.acceptHeader)
+		w := httptest.NewRecorder()
+		findFullText(w, r)
+		result := w.Body.String()
+		if !strings.Contains(result, tc.expectContains) {
+			t.Errorf("TestFindFullText %s: got %q but want contains %q", tc.name,
 					result, tc.expectContains)
  		}
  	}
@@ -235,12 +340,150 @@ func TestFindHandler(t *testing.T) {
  	}
 }
 
+// TestFindSubstring tests search based on a dictionary entry substring.
+func TestFindSubstring(t *testing.T) {
+	type test struct {
+		name string
+		query string
+		expectContains string
+  }
+  tests := []test{
+		{
+			name: "No configured",
+			query: "可思议",
+			expectContains: "Server not configured",
+		},
+  }
+  for _, tc := range tests {
+  	url := "/findsubstring?query=" + tc.query
+		r := httptest.NewRequest(http.MethodGet, url, nil)
+		w := httptest.NewRecorder()
+		findSubstring(w, r)
+		result := w.Body.String()
+		if !strings.Contains(result, tc.expectContains) {
+			t.Errorf("TestFindSubstring %s: got %q, expectContains %q", tc.name,
+					result, tc.expectContains)
+ 		}
+ 	}
+}
+
 // Test site domain
 func TestGetSiteDomain(t *testing.T) {
 	domain := config.GetSiteDomain()
 	if domain != "localhost" {
 		t.Error("TestGetSiteDomain: domain = ", domain)
 	}
+}
+
+func TestHealthcheck(t *testing.T) {
+	os.Setenv("PROTECTED", "true")
+	os.Setenv("DATABASE", "abcd")
+	type test struct {
+		name string
+		expectContains string
+  }
+  tests := []test{
+		{
+			name: "Display OK",
+			expectContains: "OK",
+		},
+		{
+			name: "Check password protected",
+			expectContains: "Password protected: true",
+		},
+		{
+			name: "Check database set",
+			expectContains: "Using a database: true",
+		},
+	}
+  for _, tc := range tests {
+  	const url = "/healthcheck"
+		r := httptest.NewRequest(http.MethodGet, url, nil)
+		w := httptest.NewRecorder()
+		healthcheck(w, r)
+		result := w.Body.String()
+		if !strings.Contains(result, tc.expectContains) {
+			t.Errorf("TestHealthcheck %s: got %q, want %q, ", tc.name, result,
+					tc.expectContains)
+ 		}
+  }
+	os.Unsetenv("PROTECTED")
+	os.Unsetenv("DATABASE")
+}
+
+
+func TestLibrary(t *testing.T) {
+	type test struct {
+		name string
+		expectContains string
+  }
+  tests := []test{
+		{
+			name: "Display library page",
+			expectContains: "Library",
+		},
+	}
+  for _, tc := range tests {
+  	const url = "/library"
+		r := httptest.NewRequest(http.MethodGet, url, nil)
+		w := httptest.NewRecorder()
+		library(w, r)
+		result := w.Body.String()
+		if !strings.Contains(result, tc.expectContains) {
+			t.Errorf("TestLibrary %s: got %q, want %q, ", tc.name, result,
+					tc.expectContains)
+ 		}
+  }
+}
+
+func TestLoginFormHandler(t *testing.T) {
+	type test struct {
+		name string
+		expectContains string
+  }
+  tests := []test{
+		{
+			name: "Display login page",
+			expectContains: "Login",
+		},
+	}
+  for _, tc := range tests {
+  	const url = "/loggedin/login_form"
+		r := httptest.NewRequest(http.MethodGet, url, nil)
+		w := httptest.NewRecorder()
+		loginFormHandler(w, r)
+		result := w.Body.String()
+		if !strings.Contains(result, tc.expectContains) {
+			t.Errorf("TestLoginFormHandler %s: got %q, want %q, ", tc.name, result,
+					tc.expectContains)
+ 		}
+  }
+}
+
+func TestLoginHandler(t *testing.T) {
+	authenticator = &identity.Authenticator{}
+	type test struct {
+		name string
+		expectContains string
+  }
+  tests := []test{
+		{
+			name: "Display login page",
+			expectContains: "Login",
+		},
+	}
+  for _, tc := range tests {
+  	const url = "/loggedin/login"
+		r := httptest.NewRequest(http.MethodPost, url, nil)
+		w := httptest.NewRecorder()
+		loginHandler(w, r)
+		result := w.Body.String()
+		if !strings.Contains(result, tc.expectContains) {
+			t.Errorf("TestLoginHandler %s: got %q, want %q, ", tc.name, result,
+					tc.expectContains)
+ 		}
+  }
+  authenticator = nil
 }
 
 func TestShowQueryResults(t *testing.T) {
@@ -311,14 +554,14 @@ func TestTranslationMemory(t *testing.T) {
 			query: "結實",
 			domain: "",
 			expectMany: true,
-			expect: "",
+			expect: "结实",
 		},
 		{
 			name: "query with domain many results",
 			query: "結實",
 			domain: "Buddhism",
 			expectMany: true,
-			expect: "",
+			expect: "结实",
 		},
   }
   for _, tc := range tests {

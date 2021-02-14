@@ -387,7 +387,7 @@ func findDocs(response http.ResponseWriter, request *http.Request, fullText bool
 		results, err = df.FindDocumentsInCol(ctx, dictSearcher, parser, q, c)
 	} else 	if len(findTitle) > 0 {
 		docTitleFinder, err := initDocTitleFinder()
-		if err != nil {
+		if err == nil {
 			results, err = docTitleFinder.FindDocuments(ctx, q)
 		}
 	} else {
@@ -574,6 +574,12 @@ func findSubstring(response http.ResponseWriter, request *http.Request) {
 	st := "placeholder"
 	if len(subtopic) > 0 {
 		st = subtopic[0]
+	}
+	d := os.Getenv("DATABASE")
+	if len(d) == 0 {
+		log.Printf("findSubstring databsae not initialized")
+		http.Error(response, "Server not configured", http.StatusInternalServerError)
+		return 
 	}
 	ctx := context.Background()
 	results, err := dictSearcher.LookupSubstr(ctx, q, t, st)

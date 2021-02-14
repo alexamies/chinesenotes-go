@@ -245,7 +245,8 @@ const findTMTmpl = `
       <ul>
         {{ range $term := .TMResults.Words }}
         <li>
-          {{ $term.Traditional}} {{ $term.Pinyin }}
+          {{ $term.Simplified}} {{if .TMResults.Traditional}} ({{ $term.Traditional}}) {{ end }} 
+          {{ $term.Pinyin }}
           <ol>
             {{ range $ws := $term.Senses }}
             <li>
