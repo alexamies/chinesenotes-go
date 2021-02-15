@@ -155,7 +155,11 @@ const docResultsTmpl = `
             {{ end }}
           </div>
           {{ else }}
-            <p>No results</p>
+            {{if .Results.Query}}
+              <p>No results</p>
+            {{ else }}
+              <p>Please enter a query</p>
+            {{ end }}
           {{ end }}
       {{ end }}
     </main>
@@ -180,30 +184,38 @@ const findResultsTmpl = `
         </div>
       </form>
       {{if .Results}}
-      <h4>Terms</h4>
-      <div>
-        {{ range $term := .Results.Terms }}
+        {{if .Results.Terms }}
+        <h4>Terms</h4>
         <div>
-          <details open>
-            <summary>
-              <span class="dict-entry-headword">{{ $term.QueryText }}</span>
-              <span class="dict-entry-pinyin">{{ $term.DictEntry.Pinyin }}</span>
-            </summary>
-            <ol>
-            {{ range $ws := $term.DictEntry.Senses }}
-              <li>
-              {{if ne $ws.Pinyin "\\N"}}<span class="dict-entry-pinyin">{{ $ws.Pinyin }}</span>{{end}}
-              {{if ne $ws.Grammar "\\N"}}<span class="dict-entry-grammar">{{ $ws.Grammar }}</span>{{end}}
-              {{if ne $ws.English "\\N"}}<span class="dict-entry-definition">{{ $ws.English }}</span>{{end}}
-              {{if ne $ws.Domain "\\N"}}<div class="dict-entry-domain">Domain: {{ $ws.Domain }}</div>{{end}}
-              {{if ne $ws.Notes "\\N"}}<div class="dict-entry-notes">Notes: {{ $ws.Notes }}</div>{{end}}
-              </li>
-            {{ end }}
-            </ol>
-          </details>
+          {{ range $term := .Results.Terms }}
+          <div>
+            <details open>
+              <summary>
+                <span class="dict-entry-headword">{{ $term.QueryText }}</span>
+                <span class="dict-entry-pinyin">{{ $term.DictEntry.Pinyin }}</span>
+              </summary>
+              <ol>
+              {{ range $ws := $term.DictEntry.Senses }}
+                <li>
+                {{if ne $ws.Pinyin "\\N"}}<span class="dict-entry-pinyin">{{ $ws.Pinyin }}</span>{{end}}
+                {{if ne $ws.Grammar "\\N"}}<span class="dict-entry-grammar">{{ $ws.Grammar }}</span>{{end}}
+                {{if ne $ws.English "\\N"}}<span class="dict-entry-definition">{{ $ws.English }}</span>{{end}}
+                {{if ne $ws.Domain "\\N"}}<div class="dict-entry-domain">Domain: {{ $ws.Domain }}</div>{{end}}
+                {{if ne $ws.Notes "\\N"}}<div class="dict-entry-notes">Notes: {{ $ws.Notes }}</div>{{end}}
+                </li>
+              {{ end }}
+              </ol>
+            </details>
           </div>
+          {{ end }}
+        </div>
+        {{ else }}
+          {{if .Results.Query}}
+            <p>No results</p>
+          {{ else }}
+            <p>Please enter a query</p>
+          {{ end }}
         {{ end }}
-      </div>
         {{if .Results.SimilarTerms}}
         <h4>similar Terms</h4>
         <div>

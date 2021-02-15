@@ -69,8 +69,8 @@
             {{if .Results.Documents }}
             <h4>Matching documents</h4>
             <div>
-              {{ range $doc := .Results.Documents }}
               <ul class="mdc-list mdc-list--two-line">
+              {{ range $doc := .Results.Documents }}
                 <li class="mdc-list-item">
                   <span class="mdc-list-item__text">
                     <span class="mdc-list-item__primary-text">
@@ -81,8 +81,8 @@
                     </span>
                   </span>
                 </li>
-              </ul>
               {{ end }}
+              </ul>
             </div>
             {{ else }}
               <p>No results</p>

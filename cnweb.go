@@ -367,6 +367,23 @@ func findDocs(response http.ResponseWriter, request *http.Request, fullText bool
 	if len(q) == 0 {
 		q = getSingleValue(request, "text")
 	}
+	// No query, eg someone nativated directly to the HTML page, redisplay it
+	var err error
+	if len(q) == 0 && acceptHTML(request){
+		log.Printf("main.findDocs No query provided")
+		templateFile := "find_results.html"
+		if fullText {
+			templateFile = "full_text_search.html"
+		}
+		err = showQueryResults(response, find.QueryResults{}, templateFile)
+		if err != nil {
+			log.Printf("main.findDocs error displaying empty results %v", err)
+			http.Error(response, "Internal error", http.StatusInternalServerError)
+			return
+		}
+		return
+	}
+
 	findTitle := getSingleValue(request, "title")
 	log.Printf("main.findDocs q: %s, title: %s", q, findTitle)
 
@@ -382,7 +399,6 @@ func findDocs(response http.ResponseWriter, request *http.Request, fullText bool
 			return
 		}
 	}
-	var err error
 	if len(c) > 0 {
 		results, err = df.FindDocumentsInCol(ctx, dictSearcher, parser, q, c)
 	} else 	if len(findTitle) > 0 {

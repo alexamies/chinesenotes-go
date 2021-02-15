@@ -266,6 +266,7 @@ func (f mockDocTitleFinder) FindDocuments(ctx context.Context,
 }
 
 func TestFindDocs(t *testing.T) {
+	templates = newTemplateMap(webConfig)
 	const query = "蓮花寺"
 	d := find.Document{
 		GlossFile: "lianhuachi.html",
@@ -283,6 +284,15 @@ func TestFindDocs(t *testing.T) {
 		fullText bool
   }
   tests := []test{
+		{
+			name: "No query string",
+			url: "/find/",
+			acceptHeader: "text/html",
+			query: map[string]string{},
+			docs: []find.Document{},
+			expectContains: "Please enter a query",
+			fullText: false,
+		},
 		{
 			name: "Reflect original query",
 			url: "/find/",
@@ -351,10 +361,12 @@ func TestFindDocs(t *testing.T) {
 					result, tc.expectContains)
  		}
  	}
+ 	templates = nil
  	docTitleFinder = nil
 }
 
 func TestFindFullText(t *testing.T) {
+	templates = newTemplateMap(webConfig)
 	type test struct {
 		name string
 		url string
@@ -390,6 +402,7 @@ func TestFindFullText(t *testing.T) {
 					result, tc.expectContains)
  		}
  	}
+ 	templates = nil
 }
 
 // TestFindHandler tests finding a word.
@@ -492,6 +505,7 @@ func TestHealthcheck(t *testing.T) {
 
 
 func TestLibrary(t *testing.T) {
+	templates = newTemplateMap(webConfig)
 	type test struct {
 		name string
 		expectContains string
@@ -513,9 +527,11 @@ func TestLibrary(t *testing.T) {
 					tc.expectContains)
  		}
   }
+  templates = nil
 }
 
 func TestLoginFormHandler(t *testing.T) {
+	templates = newTemplateMap(webConfig)
 	type test struct {
 		name string
 		expectContains string
@@ -537,9 +553,11 @@ func TestLoginFormHandler(t *testing.T) {
 					tc.expectContains)
  		}
   }
+  templates = nil
 }
 
 func TestLoginHandler(t *testing.T) {
+	templates = newTemplateMap(webConfig)
 	authenticator = &identity.Authenticator{}
 	type test struct {
 		name string
@@ -562,10 +580,12 @@ func TestLoginHandler(t *testing.T) {
 					tc.expectContains)
  		}
   }
+  templates = nil
   authenticator = nil
 }
 
 func TestShowQueryResults(t *testing.T) {
+	templates = newTemplateMap(webConfig)
 	type test struct {
 		name string
 		query string
@@ -598,7 +618,9 @@ func TestShowQueryResults(t *testing.T) {
 					tc.expectContains)
  		}
   }
+  templates = nil
 }
+
 type mocTMSearcher struct{
 	words []dicttypes.Word
 }
