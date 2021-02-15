@@ -52,7 +52,7 @@ var (
 	parser find.QueryParser
 	wdict map[string]dicttypes.Word
 	dictSearcher *dictionary.Searcher
-	tmSearcher *transmemory.Searcher
+	tmSearcher transmemory.Searcher
 	df find.DocFinder
 	authenticator *identity.Authenticator
 	mediaSearcher *media.MediaSearcher

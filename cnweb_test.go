@@ -22,8 +22,10 @@ import (
 	"testing"
 
 	"github.com/alexamies/chinesenotes-go/config"
+	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/find"
 	"github.com/alexamies/chinesenotes-go/identity"
+	"github.com/alexamies/chinesenotes-go/transmemory"
 )
 
 // TestMain runs integration tests if the flag -integration is set
@@ -248,7 +250,9 @@ func TestEnforceValidSession(t *testing.T) {
 }
 
 type mockDocTitleFinder struct{}
-func (f mockDocTitleFinder) FindDocuments(ctx context.Context, query string) (*find.QueryResults, error) {
+
+func (f mockDocTitleFinder) FindDocuments(ctx context.Context,
+		query string) (*find.QueryResults, error) {
 	d := find.Document{
 		GlossFile: "lianhuachi.html",
 		Title: "蓮花寺",
@@ -573,65 +577,76 @@ func TestShowQueryResults(t *testing.T) {
  		}
   }
 }
+type mocTMSearcher struct{
+	words []dicttypes.Word
+}
+
+func (s mocTMSearcher) Search(ctx context.Context,
+		query string,
+		domain string,
+		includeSubstrings bool,
+		wdict map[string]dicttypes.Word) (*transmemory.Results, error) {
+	r := transmemory.Results{
+		Words: s.words,
+	}
+	return &r, nil
+}
 
 // TestTranslationMemory tests translationMemory function.
 func TestTranslationMemory(t *testing.T) {
-	db := os.Getenv("DATABASE")
-	if len(db) == 0 {
-		t.Skip("TestTranslationMemory: skipping, DATABASE not defined")
+	jieshi := dicttypes.Word{
+		HeadwordId: 1,
+		Simplified: "结实",
+		Traditional: "結實",
+		Pinyin: "jiēshi",
+	}
+	kaihuajieshi := dicttypes.Word{
+		HeadwordId: 2,
+		Simplified: "结实",
+		Traditional: "開花結實",
+		Pinyin: "kāi huā jiē shi",
 	}
 	type test struct {
 		name string
 		query string
 		domain string
-		expectMany bool
-		expect string
+		words []dicttypes.Word
+		expectContains string
   }
   tests := []test{
 		{
 			name: "empty query",
 			query: "",
 			domain: "",
-			expectMany: false,
-			expect: "Query string is empty\n",
+			words: []dicttypes.Word{},
+			expectContains: "Query string is empty\n",
 		},
 		{
 			name: "query with no results",
 			query: "hello",
 			domain: "",
-			expectMany: false,
-			expect: "{\"Words\":null}",
+			words: []dicttypes.Word{},
+			expectContains: `{"Words":[]}`,
 		},
 		{
-			name: "query many results",
+			name: "query two results",
 			query: "結實",
 			domain: "",
-			expectMany: true,
-			expect: "结实",
-		},
-		{
-			name: "query with domain many results",
-			query: "結實",
-			domain: "Buddhism",
-			expectMany: true,
-			expect: "结实",
+			words: []dicttypes.Word{jieshi, kaihuajieshi},
+			expectContains: "结实",
 		},
   }
   for _, tc := range tests {
-  	url := "/translation_memory?query=" + tc.query
+		tmSearcher = mocTMSearcher{tc.words}
+  	url := "/findtm?query=" + tc.query
 		r := httptest.NewRequest(http.MethodGet, url, nil)
 		w := httptest.NewRecorder()
-		if (tmSearcher == nil) || !tmSearcher.DatabaseInitialized() {
-			t.Skip("TestTranslationMemory: database not initialized, skippining unit test")
-			return
-		}
 		translationMemory(w, r)
 		result := w.Body.String()
-		if !tc.expectMany && tc.expect != result {
-			t.Errorf("%s: expect %q, got %q", tc.name, tc.expect, result)
- 		}
-		if tc.expectMany && len(result) < 10 {
-			t.Errorf("%s: expectMany but got only %d chars", tc.name, len(result))
+		if !strings.Contains(result, tc.expectContains) {
+			t.Errorf("TestTranslationMemory %s: got %q, want %q, ", tc.name, result,
+					tc.expectContains)
  		}
  	}
+ 	tmSearcher = nil
 }

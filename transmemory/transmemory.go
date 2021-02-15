@@ -55,8 +55,16 @@ type tmResult struct {
 	relevant int
 }
 
+type Searcher interface {
+	Search(ctx context.Context,
+		query string,
+		domain string,
+		includeSubstrings bool,
+		wdict map[string]dicttypes.Word) (*Results, error)
+}
+
 // Encapsulates translation memory searcher
-type Searcher struct {
+type dbSearcher struct {
 	database *sql.DB
 	databaseInitialized bool
 	pinyinStmt *sql.Stmt
@@ -66,7 +74,7 @@ type Searcher struct {
 }
 
 // Initialize SQL statement
-func NewSearcher(ctx context.Context, database *sql.DB) (*Searcher, error) {
+func NewSearcher(ctx context.Context, database *sql.DB) (Searcher, error) {
 	pinyinStmt, err := initPinyinStmt(ctx, database)
 	if err != nil {
 		return nil, fmt.Errorf("NewSearcher: unable to prepare pinyinStmt:\n%v", err)
@@ -83,7 +91,7 @@ func NewSearcher(ctx context.Context, database *sql.DB) (*Searcher, error) {
 	if err != nil {
 		return nil, fmt.Errorf("NewSearcher: unable to prepare uniDomainStmt:\n%v", err)
 	}
-	return &Searcher{
+	return dbSearcher{
 		database: database,
 		databaseInitialized: true,
 		pinyinStmt: pinyinStmt,
@@ -91,11 +99,6 @@ func NewSearcher(ctx context.Context, database *sql.DB) (*Searcher, error) {
 		unigramStmt: unigramStmt,
 		uniDomainStmt: uniDomainStmt,
 	}, nil
-}
-
-// Returns the word senses with English approximate or Pinyin exact match
-func (searcher *Searcher) DatabaseInitialized() bool {
-	return searcher.databaseInitialized
 }
 
 // Find words with similar pinyin or with notes conaining the query
@@ -162,7 +165,7 @@ ORDER BY count DESC LIMIT 50`)
 }
 
 // Search the trans memory for words containing the given unigrams
-func (searcher *Searcher) queryPinyin(ctx context.Context, query,
+func (searcher dbSearcher) queryPinyin(ctx context.Context, query,
 		domain string, wdict map[string]dicttypes.Word) ([]tmResult, error) {
 	pinyin := findPinyin(query, wdict)
 	if len(pinyin) == 0 {
@@ -199,7 +202,7 @@ func (searcher *Searcher) queryPinyin(ctx context.Context, query,
 }
 
 // Search the trans memory for words containing the given unigrams
-func (searcher *Searcher) queryUnigram(ctx context.Context, chars []string,
+func (searcher dbSearcher) queryUnigram(ctx context.Context, chars []string,
 		domain string) ([]tmResult, error) {
 	var results *sql.Rows
 	var err error
@@ -234,7 +237,7 @@ func (searcher *Searcher) queryUnigram(ctx context.Context, chars []string,
 //   wdict The full dictionary
 // Retuns
 //   A slice of approximate results
-func (searcher Searcher) Search(ctx context.Context,
+func (searcher dbSearcher) Search(ctx context.Context,
 		query string,
 		domain string,
 		includeSubstrings bool,

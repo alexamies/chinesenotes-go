@@ -245,7 +245,7 @@ const findTMTmpl = `
       <ul>
         {{ range $term := .TMResults.Words }}
         <li>
-          {{ $term.Simplified}} {{if .term.Traditional}} ({{ $term.Traditional}}) {{ end }} 
+          {{ $term.Simplified}} {{if $term.Traditional}} ({{ $term.Traditional}}) {{ end }} 
           {{ $term.Pinyin }}
           <ol>
             {{ range $ws := $term.Senses }}
@@ -636,7 +636,6 @@ func newTemplateMap(webConfig config.WebAppConfig) map[string]*template.Template
 		for tName, defTmpl := range tNames {
       t := fmt.Sprintf(defTmpl, head, header, nav, footer)
 			tmpl := template.Must(template.New(tName).Parse(t))
-      log.Printf("newTemplateMap: added default %s", tName)
 			templateMap[tName] = tmpl
 		}
 	}

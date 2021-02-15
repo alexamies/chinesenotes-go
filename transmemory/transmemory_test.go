@@ -535,27 +535,6 @@ func TestHamming(t *testing.T) {
 }
 
 // Test getChars function
-func TestQueryPinyin(t *testing.T) {
-	ctx := context.Background()
-	database, err := initDBCon()
-	if err != nil {
-		t.Skipf("cannot connect to database: %v", err)
-	}
-	searcher, err := NewSearcher(ctx, database)
-	if err != nil {
-		t.Skipf("cannot create a searcher: %v", err)
-	}
-	wdict := mockDict()
-	matches, err := searcher.queryPinyin(ctx, "結實", "", wdict)
-	if err != nil {
-		t.Fatalf("error calling queryPinyin: %v", err)
-	}
-	if len(matches) == 0 {
-		t.Errorf("no results")
-	}
-}
-
-// Test getChars function
 func TestSearch(t *testing.T) {
 	ctx := context.Background()
 	database, err := initDBCon()
