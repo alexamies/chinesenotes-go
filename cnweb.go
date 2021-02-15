@@ -449,6 +449,7 @@ func findDocs(response http.ResponseWriter, request *http.Request, fullText bool
 			http.Error(response, "Internal error", http.StatusInternalServerError)
 			return
 		}
+		return
 	}
 
 	// Return JSON

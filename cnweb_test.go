@@ -13,6 +13,8 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -245,26 +247,76 @@ func TestEnforceValidSession(t *testing.T) {
  	}
 }
 
+type mockDocTitleFinder struct{}
+func (f mockDocTitleFinder) FindDocuments(ctx context.Context, query string) (*find.QueryResults, error) {
+	d := find.Document{
+		GlossFile: "lianhuachi.html",
+		Title: "蓮花寺",
+		CollectionFile: "abc.html",
+		CollectionTitle: "A B C",
+	}
+	qr := find.QueryResults{
+		Query: "蓮花寺",
+		NumDocuments: 1,
+		Documents: []find.Document{d},
+	}
+	return &qr, nil
+}
+
 func TestFindDocs(t *testing.T) {
+	docTitleFinder = mockDocTitleFinder{}
 	type test struct {
 		name string
 		url string
-		query string
+		acceptHeader string
+		query map[string]string
 		expectContains string
 		fullText bool
   }
   tests := []test{
 		{
-			name: "Find a title",
+			name: "Reflect original query",
 			url: "/find/",
-			query: "蓮花寺",
+			acceptHeader: "text/html",
+			query: map[string]string{"query": "蓮花寺"},
 			expectContains: "蓮花寺",
+			fullText: false,
+		},
+		{
+			name: "Return HTML",
+			url: "/find/",
+			acceptHeader: "text/html",
+			query: map[string]string{"query": "蓮花寺"},
+			expectContains: `value="蓮花寺"`,
+			fullText: false,
+		},
+		{
+			name: "Return JSON",
+			url: "/find/",
+			acceptHeader: "application/json",
+			query: map[string]string{"query": "蓮花寺"},
+			expectContains: `"Query":"蓮花寺"`,
+			fullText: false,
+		},
+		{
+			name: "Search for title",
+			url: "/find/",
+			acceptHeader: "text/html",
+			query: map[string]string{"query": "蓮花寺", "title": "true"},
+			expectContains: `<a href='/web/lianhuachi.html'>蓮花寺</a>`,
 			fullText: false,
 		},
   }
   for _, tc := range tests {
-  	url := tc.url + "?query=" + tc.query
+  	url := tc.url
+  	if len(tc.query) > 0 {
+  		url += "?"
+  		for k, v := range tc.query {
+  			url += fmt.Sprintf("%s=%s&", k, v)
+  		}
+  	}
 		r := httptest.NewRequest(http.MethodGet, url, nil)
+		r.Header.Add("Accept", tc.acceptHeader)
 		w := httptest.NewRecorder()
 		findDocs(w, r, tc.fullText)
 		result := w.Body.String()
@@ -273,6 +325,7 @@ func TestFindDocs(t *testing.T) {
 					result, tc.expectContains)
  		}
  	}
+ 	docTitleFinder = nil
 }
 
 func TestFindFullText(t *testing.T) {
