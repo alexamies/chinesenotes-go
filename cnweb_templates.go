@@ -141,18 +141,22 @@ const docResultsTmpl = `
         </div>
       </form>
       {{if .Results}}
-        <h4>Matching documents</h4>
-        <div>
-          {{ range $doc := .Results.Documents }}
+        {{if .Results.Documents }}
+          <h4>Matching documents</h4>
           <div>
-            <details open>
-              <summary>
-                <span class="dict-entry-headword"><a href='{{$doc.GlossFile}}'>{{ $doc.Title }}</a><</span>
-              </summary>
-            </details>
+            {{ range $doc := .Results.Documents }}
+            <div>
+              <details open>
+                <summary>
+                  <span class="dict-entry-headword"><a href='{{$doc.GlossFile}}'>{{ $doc.Title }}</a><</span>
+                </summary>
+              </details>
+            </div>
+            {{ end }}
           </div>
+          {{ else }}
+            <p>No results</p>
           {{ end }}
-        </div>
       {{ end }}
     </main>
     %s

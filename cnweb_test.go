@@ -249,31 +249,36 @@ func TestEnforceValidSession(t *testing.T) {
  	}
 }
 
-type mockDocTitleFinder struct{}
+// Mock for testing findDocs by title
+type mockDocTitleFinder struct{
+	Query string
+	Documents []find.Document
+}
 
 func (f mockDocTitleFinder) FindDocuments(ctx context.Context,
 		query string) (*find.QueryResults, error) {
+	qr := find.QueryResults{
+		Query: f.Query,
+		NumDocuments: len(f.Documents),
+		Documents: f.Documents,
+	}
+	return &qr, nil
+}
+
+func TestFindDocs(t *testing.T) {
+	const query = "蓮花寺"
 	d := find.Document{
 		GlossFile: "lianhuachi.html",
 		Title: "蓮花寺",
 		CollectionFile: "abc.html",
 		CollectionTitle: "A B C",
 	}
-	qr := find.QueryResults{
-		Query: "蓮花寺",
-		NumDocuments: 1,
-		Documents: []find.Document{d},
-	}
-	return &qr, nil
-}
-
-func TestFindDocs(t *testing.T) {
-	docTitleFinder = mockDocTitleFinder{}
 	type test struct {
 		name string
 		url string
 		acceptHeader string
 		query map[string]string
+		docs []find.Document
 		expectContains string
 		fullText bool
   }
@@ -283,6 +288,7 @@ func TestFindDocs(t *testing.T) {
 			url: "/find/",
 			acceptHeader: "text/html",
 			query: map[string]string{"query": "蓮花寺"},
+			docs: []find.Document{},
 			expectContains: "蓮花寺",
 			fullText: false,
 		},
@@ -291,6 +297,7 @@ func TestFindDocs(t *testing.T) {
 			url: "/find/",
 			acceptHeader: "text/html",
 			query: map[string]string{"query": "蓮花寺"},
+			docs: []find.Document{},
 			expectContains: `value="蓮花寺"`,
 			fullText: false,
 		},
@@ -299,14 +306,25 @@ func TestFindDocs(t *testing.T) {
 			url: "/find/",
 			acceptHeader: "application/json",
 			query: map[string]string{"query": "蓮花寺"},
+			docs: []find.Document{},
 			expectContains: `"Query":"蓮花寺"`,
 			fullText: false,
 		},
 		{
-			name: "Search for title",
+			name: "Search for title, no match",
 			url: "/find/",
 			acceptHeader: "text/html",
 			query: map[string]string{"query": "蓮花寺", "title": "true"},
+			docs: []find.Document{},
+			expectContains: `No results`,
+			fullText: false,
+		},
+		{
+			name: "Search for title, one match",
+			url: "/find/",
+			acceptHeader: "text/html",
+			query: map[string]string{"query": "蓮花寺", "title": "true"},
+			docs: []find.Document{d},
 			expectContains: `<a href='/web/lianhuachi.html'>蓮花寺</a>`,
 			fullText: false,
 		},
@@ -319,6 +337,10 @@ func TestFindDocs(t *testing.T) {
   			url += fmt.Sprintf("%s=%s&", k, v)
   		}
   	}
+		docTitleFinder = mockDocTitleFinder{
+			Query: tc.query["query"],
+			Documents: tc.docs,
+		}
 		r := httptest.NewRequest(http.MethodGet, url, nil)
 		r.Header.Add("Accept", tc.acceptHeader)
 		w := httptest.NewRecorder()

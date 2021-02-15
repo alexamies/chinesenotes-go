@@ -21,6 +21,7 @@ github.com/alexamies/chinesenotes-go v0.0.24/go.mod h1:xdg4UNXw3YWPGmeovyPsb7X8z
 github.com/alexamies/chinesenotes-go v0.0.25/go.mod h1:xdg4UNXw3YWPGmeovyPsb7X8zilnOLT5sJ4NzBcqtx4=
 github.com/alexamies/chinesenotes-go v0.0.26/go.mod h1:eIkRqDhFheNU9ZLOrBvqIovBVVSpDvExwvFJ/+oyzcU=
 github.com/alexamies/chinesenotes-go v0.0.28/go.mod h1:qnwuAvsPIE4b7dZK3IlnWe12w1hD2D3Uce5G4imPhgo=
+github.com/alexamies/chinesenotes-go v0.0.52/go.mod h1:IswAhmuKzh5RG7hCkp3s1AHJl+Lnn8rJ+SZ7Y61V8ck=
 github.com/alexamies/cnreader v0.0.0-20201011025456-29192240cd79 h1:IVL7aBL+jEvAaQJivUk9A3JjK+f37snRdk5KlbZbakE=
 github.com/alexamies/cnreader v0.0.0-20201011025456-29192240cd79/go.mod h1:1qBivAbUOyAsUhJK6MkaNmJts3kfT/HQn/UtN7ItPI8=
 github.com/alexamies/cnreader v0.0.0-20201011221203-0c760dd51d73 h1:pHw0qwIrztUWhdrOp3wiNfFZtGWJfJNijwZ4GnqY+Tw=
@@ -33,6 +34,8 @@ github.com/alexamies/cnreader v0.0.3 h1:UX6VqaEOyrukT4I1nPQXopjORBXzcscoANHtuvnV
 github.com/alexamies/cnreader v0.0.3/go.mod h1:IGGoBsmtCS5dsboD7b0J9EtT1SJzpBCE6TFuvFsRBqE=
 github.com/alexamies/cnreader v0.0.4 h1:z7I2fD6mIceySTx4vlBA8Nmi3Ov5J1XZyDj86tZ3U64=
 github.com/alexamies/cnreader v0.0.4/go.mod h1:IGGoBsmtCS5dsboD7b0J9EtT1SJzpBCE6TFuvFsRBqE=
+github.com/alexamies/cnreader v0.0.26 h1:LJMfAqR22iya0aM6QYy3S9ew+GEid7qduqeEGOC6Qs4=
+github.com/alexamies/cnreader v0.0.26/go.mod h1:UDVfMyEr1HPFFGCqGgz1cLH3E3Q9fNR+nsuZPbWJ4Oo=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -49,6 +52,8 @@ github.com/golang/protobuf v1.2.0/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5y
 github.com/golang/protobuf v1.3.1/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/protobuf v1.3.2 h1:6nsPYzhq5kReh6QImI3k5qWzO4PEbvbIW2cwSfR/6xs=
 github.com/golang/protobuf v1.3.2/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
+github.com/gomarkdown/markdown v0.0.0-20210208175418-bda154fe17d8 h1:nWU6p08f1VgIalT6iZyqXi4o5cZsz4X6qa87nusfcsc=
+github.com/gomarkdown/markdown v0.0.0-20210208175418-bda154fe17d8/go.mod h1:aii0r/K0ZnHv7G0KF7xy1v0A7s2Ljrb5byB7MO5p6TU=
 github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c/go.mod h1:lNA+9X1NB3Zf8V7Ke586lFgjr2dZNuvo3lPJSGZ5JPQ=
 github.com/google/btree v1.0.0/go.mod h1:lNA+9X1NB3Zf8V7Ke586lFgjr2dZNuvo3lPJSGZ5JPQ=
 github.com/google/go-cmp v0.2.0/go.mod h1:oXzfMopK8JAjlY9xF4vHSVASa0yLyX7SntLO5aqRK0M=
@@ -86,6 +91,7 @@ github.com/stretchr/testify v1.4.0/go.mod h1:j7eGeouHqKxXV5pUuKE4zz7dFj8WfuZ+81P
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
 go.opencensus.io v0.22.0 h1:C9hSCOW830chIVkdja34wa6Ky+IzWllkUinR+BtRZd4=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
+golang.org/dl v0.0.0-20190829154251-82a15e2f2ead/go.mod h1:IUMfjQLJQd4UTqG1Z90tenwKoCX93Gn3MAQJMOSBsDQ=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20190510104115-cbcb75029529/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
 golang.org/x/crypto v0.0.0-20190605123033-f99c8df09eb5/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=

@@ -66,18 +66,27 @@
             </div>
           </form>
           {{if .Results}}
-          <h4>Matching documents</h4>
-          <div>
-            {{ range $doc := .Results.Documents }}
+            {{if .Results.Documents }}
+            <h4>Matching documents</h4>
             <div>
-              <details open>
-                <summary>
-                  <span class="dict-entry-headword"><a href='{{$doc.GlossFile}}'>{{ $doc.Title }}</a></span>
-                </summary>
-              </details>
+              {{ range $doc := .Results.Documents }}
+              <ul class="mdc-list mdc-list--two-line">
+                <li class="mdc-list-item">
+                  <span class="mdc-list-item__text">
+                    <span class="mdc-list-item__primary-text">
+                      <a href='{{$doc.GlossFile}}'>{{ $doc.Title }}</a>
+                    </span>
+                    <span class="mdc-list-item__secondary-text">
+                      {{ $doc.CollectionTitle }}
+                    </span>
+                  </span>
+                </li>
+              </ul>
+              {{ end }}
             </div>
+            {{ else }}
+              <p>No results</p>
             {{ end }}
-          </div>
           {{ end }}
         </div>
       </main>

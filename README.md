@@ -140,14 +140,22 @@ grouped, since there are no spaces in Chinese sentences. The presence of the
 dictionary files is needed for this. They can be loaded either from the file
 system or from the database by the web app.
 
+### Digital Library
+
+The web app can support a library of Chinese texts. The texts in the library
+will be scanned with the Chinese terms enabled for mouse-over and clicking to
+find the English equivalents. The titles of the documents are also indexed to
+enable title search. This requires setting up the library files and list of
+texts with a certain structure, which is explained below.
+
 ### Translation memory
 
-Tanslation memory search find the closest matching term based on multiple
+Translation memory search find the closest matching term based on multiple
 criteria, including how many characters match, similarity of the character
 order, Pinyin match, and inclusion of the query in the notes. This depends on
 compilation of the translation memory index and loading it into the database.
 
-### Full text search of a Chinese corpus
+### Full text search of the Digital Library
 
 Full text search of a Chinese corpus allows users to search a monolingual
 Chinese corpus. First, you need 
@@ -211,6 +219,52 @@ interoperate with the other components in the Chinese Notes family
    Buddhist dictionary extensions to the Chinese-English dictionary and
    structure to present the Taisho Tripitaka as a digital library for
    ntireader.org
+
+## Digital Library Setup
+
+The setup of the library requires the structure explained in
+<a href='https://github.com/alexamies/cnreader'
+>https://github.com/alexamies/cnreader</a>. There is a small set of sample
+files also included in this project to facilitate getting started and testing.
+Set the environment variable `CNWEB_HOME` to the location of the library and
+export it. It does not have to be the home directory of the chinesenotes-go
+project but it can be to get started.
+
+```shell
+export CNWEB_HOME=.
+```
+
+To generate the static HTML files for the library and to enable mouseover and
+clicking of Chinese terms to find English equivalents, run the command
+
+```shell
+go run github.com/alexamies/cnreader
+```
+
+This generates the HTML files in the `web` directory.
+
+To index the titles run
+
+```shell
+go run github.com/alexamies/cnreader -titleindex
+```
+
+This generates the file `documents.tsv`, which is used for title search. It
+is a flat structure transformed from their hierarchical, human-edited structure
+with the Chinese and English parts of the titles separated.
+
+After running the commands above, restart the application
+
+```shell
+go run github.com/alexamies/chinesenotes-go
+```
+
+Go to the Library menu and search on a document title. You should see something
+like shown in the screenshot below.
+
+![screenshot of dictionary dialog](doc/title_search.png)
+
+You should be able to click on the title to follow a link to the document.
 
 ## Database Setup
 
