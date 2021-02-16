@@ -676,7 +676,7 @@ func (df databaseDocFinder) findWords(ctx context.Context, query string) ([]dict
 
 // Open database connection and prepare statements. Allows for re-initialization
 // at most every minute
-func (df databaseDocFinder) initFind(ctx context.Context) error {
+func (df *databaseDocFinder) initFind(ctx context.Context) error {
 	log.Println("find.initFind Initializing document_finder")
 	df.avdl = config.GetEnvIntValue("AVG_DOC_LEN", avDocLen)
 	err := df.initStatements(ctx)
