@@ -22,7 +22,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"html/template"
+	"text/template"
 	"io"
 	"log"
 	"net/http"

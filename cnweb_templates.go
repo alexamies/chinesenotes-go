@@ -14,7 +14,7 @@ package main
 
 import (
   "fmt"
-	"html/template"
+	"text/template"
   "log"
 
   "github.com/alexamies/chinesenotes-go/config"
