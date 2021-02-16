@@ -24,6 +24,7 @@ import (
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/find"
+	"github.com/alexamies/chinesenotes-go/fulltext"
 	"github.com/alexamies/chinesenotes-go/identity"
 	"github.com/alexamies/chinesenotes-go/transmemory"
 )
@@ -363,6 +364,42 @@ func TestFindDocs(t *testing.T) {
  	}
  	templates = nil
  	docTitleFinder = nil
+}
+
+func TestHighlightMatches(t *testing.T) {
+	const s = "故自親事"
+	const lm = "親事"
+	md := fulltext.MatchingText{
+		Snippet: s,
+		LongestMatch: lm,
+	}
+	d := find.Document{
+		MatchDetails: md,
+	}
+	r := find.QueryResults {
+		Documents: []find.Document{d},
+	}
+	const h = `故自<span class='usage-highlight'>親事</span>`
+	type test struct {
+		name string
+		results find.QueryResults
+		expect string
+  }
+  tests := []test{
+		{
+			name: "Happy path",
+			results: r,
+			expect: h,
+		},
+  }
+  for _, tc := range tests {
+  	got := highlightMatches(tc.results)
+  	snippet := got.Documents[0].MatchDetails.Snippet
+  	if snippet != tc.expect {
+			t.Errorf("TestHighlightMatches %s: got %q but want %q", tc.name,
+					snippet, tc.expect)
+  	}
+ 	}
 }
 
 func TestFindFullText(t *testing.T) {

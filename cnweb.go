@@ -34,6 +34,7 @@ import (
 	"github.com/alexamies/chinesenotes-go/dictionary"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/fileloader"
+	"github.com/alexamies/chinesenotes-go/fulltext"
 	"github.com/alexamies/chinesenotes-go/find"
 	"github.com/alexamies/chinesenotes-go/identity"
 	"github.com/alexamies/chinesenotes-go/media"
@@ -58,6 +59,7 @@ var (
 	mediaSearcher *media.MediaSearcher
 	templates map[string]*template.Template
 	docTitleFinder find.DocTitleFinder
+	docMap map[string]find.DocInfo
 )
 
 // Content for HTML template
@@ -94,32 +96,37 @@ func initApp(ctx context.Context) error {
 	if len(cnReaderHome) > 0 {
 		wdict, err = dictionary.LoadDict(ctx, database, appConfig)
 		if err != nil {
-			return fmt.Errorf("main.init() unable to load dictionary locally: %v", err)
+			return fmt.Errorf("main.initApp() unable to load dictionary locally: %v", err)
 		}
 	} else {
 		// Load from web for zero-config Quickstart
   	const url = "https://github.com/alexamies/chinesenotes.com/blob/master/data/words.txt?raw=true"
 		wdict, err = fileloader.LoadDictURL(appConfig, url)
 		if err != nil {
-			return fmt.Errorf("main.init() unable to load dictionary from net: %v", err)
+			return fmt.Errorf("main.initApp() unable to load dictionary from net: %v", err)
 		}
 	}
 	parser = find.MakeQueryParser(wdict)
 	if database != nil {
 		tmSearcher, err = transmemory.NewSearcher(ctx, database)
 		if err != nil {
-			return fmt.Errorf("main.init() unable to create new TM searcher: %v", err)
+			return fmt.Errorf("main.initApp() unable to create new TM searcher: %v", err)
 		}
 	}
-	df = find.NewDocFinder(ctx, database)
+	if len(docMap) == 0 {
+		_, err := initDocTitleFinder()
+		if err != nil {
+			log.Printf("main.initApp() unable to load doc map: %v", err)
+		}
+	}
+	df = find.NewDocFinder(ctx, database, docMap)
 	if config.PasswordProtected() {
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			return fmt.Errorf("init authenticator not initialized, %v", err)
+			return fmt.Errorf("initApp authenticator not initialized, %v", err)
 		}
 	}
 	templates = newTemplateMap(webConfig)
-
 	return nil
 }
 
@@ -135,7 +142,9 @@ func initDocTitleFinder() (find.DocTitleFinder, error) {
 				titleFileName, err)
 	}
 	defer r.Close()
-	docTitleFinder = find.NewDocTitleFinder(r)
+	var dInfoCN map[string]find.DocInfo
+	dInfoCN, docMap = find.LoadDocInfo(r)
+	docTitleFinder = find.NewDocTitleFinder(dInfoCN)
 	return docTitleFinder, nil
 }
 
@@ -362,7 +371,9 @@ func findFullText(response http.ResponseWriter, request *http.Request) {
 }
 
 // findDocs finds documents matching the given query.
-func findDocs(response http.ResponseWriter, request *http.Request, fullText bool) {
+func findDocs(response http.ResponseWriter,
+		request *http.Request,
+		fullText bool) {
 	q := getSingleValue(request, "query")
 	if len(q) == 0 {
 		q = getSingleValue(request, "text")
@@ -504,6 +515,50 @@ func getSingleValue(r *http.Request, key string) string {
 		}
 	}
 	return q
+}
+
+// highlightMatches adds a HTML span element with highlight for matches in the
+// snippets of full texts search results
+func highlightMatches(r find.QueryResults) find.QueryResults {
+	results := find.QueryResults {
+		Query: r.Query,
+		CollectionFile: r.CollectionFile,
+		NumCollections: r.NumCollections,
+		NumDocuments: r.NumDocuments,
+		Collections: r.Collections,
+		Terms: r.Terms,
+		SimilarTerms: r.SimilarTerms,
+	}
+	documents := []find.Document{}
+	for _, d := range r.Documents {
+		lm := d.MatchDetails.LongestMatch
+		span := fmt.Sprintf("<span class='usage-highlight'>%s</span>", lm)
+		s := strings.Replace(d.MatchDetails.Snippet, lm, span, 1)
+		md := fulltext.MatchingText{
+			Snippet: s,
+			LongestMatch: lm,
+			ExactMatch: d.MatchDetails.ExactMatch,
+		}
+		doc := find.Document{
+			GlossFile: d.GlossFile,
+			Title: d.GlossFile,
+			CollectionFile: d.CollectionFile,
+			CollectionTitle: d.CollectionTitle,
+			ContainsWords: d.ContainsWords,
+			ContainsBigrams: d.ContainsBigrams,
+			SimTitle: d.SimTitle,
+			SimWords: d.SimWords,
+			SimBigram: d.SimBigram,
+			SimBitVector: d.SimBigram,
+			Similarity: d.Similarity,
+			ContainsTerms: d.ContainsTerms,
+			MatchDetails: md,
+			TitleCNMatch: d.TitleCNMatch,
+		}
+		documents = append(documents, doc)
+	}
+	results.Documents = documents
+	return results
 }
 
 // showQueryResults displays query results on a HTML page

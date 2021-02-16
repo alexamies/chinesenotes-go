@@ -19,8 +19,8 @@ import (
 	"log"
 )
 
-type docInfo struct {
-	GlossFile, Title, TitleCN, TitleEN, CollectionFile, CollectionTitle string
+type DocInfo struct {
+	CorpusFile, GlossFile, Title, TitleCN, TitleEN, CollectionFile, CollectionTitle string
 }
 
 // DocTitleFinder finds documents by title.
@@ -30,7 +30,7 @@ type DocTitleFinder interface {
 
 // docTitleFinder implements the DocTitleFinder interface
 type docTitleFinder struct {
-	infoCache map[string]docInfo
+	infoCache map[string]DocInfo
 }
 
 // FileDocTitleFinder finds documents by title using an index loaded from file.
@@ -52,29 +52,34 @@ func (f docTitleFinder) FindDocuments(ctx context.Context, query string) (*Query
 	return &results, nil
 }
 
-func NewDocTitleFinder(r io.Reader) DocTitleFinder {
-	infoCache := loadDocInfo(r)
+// NewDocTitleFinder initializes a DocTitleFinder implementation
+// Params
+//   infoCache: key to the map is the Chinese part of the title
+func NewDocTitleFinder(infoCache map[string]DocInfo) DocTitleFinder {
 	return docTitleFinder{
 		infoCache: infoCache,
 	}
 }
 
 // Load title info for all documents
-func loadDocInfo(r io.Reader) map[string]docInfo {
+func LoadDocInfo(r io.Reader) (map[string]DocInfo, map[string]DocInfo) {
 	reader := csv.NewReader(r)
 	reader.FieldsPerRecord = 8
 	reader.Comma = rune('\t')
 	reader.Comment = rune('#')
-	dInfo := make(map[string]docInfo, 0)
+	dInfoCN := make(map[string]DocInfo, 0)
+	dInfoGlossFN := make(map[string]DocInfo, 0)
 	records, err := reader.ReadAll()
 	if err != nil {
 		log.Printf("loadDocInfo, error reading doc titles: %v", err)
-		return dInfo
+		return dInfoCN, dInfoGlossFN
 	}
 	log.Printf("loadDocInfo, reading collections")
 	for _, r := range records {
+		glossFN := r[1]
 		titleCN := r[3]
-		dInfo[titleCN] = docInfo{
+		d := DocInfo{
+			CorpusFile: r[0],
 			GlossFile: r[1],
 			Title: r[2],
 			TitleCN: r[3],
@@ -82,6 +87,8 @@ func loadDocInfo(r io.Reader) map[string]docInfo {
 			CollectionFile: r[5],
 			CollectionTitle: r[6],
 		}
+		dInfoCN[titleCN] = d
+		dInfoGlossFN[glossFN] = d
 	}
-	return dInfo
+	return dInfoCN, dInfoGlossFN
 }

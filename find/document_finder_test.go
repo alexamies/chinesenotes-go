@@ -44,7 +44,7 @@ func TestCacheColDetails(t *testing.T) {
 	if database == nil {
 		t.Skip("TestCacheColDetails, no database skipping")
 	}
-	df := DatabaseDocFinder {
+	df := databaseDocFinder {
 		database: database,
 	}
 	ctx := context.Background()
@@ -101,7 +101,7 @@ func TestFindDocuments(t *testing.T) {
 		t.Log("TestFindDocuments, not connected to db, skipping")
 		return
 	}
-	df := DatabaseDocFinder {}
+	df := databaseDocFinder {}
 	ctx := context.Background()
 	err = df.initFind(ctx)
 	if err != nil {
@@ -178,7 +178,7 @@ func testFindBodyBM25(terms []string, t *testing.T) {
 	if database == nil {
 		t.Skip("testFindBodyBM25, no database skipping")
 	}
-	df := DatabaseDocFinder {
+	df := databaseDocFinder {
 		database: database,
 	}
 	ctx := context.Background()
@@ -233,7 +233,7 @@ func TestFindBodyBigram(t *testing.T) {
 		t.Log("TestFindBodyBigram, no database skipping")
 		return
 	}
-	df := DatabaseDocFinder {
+	df := databaseDocFinder {
 		database: database,
 	}
 	ctx := context.Background()
@@ -293,7 +293,7 @@ func TestFindDocumentsInCol(t *testing.T) {
 	if database == nil {
 		t.Skip("TestFindDocumentsInCol, no database skipping")
 	}
-	df := DatabaseDocFinder {
+	df := databaseDocFinder {
 		database: database,
 	}
 	ctx := context.Background()
@@ -399,7 +399,7 @@ func TestFindWords(t *testing.T) {
 	if database == nil {
 		t.Skip("TestFindWords, no database skipping")
 	}
-	df := DatabaseDocFinder {
+	df := databaseDocFinder {
 		database: database,
 	}
 	ctx := context.Background()
@@ -451,7 +451,7 @@ func TestMergeDocList(t *testing.T) {
 	if database == nil {
 		t.Skip("TestMergeDocList, no database skipping")
 	}
-	df := DatabaseDocFinder {
+	df := databaseDocFinder {
 		database: database,
 	}
 	ctx := context.Background()
@@ -749,7 +749,7 @@ func TestToRelevantDocList(t *testing.T) {
 		t.Skip("TestMergeDocList, no database skipping")
 		return
 	}
-	df := DatabaseDocFinder {
+	df := databaseDocFinder {
 		database: database,
 	}
 	ctx := context.Background()

@@ -20,14 +20,15 @@ import (
 
 // Test for docTitleFinder.FindDocuments
 func TestDocTitleFinder(t *testing.T) {
-	info := docInfo{
+	info := DocInfo{
+		CorpusFile: "guanhuazhinan.md",
 		GlossFile: "guanhuazhinan.html",
 		Title: "官話指南 A Guide to Mandarin",
 		TitleCN: "官話指南",
 		TitleEN: "A Guide to Mandarin",
 		CollectionFile: "xyz",
 	}
-	infoCache := map[string]docInfo{
+	infoCache := map[string]DocInfo{
 		"官話指南": info,
 	}
 	tests := []struct {
@@ -76,24 +77,35 @@ func TestLoadDocInfo(t *testing.T) {
 		name string
 		input string
 		wantNum int
+		GlossFile string
+		wantCorpusFile string
 	}{
 		{
 			name: "Empty",
 			input: "",
 			wantNum: 0,
+			GlossFile: "",
+			wantCorpusFile: "",
 		},
 		{
 			name: "One record",
 			input: line,
 			wantNum: 1,
+			GlossFile: "guanhuazhinan.html",
+			wantCorpusFile: "guanhuazhinan.txt",
 		},
 	}
 	for _, tc := range tests {
 		buf := bytes.NewBufferString(tc.input)
-		docInfoMap := loadDocInfo(buf)
+		_, docInfoMap := LoadDocInfo(buf)
 		if len(docInfoMap) != tc.wantNum {
 			t.Fatalf("TestLoadDocInfo %s, got %d, want %d", tc.name, len(docInfoMap), 
 					tc.wantNum)
+		}
+		d := docInfoMap[tc.GlossFile]
+		if d.CorpusFile != tc.wantCorpusFile {
+			t.Fatalf("TestLoadDocInfo %s, got %s, want %s", tc.name, d.CorpusFile, 
+					tc.wantCorpusFile)
 		}
 	}	
 }
