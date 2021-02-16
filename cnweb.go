@@ -469,6 +469,8 @@ func findDocs(response http.ResponseWriter,
 			templateFile = "doc_results.html"
 		} else if fullText {
 			templateFile = "full_text_search.html"
+			r := highlightMatches(*results)
+			results = &r
 		}
 		err = showQueryResults(response, *results, templateFile)
 		if err != nil {
