@@ -200,8 +200,9 @@ export class CNotes {
       const notesSpan = this.querySelectorOrNull("#VocabNotesSpan");
       if (entry && entry.getSenses().length === 1) {
         const ws = entry.getSenses()[0];
-        if (notesSpan) {
-          notesSpan.innerHTML = ws.getNotes();
+        const notes = ws.getNotes();
+        if (notesSpan && notes !== undefined) {
+          notesSpan.innerHTML = notes;
         }
       } else if (notesSpan) {
         notesSpan.innerHTML = "";

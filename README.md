@@ -45,8 +45,9 @@ In a terminal, run the commands to get the command line app and download the
 dicitonary
 
 ```shell
-go get github.com/alexamies/cnreader
-go run github.com/alexamies/cnreader -download_dict
+PATH=$PATH:$HOME/go/bin
+go install github.com/alexamies/cnreader
+cnreader -download_dict
 ```
 
 Set an environment variable to let the app know where its home is
