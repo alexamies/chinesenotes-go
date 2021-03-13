@@ -1227,8 +1227,9 @@ func toRelevantDocList(df databaseDocFinder, docs []Document, terms []string) []
 	docMatches := fulltext.GetMatches(keys, terms)
 	relDocs := []Document{}
 	for _, doc  := range docs {
-		log.Printf("toRelevantDocList, check Similarity %f, min %f\n",
-				doc.Similarity, minSimilarity)
+		log.Printf("toRelevantDocList, check Similarity %f, min %f, gloss %s, " +
+				"title: %s\n", doc.Similarity, minSimilarity, doc.GlossFile,
+				doc.Title)
 		d, ok := df.docMap[doc.GlossFile]
 		if !ok {
 			log.Printf("find.toRelevantDocList 2 could not find %s\n", doc.GlossFile)

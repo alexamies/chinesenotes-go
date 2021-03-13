@@ -336,7 +336,7 @@ func TestFindDocs(t *testing.T) {
 			acceptHeader: "text/html",
 			query: map[string]string{"query": "蓮花寺", "title": "true"},
 			docs: []find.Document{d},
-			expectContains: `<a href='/web/lianhuachi.html'>蓮花寺</a>`,
+			expectContains: `lianhuachi.html`,
 			fullText: false,
 		},
   }
