@@ -343,7 +343,7 @@ const wordDetailTmpl = `
         </span>
         <span class="dict-entry-pinyin">{{ .Data.Word.Pinyin }}</span>
         <ol>
-        {{ range $ws := .Data.Word.DictEntry.Senses }}
+        {{ range $ws := .Data.Word.Senses }}
           <li>
           {{if ne $ws.Pinyin "\\N"}}<span class="dict-entry-pinyin">{{ $ws.Pinyin }}</span>{{end}}
           {{if ne $ws.Grammar "\\N"}}<span class="dict-entry-grammar">{{ $ws.Grammar }}</span>{{end}}

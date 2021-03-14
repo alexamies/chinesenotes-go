@@ -1178,9 +1178,6 @@ func wordDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("main.wordDetail path: %s", r.URL.Path)
-	type data struct {
-		Word dicttypes.Word
-  }
 	hwId, err := getHeadwordId(r.URL.Path)
 	if err != nil {
 		log.Printf("main.wordDetail headword not found: %v", err)
@@ -1189,10 +1186,16 @@ func wordDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	if hw, ok := dict.HeadwordIds[hwId]; ok {
 		title := webConfig.GetVarWithDefault("Title", defTitle)
+		match := webConfig.GetVar("NotesReMatch")
+		replace := webConfig.GetVar("NotesReplace")
+		processor := dictionary.NewNotesProcessor(match, replace)
+		word := processor.Process(hw)
 		content := htmlContent{
 			Title: title,
-			Data: data {
-				Word: hw,
+			Data: struct {
+				Word dicttypes.Word
+			}{
+				Word: word,
 			},
 		}
 		displayPage(w, "word_detail.html", content)

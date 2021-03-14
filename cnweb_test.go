@@ -912,6 +912,26 @@ func TestGetHeadwordId(t *testing.T) {
 func TestWordDetail(t *testing.T) {
 	templates = newTemplateMap(webConfig)
 	smallDict := mockSmallDict()
+	s := "一時三相"
+	ws := dicttypes.WordSense{
+		Id:          1,
+		Simplified:  s,
+		Notes:      "FGDB entry 1",
+	}
+	hw := dicttypes.Word{
+		HeadwordId:	1,
+		Simplified:	s,
+		Senses:  		[]dicttypes.WordSense{ws},
+	}
+	dictWNotes := map[string]dicttypes.Word{
+		s: hw,
+	}
+	webConfig = config.WebAppConfig{
+		ConfigVars: map[string]string{
+			"NotesReMatch": `FGDB entry ([0-9]*)`,
+			"NotesReplace": `<a href="/web/${1}.html">FGDB entry</a>`,
+		},
+	}
 	type test struct {
 		name string
 		hwId int
@@ -931,6 +951,12 @@ func TestWordDetail(t *testing.T) {
 			wdict: smallDict,
 			expectContains: "繁體中文",
 		},
+		{
+			name: "Contains corpus doc link in notes",
+			hwId: 1,
+			wdict: dictWNotes,
+			expectContains: `<a href="/web/1.html">FGDB entry</a>`,
+		},
 	}
   for _, tc := range tests {
   	url := fmt.Sprintf("/words/%d.html", tc.hwId)
@@ -946,4 +972,5 @@ func TestWordDetail(t *testing.T) {
 		dict = dictionary.Dictionary{}
   }
  	templates = nil
+ 	webConfig = config.WebAppConfig{}
 }
