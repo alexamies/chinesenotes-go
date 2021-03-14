@@ -33,6 +33,7 @@ import (
 
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dictionary"
+	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/fulltext"
 	"github.com/alexamies/chinesenotes-go/find"
 	"github.com/alexamies/chinesenotes-go/identity"
@@ -1167,7 +1168,7 @@ func getHeadwordId(path string) (int, error) {
 	return hwId, nil
 }
 
-// wordDetail shows details for a single word entry
+// wordDetail shows details for a single word entry, returns HTML
 func wordDetail(w http.ResponseWriter, r *http.Request) {
 	if config.PasswordProtected() {
 		sessionInfo := enforceValidSession(w, r)
@@ -1176,12 +1177,27 @@ func wordDetail(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	log.Printf("main.wordDetail path: %s", r.URL.Path)
+	type data struct {
+		Word dicttypes.Word
+  }
 	hwId, err := getHeadwordId(r.URL.Path)
 	if err != nil {
 		log.Printf("main.wordDetail headword not found: %v", err)
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
+	if hw, ok := dict.HeadwordIds[hwId]; ok {
+		title := webConfig.GetVarWithDefault("Title", defTitle)
+		content := htmlContent{
+			Title: title,
+			Data: data {
+				Word: hw,
+			},
+		}
+		displayPage(w, "word_detail.html", content)
+	}
+
 	msg := fmt.Sprintf("Not found: %d", hwId)
 	http.Error(w, msg, http.StatusNotFound)
 }

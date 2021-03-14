@@ -30,11 +30,17 @@ import (
 type Dictionary struct {
 	// Forward dictionary, lookup by Chinese word
 	Wdict map[string]dicttypes.Word
+	HeadwordIds map[int]dicttypes.Word
 }
 
 func NewDictionary(wdict map[string]dicttypes.Word) Dictionary {
+	hwIdMap := make(map[int]dicttypes.Word)
+	for _, w := range wdict {
+		hwIdMap[w.HeadwordId] = w
+	}
 	return Dictionary{
 		Wdict: wdict,
+		HeadwordIds: hwIdMap,
 	}
 }
 

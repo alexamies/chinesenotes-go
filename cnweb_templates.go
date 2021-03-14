@@ -327,6 +327,50 @@ const fullTextSearchTmpl = `
 </html>
 `
 
+const wordDetailTmpl = `
+<!DOCTYPE html>
+<html lang="en">
+  %s
+  <body>
+    %s
+    %s
+    <main>
+      {{if .Data.Word }}
+      <div>
+        <span class="dict-entry-headword">
+          {{ .Data.Word.Simplified }}
+           {{if .Data.Word.Traditional}} ({{ .Data.Word.Traditional }}) {{ end }}
+        </span>
+        <span class="dict-entry-pinyin">{{ .Data.Word.Pinyin }}</span>
+        <ol>
+        {{ range $ws := .Data.Word.DictEntry.Senses }}
+          <li>
+          {{if ne $ws.Pinyin "\\N"}}<span class="dict-entry-pinyin">{{ $ws.Pinyin }}</span>{{end}}
+          {{if ne $ws.Grammar "\\N"}}<span class="dict-entry-grammar">{{ $ws.Grammar }}</span>{{end}}
+          {{if ne $ws.English "\\N"}}<span class="dict-entry-definition">{{ $ws.English }}</span>{{end}}
+          {{if ne $ws.Domain "\\N"}}<div class="dict-entry-domain">Domain: {{ $ws.Domain }}</div>{{end}}
+          {{if ne $ws.Notes "\\N"}}<div class="dict-entry-notes">Notes: {{ $ws.Notes }}</div>{{end}}
+          </li>
+        {{ end }}
+        </ol>
+      </div>
+      {{ else }}
+      <p>Not found</p>
+      {{ end }}
+      <p>Search for something else</p>
+      <form name="findForm" method="post" action="/find/">
+        <div>
+          <label for="findInput">Search for</label>
+          <input type="text" name="query" size="40" required value=""/>
+          <button type="submit">Find</button>
+        </div>
+      </form>
+    </main>
+    %s
+  <body>
+</html>
+`
+
 // Page not found
 const notFoundTmpl = `
 <!DOCTYPE html>
@@ -630,6 +674,7 @@ func newTemplateMap(webConfig config.WebAppConfig) map[string]*template.Template
     "request_reset_form.html": requestResetTmp,
     "reset_password_confirmation.html": resetConfTmp,
     "reset_password_form.html": resetFormTmp,
+    "word_detail.html": wordDetailTmpl,
 	}
   templateMap := make(map[string]*template.Template)
   templDir := webConfig.GetVar("TemplateDir")

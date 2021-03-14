@@ -30,6 +30,94 @@ import (
 	"github.com/alexamies/chinesenotes-go/transmemory"
 )
 
+func mockSmallDict() map[string]dicttypes.Word {
+	s1 := "繁体中文"
+	t1 := "繁體中文"
+	hw1 := dicttypes.Word{
+		HeadwordId:  	1,
+		Simplified:  	s1,
+		Traditional: 	t1,
+		Pinyin:      	"fántǐ zhōngwén",
+		Senses:  			[]dicttypes.WordSense{},
+	}
+	s2 := "前"
+	t2 := "\\N"
+	hw2 := dicttypes.Word{
+		HeadwordId:  	2,
+		Simplified:  	s2,
+		Traditional: 	t2,
+		Pinyin:      	"qián",
+		Senses:  			[]dicttypes.WordSense{},
+	}
+	s3 := "不见"
+	t3 := "不見"
+	hw3 := dicttypes.Word{
+		HeadwordId:  	3,
+		Simplified:  	s3,
+		Traditional: 	t3,
+		Pinyin:      	"bújiàn",
+		Senses:				[]dicttypes.WordSense{},
+	}
+	s4 := "古人"
+	t4 := "\\N"
+	hw4 := dicttypes.Word{
+		HeadwordId:  	4,
+		Simplified:  	s4,
+		Traditional: 	t4,
+		Pinyin:      	"gǔrén",
+		Senses:  			[]dicttypes.WordSense{},
+	}
+	s5 := "夫"
+	t5 := "\\N"
+	hw5 := dicttypes.Word{
+		HeadwordId:  	5,
+		Simplified:  	s5,
+		Traditional: 	t5,
+		Pinyin:      	"fú fū",
+		Senses:  			[]dicttypes.WordSense{},
+	}
+	s6 := "起信论"
+	t6 := "起信論"
+	hw6 := dicttypes.Word{
+		HeadwordId:  	6,
+		Simplified:  	s6,
+		Traditional: 	t6,
+		Pinyin:      	"Qǐ Xìn Lùn",
+		Senses:  			[]dicttypes.WordSense{},
+	}
+	s7 := "者"
+	t7 := "\\N"
+	hw7 := dicttypes.Word{
+		HeadwordId:  	7,
+		Simplified:  	s7,
+		Traditional: 	t7,
+		Pinyin:      	"zhě zhuó",
+		Senses:  			[]dicttypes.WordSense{},
+	}
+	s8 := "乃是"
+	t8 := "\\N"
+	hw8 := dicttypes.Word{
+		HeadwordId:  	8,
+		Simplified:  	s8,
+		Traditional: 	t8,
+		Pinyin:      	"nǎishì",
+		Senses:  			[]dicttypes.WordSense{},
+	}
+	return map[string]dicttypes.Word {
+		s1: hw1,
+		t1: hw1,
+		s2: hw2,
+		s3: hw3,
+		t3: hw3,
+		s4: hw4,
+		s5: hw5,
+		s6: hw6,
+		t6: hw6,
+		s7: hw7,
+		s8: hw8,
+	}
+}
+
 // TestMain runs integration tests if the flag -integration is set
 func TestMain(m *testing.M) {
 	os.Clearenv()
@@ -822,20 +910,31 @@ func TestGetHeadwordId(t *testing.T) {
 }
 
 func TestWordDetail(t *testing.T) {
+	templates = newTemplateMap(webConfig)
+	smallDict := mockSmallDict()
 	type test struct {
 		name string
 		hwId int
+		wdict map[string]dicttypes.Word
 		expectContains string
   }
   tests := []test{
 		{
 			name: "Not found",
 			hwId: 123,
+			wdict: map[string]dicttypes.Word{},
 			expectContains: "Not found: 123",
+		},
+		{
+			name: "Word Found",
+			hwId: 1,
+			wdict: smallDict,
+			expectContains: "繁體中文",
 		},
 	}
   for _, tc := range tests {
   	url := fmt.Sprintf("/words/%d.html", tc.hwId)
+  	dict = dictionary.NewDictionary(tc.wdict)
 		r := httptest.NewRequest(http.MethodGet, url, nil)
 		w := httptest.NewRecorder()
 		wordDetail(w, r)
@@ -844,5 +943,7 @@ func TestWordDetail(t *testing.T) {
 			t.Errorf("TestWordDetail %s: got %q, want %q, ", tc.name, result,
 					tc.expectContains)
  		}
+		dict = dictionary.Dictionary{}
   }
+ 	templates = nil
 }
