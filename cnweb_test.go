@@ -23,6 +23,7 @@ import (
 
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
+	"github.com/alexamies/chinesenotes-go/dictionary"
 	"github.com/alexamies/chinesenotes-go/find"
 	"github.com/alexamies/chinesenotes-go/fulltext"
 	"github.com/alexamies/chinesenotes-go/identity"
@@ -402,20 +403,59 @@ func TestHighlightMatches(t *testing.T) {
  	}
 }
 
+// mockDocFinder imitates DocFinder interface for full text search tests
+type mockDocFinder struct {
+	documents []find.Document
+}
+
+func (m mockDocFinder) FindDocuments(ctx context.Context,
+		dictSearcher *dictionary.Searcher,
+		parser find.QueryParser,
+		query string,
+		advanced bool) (*find.QueryResults, error) {
+	qr := find.QueryResults{
+		Query: query,
+		Documents: m.documents,
+	}
+	return &qr, nil
+}
+
+func (m mockDocFinder) FindDocumentsInCol(ctx context.Context,
+		dictSearcher *dictionary.Searcher,
+		parser find.QueryParser, query,
+		col_gloss_file string) (*find.QueryResults, error) {
+	return nil, fmt.Errorf("Not configured")
+}
+
+func (m mockDocFinder) GetColMap() map[string]string {
+	cm := make(map[string]string)
+	return cm
+}
+
+func (m mockDocFinder) Inititialized() bool {
+	return true
+}
+
 func TestFindFullText(t *testing.T) {
 	templates = newTemplateMap(webConfig)
 	type test struct {
 		name string
 		url string
 		query string
+		documents []find.Document
 		acceptHeader string
 		expectContains string
+  }
+  doc := find.Document{
+  	GlossFile: "foyasi.html",
+  	Title: "Buddha Tooth Temple",
   }
   tests := []test{
 		{
 			name: "Return HTML",
 			url: "/findadvanced/",
 			query: "",
+			documents: []find.Document{},
 			acceptHeader: `text/html`,
 			expectContains: `<h2>Full Text Search</h2>`,
 		},
@@ -423,12 +463,24 @@ func TestFindFullText(t *testing.T) {
 			name: "Return JSON",
 			url: "/findadvanced/",
 			query: "佛牙寺",
+			documents: []find.Document{},
 			acceptHeader: `application/json`,
 			expectContains: `"Query":"佛牙寺"`,
+		},
+		{
+			name: "Single result",
+			url: "/findadvanced/",
+			query: "佛牙寺",
+			documents: []find.Document{doc},
+			acceptHeader: `text/html`,
+			expectContains: doc.Title,
 		},
   }
   for _, tc := range tests {
   	url := tc.url + "?query=" + tc.query
+		df = mockDocFinder{
+			documents: tc.documents,
+		}
 		r := httptest.NewRequest(http.MethodGet, url, nil)
 		r.Header.Add("Accept", tc.acceptHeader)
 		w := httptest.NewRecorder()
@@ -440,6 +492,7 @@ func TestFindFullText(t *testing.T) {
  		}
  	}
  	templates = nil
+ 	df = nil
 }
 
 // TestFindHandler tests finding a word.

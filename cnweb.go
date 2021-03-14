@@ -359,8 +359,8 @@ func findFullText(response http.ResponseWriter, request *http.Request) {
 			content := htmlContent{
 				Title: title,
 			}
-			if !config.UseDatabase() {
-				log.Println("findFullText database is needed for this feature")
+			if df == nil || !df.Inititialized() {
+				log.Printf("findFullText is not configured: %v", df)
 				content.ErrorMsg = "Full text search is not configured"
 			}
 			displayPage(response, "full_text_search.html", content)
@@ -543,7 +543,7 @@ func highlightMatches(r find.QueryResults) find.QueryResults {
 		}
 		doc := find.Document{
 			GlossFile: d.GlossFile,
-			Title: d.GlossFile,
+			Title: d.Title,
 			CollectionFile: d.CollectionFile,
 			CollectionTitle: d.CollectionTitle,
 			ContainsWords: d.ContainsWords,
@@ -568,7 +568,7 @@ func showQueryResults(w io.Writer, results find.QueryResults,
 		templateFile string) error {
 	res := results
 	staticDir := appConfig.GetVar("GoStaticDir")
-	log.Printf("showQueryResults, staticDir: %s", staticDir)
+	// log.Printf("showQueryResults, staticDir: %s", staticDir)
 	if len(staticDir) > 0 && len(results.Documents) > 0 {
 		log.Printf("showQueryResults, len(Documents): %d", len(results.Documents))
 		docs := []find.Document{}
@@ -589,6 +589,7 @@ func showQueryResults(w io.Writer, results find.QueryResults,
 				MatchDetails: doc.MatchDetails,
 				TitleCNMatch: doc.TitleCNMatch,
 			}
+			log.Printf("showQueryResults, adding: %s", d.Title)
 			docs = append(docs, d)
 		}
 		res = find.QueryResults{
