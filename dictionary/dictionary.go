@@ -23,9 +23,20 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
-	"github.com/alexamies/chinesenotes-go/fileloader"
 	"time"
 )
+
+// Dictionary is a struct to hold word dictionary indexes
+type Dictionary struct {
+	// Forward dictionary, lookup by Chinese word
+	Wdict map[string]dicttypes.Word
+}
+
+func NewDictionary(wdict map[string]dicttypes.Word) Dictionary {
+	return Dictionary{
+		Wdict: wdict,
+	}
+}
 
 // Searcher looks up Chinese words by either Chinese or English.
 // 
@@ -126,7 +137,7 @@ func LoadDict(ctx context.Context, database *sql.DB,
 	start := time.Now()
 	if database == nil {
 		log.Println("LoadDict, database nil, loading from file")
-    return fileloader.LoadDictFile(appConfig)
+    return LoadDictFile(appConfig)
 	}
 	wdict := map[string]dicttypes.Word{}
 	avoidSub := appConfig.AvoidSubDomains()
@@ -134,12 +145,12 @@ func LoadDict(ctx context.Context, database *sql.DB,
 		"SELECT id, simplified, traditional, pinyin, english, parent_en, notes, headword FROM words")
     if err != nil {
         log.Printf("LoadDict Error preparing stmt, load from file instead: %v\n", err)
-        return fileloader.LoadDictFile(appConfig)
+        return LoadDictFile(appConfig)
     }
 	results, err := stmt.QueryContext(ctx)
 	if err != nil {
 		log.Printf("LoadDict, Error for query, loading from file: \n%v\n", err)
-    return fileloader.LoadDictFile(appConfig)
+    return LoadDictFile(appConfig)
 	}
 	for results.Next() {
 		ws := dicttypes.WordSense{}

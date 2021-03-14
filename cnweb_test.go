@@ -593,7 +593,6 @@ func TestHealthcheck(t *testing.T) {
 	os.Unsetenv("DATABASE")
 }
 
-
 func TestLibrary(t *testing.T) {
 	templates = newTemplateMap(webConfig)
 	type test struct {
@@ -783,4 +782,67 @@ func TestTranslationMemory(t *testing.T) {
  		}
  	}
  	tmSearcher = nil
+}
+
+
+func TestGetHeadwordId(t *testing.T) {
+	type test struct {
+		name string
+		path string
+		expectError bool
+		expectHwId int
+  }
+  tests := []test{
+		{
+			name: "Basic match",
+			path: "/words/1234.html",
+			expectError: false,
+			expectHwId: 1234,
+		},
+		{
+			name: "No match",
+			path: "/words/abcd.html",
+			expectError: true,
+			expectHwId: -1,
+		},
+	}
+  for _, tc := range tests {
+  	hwId, err := getHeadwordId(tc.path)
+		if tc.expectError && err == nil {
+			t.Fatalf("TestGetHeadwordId %s: expected error", tc.name)
+ 		}
+		if !tc.expectError && err != nil {
+			t.Fatalf("TestGetHeadwordId %s: unexpected error: %v", tc.name, err)
+ 		}
+		if hwId != tc.expectHwId {
+			t.Errorf("TestGetHeadwordId %s: got %d, want %d", tc.name, hwId,
+					tc.expectHwId)
+ 		}
+  }
+}
+
+func TestWordDetail(t *testing.T) {
+	type test struct {
+		name string
+		hwId int
+		expectContains string
+  }
+  tests := []test{
+		{
+			name: "Not found",
+			hwId: 123,
+			expectContains: "Not found: 123",
+		},
+	}
+  for _, tc := range tests {
+  	url := fmt.Sprintf("/words/%d.html", tc.hwId)
+		r := httptest.NewRequest(http.MethodGet, url, nil)
+		w := httptest.NewRecorder()
+		wordDetail(w, r)
+		result := w.Body.String()
+		if !strings.Contains(result, tc.expectContains) {
+			t.Errorf("TestWordDetail %s: got %q, want %q, ", tc.name, result,
+					tc.expectContains)
+ 		}
+  }
 }

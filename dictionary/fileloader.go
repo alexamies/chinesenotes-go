@@ -13,7 +13,7 @@
 
 //
 // Chinese-English dictionary file and network loading functions
-package fileloader
+package dictionary
 
 import (
 	"encoding/csv"

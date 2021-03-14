@@ -21,7 +21,6 @@ import (
 
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dictionary"
-	"github.com/alexamies/chinesenotes-go/fileloader"
 	"github.com/alexamies/chinesenotes-go/identity"
 )
 
@@ -90,7 +89,7 @@ func TestLoadDictFile(t *testing.T) {
 	appConfig := config.AppConfig{
 		LUFileNames: fnames,
 	}
-	dict, err := fileloader.LoadDictFile(appConfig)
+	dict, err := dictionary.LoadDictFile(appConfig)
 	if err != nil {
 		t.Fatalf("TestLoadDictFile: Got an error: %v", err)
 	}

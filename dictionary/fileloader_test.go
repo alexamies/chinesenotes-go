@@ -12,7 +12,7 @@
 
 
 // Unit tests for lookup package
-package fileloader
+package dictionary
 
 import (
 	"strings"

@@ -27,13 +27,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dictionary"
-	"github.com/alexamies/chinesenotes-go/dicttypes"
-	"github.com/alexamies/chinesenotes-go/fileloader"
 	"github.com/alexamies/chinesenotes-go/fulltext"
 	"github.com/alexamies/chinesenotes-go/find"
 	"github.com/alexamies/chinesenotes-go/identity"
@@ -51,7 +50,7 @@ var (
 	webConfig config.WebAppConfig
 	database *sql.DB
 	parser find.QueryParser
-	wdict map[string]dicttypes.Word
+	dict dictionary.Dictionary
 	dictSearcher *dictionary.Searcher
 	tmSearcher transmemory.Searcher
 	df find.DocFinder
@@ -94,19 +93,21 @@ func initApp(ctx context.Context) error {
 	dictSearcher = dictionary.NewSearcher(ctx, database)
 	cnReaderHome := os.Getenv("CNREADER_HOME")
 	if len(cnReaderHome) > 0 {
-		wdict, err = dictionary.LoadDict(ctx, database, appConfig)
+		wdict, err := dictionary.LoadDict(ctx, database, appConfig)
 		if err != nil {
 			return fmt.Errorf("main.initApp() unable to load dictionary locally: %v", err)
 		}
+		dict = dictionary.NewDictionary(wdict)
 	} else {
 		// Load from web for zero-config Quickstart
   	const url = "https://github.com/alexamies/chinesenotes.com/blob/master/data/words.txt?raw=true"
-		wdict, err = fileloader.LoadDictURL(appConfig, url)
+		wdict, err := dictionary.LoadDictURL(appConfig, url)
 		if err != nil {
 			return fmt.Errorf("main.initApp() unable to load dictionary from net: %v", err)
 		}
+		dict = dictionary.NewDictionary(wdict)
 	}
-	parser = find.MakeQueryParser(wdict)
+	parser = find.MakeQueryParser(dict.Wdict)
 	if database != nil {
 		tmSearcher, err = transmemory.NewSearcher(ctx, database)
 		if err != nil {
@@ -432,7 +433,7 @@ func findDocs(response http.ResponseWriter,
 	// in length
 	if (!fullText && (tmSearcher != nil) && (len([]rune(q)) > 1) &&
 			(len([]rune(q)) < 9) && (len(results.Terms) > 1)) {
-		tmResults, err := tmSearcher.Search(ctx, q, "", false, wdict)
+		tmResults, err := tmSearcher.Search(ctx, q, "", false, dict.Wdict)
 		if err != nil {
 			// Not essential to the main request
 			log.Printf("main.findDocs translation memory error, ignoring: %v", err)
@@ -1124,7 +1125,7 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	results, err := tmSearcher.Search(ctx, q, d, true, wdict)
+	results, err := tmSearcher.Search(ctx, q, d, true, dict.Wdict)
 	if err != nil {
 		log.Printf("main.translationMemory error searching, %v", err)
 		http.Error(w, "Internal Error", http.StatusInternalServerError)
@@ -1149,6 +1150,42 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, string(resultsJson))
 }
 
+var wordsRe *regexp.Regexp = regexp.MustCompile(`[0-9]+`)
+
+// getHeadwordId extracts the headword id from the URL
+// URL format: domain.com/words/1234.html where 1234 is the headword id
+// the headword id or an error if it cannot be determined
+func getHeadwordId(path string) (int, error) {
+	hwIdStr := wordsRe.FindString(path)
+	if len(hwIdStr) == 0 {
+		return -1, fmt.Errorf("No headword id provided: %s", path)
+	}
+	hwId, err := strconv.Atoi(hwIdStr)
+	if err != nil {
+		return -1, err
+	}
+	return hwId, nil
+}
+
+// wordDetail shows details for a single word entry
+func wordDetail(w http.ResponseWriter, r *http.Request) {
+	if config.PasswordProtected() {
+		sessionInfo := enforceValidSession(w, r)
+		if !sessionInfo.Valid {
+			return
+		}
+	}
+
+	hwId, err := getHeadwordId(r.URL.Path)
+	if err != nil {
+		log.Printf("main.wordDetail headword not found: %v", err)
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+	msg := fmt.Sprintf("Not found: %d", hwId)
+	http.Error(w, msg, http.StatusNotFound)
+}
+
 //Entry point for the web application
 func main() {
 	log.Println("cnweb.main Iniitalizing cnweb")
@@ -1168,6 +1205,7 @@ func main() {
 	http.HandleFunc("/loggedin/admin", adminHandler)
 	http.HandleFunc("/loggedin/changepassword", changePasswordFormHandler)
 	http.HandleFunc("/library", library)
+	http.HandleFunc("/words/", wordDetail)
 	http.HandleFunc("/loggedin/login", loginHandler)
 	http.HandleFunc("/loggedin/login_form", loginFormHandler)
 	http.HandleFunc("/loggedin/logout_form", logoutForm)
