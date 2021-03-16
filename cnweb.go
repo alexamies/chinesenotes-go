@@ -22,14 +22,15 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"text/template"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
+	"text/template"
 
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dictionary"
@@ -1095,8 +1096,35 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, string(resultsJson))
 }
 
-// translationMemory handles requests for for translation memory searches
+func getStaticFileName(u url.URL) string {
+	log.Printf("getStaticFileName path: %s", u.Path)
+	return "./web/" + u.Path
+}
+
+type StaticHandler struct{}
+
+// serveStatic handles requests for static files
+func (h StaticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if config.PasswordProtected() {
+		sessionInfo := enforceValidSession(w, r)
+		if !sessionInfo.Valid {
+			return
+		}
+	}
+	fname := getStaticFileName(*r.URL)
+	log.Printf("ServeHTTP fname: %s", fname)
+	http.ServeFile(w, r, fname)
+}
+
+// translationMemory handles requests for translation memory searches
 func translationMemory(w http.ResponseWriter, r *http.Request) {
+	if config.PasswordProtected() {
+		sessionInfo := enforceValidSession(w, r)
+		if !sessionInfo.Valid {
+			return
+		}
+	}
+
 	q := getSingleValue(r, "query")
 	title := webConfig.GetVarWithDefault("Title", defTitle)
 	if len(q) == 0 {
@@ -1214,6 +1242,7 @@ func main() {
 		log.Printf("main() error for initApp: %v", err)
 	}
 
+	http.HandleFunc("/", displayHome)
 	http.HandleFunc("/#", findHandler)
 	http.HandleFunc("/find/", findHandler)
 	http.HandleFunc("/findadvanced/", findFullText)
@@ -1224,7 +1253,6 @@ func main() {
 	http.HandleFunc("/loggedin/admin", adminHandler)
 	http.HandleFunc("/loggedin/changepassword", changePasswordFormHandler)
 	http.HandleFunc("/library", library)
-	http.HandleFunc("/words/", wordDetail)
 	http.HandleFunc("/loggedin/login", loginHandler)
 	http.HandleFunc("/loggedin/login_form", loginFormHandler)
 	http.HandleFunc("/loggedin/logout_form", logoutForm)
@@ -1237,9 +1265,9 @@ func main() {
 	http.HandleFunc("/loggedin/reset_password", resetPasswordFormHandler)
 	http.HandleFunc("/loggedin/reset_password_submit", resetPasswordHandler)
 	http.HandleFunc("/loggedin/submitcpwd", changePasswordHandler)
-	fs := http.FileServer(http.Dir("./web"))
-	http.Handle("/web/", http.StripPrefix("/web/", fs))
-	http.HandleFunc("/", displayHome)
+	http.Handle("/web/", http.StripPrefix("/web/", StaticHandler{}))
+	http.HandleFunc("/words/", wordDetail)
+
 	portStr := ":" + strconv.Itoa(config.GetPort())
 	log.Printf("cnweb.main Starting http server on port %s", portStr)
 	err = http.ListenAndServe(portStr, nil)

@@ -46,7 +46,7 @@ dicitonary
 
 ```shell
 PATH=$PATH:$HOME/go/bin
-go install github.com/alexamies/cnreader
+go install github.com/alexamies/cnreader@latest
 cnreader -download_dict
 ```
 
@@ -56,10 +56,16 @@ Set an environment variable to let the app know where its home is
 export CNWEB_HOME=.
 ```
 
+Install the app
+
+```shell
+go install github.com/alexamies/chinesenotes-go@latest
+```
+
 Run the app
 
 ```shell
-go run github.com/alexamies/chinesenotes-go
+chinesenotes-go
 ```
 
 When you see the output 

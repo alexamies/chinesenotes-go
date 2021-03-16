@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -146,8 +147,8 @@ func TestDisplayHome(t *testing.T) {
 		},
   }
   for _, tc := range tests {
-  	url := "/"
-		r := httptest.NewRequest(http.MethodGet, url, nil)
+  	u := "/"
+		r := httptest.NewRequest(http.MethodGet, u, nil)
 		w := httptest.NewRecorder()
 		r.Header.Add("Accept", tc.acceptHeader)
 		displayHome(w, r)
@@ -193,8 +194,8 @@ func TestAdminHandler(t *testing.T) {
 		},
   }
   for _, tc := range tests {
-  	url := "/loggedin/admin"
-		r := httptest.NewRequest(http.MethodGet, url, nil)
+  	u := "/loggedin/admin"
+		r := httptest.NewRequest(http.MethodGet, u, nil)
 		w := httptest.NewRecorder()
   	adminHandler(w, r)
 		result := w.Body.String()
@@ -217,8 +218,8 @@ func TestChangePasswordHandler(t *testing.T) {
 		},
   }
   for _, tc := range tests {
-  	url := "/loggedin/submitcpwd"
-		r := httptest.NewRequest(http.MethodGet, url, nil)
+  	u := "/loggedin/submitcpwd"
+		r := httptest.NewRequest(http.MethodGet, u, nil)
 		w := httptest.NewRecorder()
   	changePasswordHandler(w, r)
 		result := w.Body.String()
@@ -241,8 +242,7 @@ func TestChangePasswordFormHandler(t *testing.T) {
 		},
   }
   for _, tc := range tests {
-  	url := "/loggedin/changepassword"
-		r := httptest.NewRequest(http.MethodGet, url, nil)
+		r := httptest.NewRequest(http.MethodGet, "/loggedin/changepassword", nil)
 		w := httptest.NewRecorder()
   	changePasswordFormHandler(w, r)
 		result := w.Body.String()
@@ -266,8 +266,7 @@ func TestCustom404(t *testing.T) {
 		},
   }
   for _, tc := range tests {
-  	url := "/xyz"
-		r := httptest.NewRequest(http.MethodGet, url, nil)
+		r := httptest.NewRequest(http.MethodGet, "/xyz", nil)
 		w := httptest.NewRecorder()
   	custom404(w, r, "/xyz")
 		result := w.Body.String()
@@ -288,7 +287,7 @@ func TestDisplayPage(t *testing.T) {
 	}
 	type test struct {
 		name string
-		url string
+		u string
 		template string
 		content interface{}
 		expectContains string
@@ -296,7 +295,7 @@ func TestDisplayPage(t *testing.T) {
   tests := []test{
 		{
 			name: "Translation memory query results shows the query",
-			url: "/findtm",
+			u: "/findtm",
 			template: "findtm.html",
 			content: tMContent,
 			expectContains: query,
@@ -317,18 +316,18 @@ func TestDisplayPage(t *testing.T) {
 func TestEnforceValidSession(t *testing.T) {
 	type test struct {
 		name string
-		url string
+		u string
 		expectContains string
   }
   tests := []test{
 		{
 			name: "Find something",
-			url: "/find/",
+			u: "/find/",
 			expectContains: "Not authorized",
 		},
   }
   for _, tc := range tests {
-		r := httptest.NewRequest(http.MethodGet, tc.url, nil)
+		r := httptest.NewRequest(http.MethodGet, tc.u, nil)
 		w := httptest.NewRecorder()
 		enforceValidSession(w, r)
 		result := w.Body.String()
@@ -366,7 +365,7 @@ func TestFindDocs(t *testing.T) {
 	}
 	type test struct {
 		name string
-		url string
+		u string
 		acceptHeader string
 		query map[string]string
 		docs []find.Document
@@ -376,7 +375,7 @@ func TestFindDocs(t *testing.T) {
   tests := []test{
 		{
 			name: "No query string",
-			url: "/find/",
+			u: "/find/",
 			acceptHeader: "text/html",
 			query: map[string]string{},
 			docs: []find.Document{},
@@ -385,7 +384,7 @@ func TestFindDocs(t *testing.T) {
 		},
 		{
 			name: "Reflect original query",
-			url: "/find/",
+			u: "/find/",
 			acceptHeader: "text/html",
 			query: map[string]string{"query": "蓮花寺"},
 			docs: []find.Document{},
@@ -394,7 +393,7 @@ func TestFindDocs(t *testing.T) {
 		},
 		{
 			name: "Return HTML",
-			url: "/find/",
+			u: "/find/",
 			acceptHeader: "text/html",
 			query: map[string]string{"query": "蓮花寺"},
 			docs: []find.Document{},
@@ -403,7 +402,7 @@ func TestFindDocs(t *testing.T) {
 		},
 		{
 			name: "Return JSON",
-			url: "/find/",
+			u: "/find/",
 			acceptHeader: "application/json",
 			query: map[string]string{"query": "蓮花寺"},
 			docs: []find.Document{},
@@ -412,7 +411,7 @@ func TestFindDocs(t *testing.T) {
 		},
 		{
 			name: "Search for title, no match",
-			url: "/find/",
+			u: "/find/",
 			acceptHeader: "text/html",
 			query: map[string]string{"query": "蓮花寺", "title": "true"},
 			docs: []find.Document{},
@@ -421,7 +420,7 @@ func TestFindDocs(t *testing.T) {
 		},
 		{
 			name: "Search for title, one match",
-			url: "/find/",
+			u: "/find/",
 			acceptHeader: "text/html",
 			query: map[string]string{"query": "蓮花寺", "title": "true"},
 			docs: []find.Document{d},
@@ -430,18 +429,18 @@ func TestFindDocs(t *testing.T) {
 		},
   }
   for _, tc := range tests {
-  	url := tc.url
+  	u := tc.u
   	if len(tc.query) > 0 {
-  		url += "?"
+  		u += "?"
   		for k, v := range tc.query {
-  			url += fmt.Sprintf("%s=%s&", k, v)
+  			u += fmt.Sprintf("%s=%s&", k, v)
   		}
   	}
 		docTitleFinder = mockDocTitleFinder{
 			Query: tc.query["query"],
 			Documents: tc.docs,
 		}
-		r := httptest.NewRequest(http.MethodGet, url, nil)
+		r := httptest.NewRequest(http.MethodGet, u, nil)
 		r.Header.Add("Accept", tc.acceptHeader)
 		w := httptest.NewRecorder()
 		findDocs(w, r, tc.fullText)
@@ -528,7 +527,7 @@ func TestFindFullText(t *testing.T) {
 	templates = newTemplateMap(webConfig)
 	type test struct {
 		name string
-		url string
+		u string
 		query string
 		documents []find.Document
 		acceptHeader string
@@ -541,7 +540,7 @@ func TestFindFullText(t *testing.T) {
   tests := []test{
 		{
 			name: "Return HTML",
-			url: "/findadvanced/",
+			u: "/findadvanced/",
 			query: "",
 			documents: []find.Document{},
 			acceptHeader: `text/html`,
@@ -549,7 +548,7 @@ func TestFindFullText(t *testing.T) {
 		},
 		{
 			name: "Return JSON",
-			url: "/findadvanced/",
+			u: "/findadvanced/",
 			query: "佛牙寺",
 			documents: []find.Document{},
 			acceptHeader: `application/json`,
@@ -557,7 +556,7 @@ func TestFindFullText(t *testing.T) {
 		},
 		{
 			name: "Single result",
-			url: "/findadvanced/",
+			u: "/findadvanced/",
 			query: "佛牙寺",
 			documents: []find.Document{doc},
 			acceptHeader: `text/html`,
@@ -565,11 +564,11 @@ func TestFindFullText(t *testing.T) {
 		},
   }
   for _, tc := range tests {
-  	url := tc.url + "?query=" + tc.query
+  	u := tc.u + "?query=" + tc.query
 		df = mockDocFinder{
 			documents: tc.documents,
 		}
-		r := httptest.NewRequest(http.MethodGet, url, nil)
+		r := httptest.NewRequest(http.MethodGet, u, nil)
 		r.Header.Add("Accept", tc.acceptHeader)
 		w := httptest.NewRecorder()
 		findFullText(w, r)
@@ -598,8 +597,8 @@ func TestFindHandler(t *testing.T) {
 		},
   }
   for _, tc := range tests {
-  	url := "/find/?query=" + tc.query
-		r := httptest.NewRequest(http.MethodGet, url, nil)
+  	u := "/find/?query=" + tc.query
+		r := httptest.NewRequest(http.MethodGet, u, nil)
 		w := httptest.NewRecorder()
 		findHandler(w, r)
 		result := w.Body.String()
@@ -625,8 +624,8 @@ func TestFindSubstring(t *testing.T) {
 		},
   }
   for _, tc := range tests {
-  	url := "/findsubstring?query=" + tc.query
-		r := httptest.NewRequest(http.MethodGet, url, nil)
+  	u := "/findsubstring?query=" + tc.query
+		r := httptest.NewRequest(http.MethodGet, u, nil)
 		w := httptest.NewRecorder()
 		findSubstring(w, r)
 		result := w.Body.String()
@@ -667,8 +666,8 @@ func TestHealthcheck(t *testing.T) {
 		},
 	}
   for _, tc := range tests {
-  	const url = "/healthcheck"
-		r := httptest.NewRequest(http.MethodGet, url, nil)
+  	const u = "/healthcheck"
+		r := httptest.NewRequest(http.MethodGet, u, nil)
 		w := httptest.NewRecorder()
 		healthcheck(w, r)
 		result := w.Body.String()
@@ -694,8 +693,8 @@ func TestLibrary(t *testing.T) {
 		},
 	}
   for _, tc := range tests {
-  	const url = "/library"
-		r := httptest.NewRequest(http.MethodGet, url, nil)
+  	const u = "/library"
+		r := httptest.NewRequest(http.MethodGet, u, nil)
 		w := httptest.NewRecorder()
 		library(w, r)
 		result := w.Body.String()
@@ -720,8 +719,8 @@ func TestLoginFormHandler(t *testing.T) {
 		},
 	}
   for _, tc := range tests {
-  	const url = "/loggedin/login_form"
-		r := httptest.NewRequest(http.MethodGet, url, nil)
+  	const u = "/loggedin/login_form"
+		r := httptest.NewRequest(http.MethodGet, u, nil)
 		w := httptest.NewRecorder()
 		loginFormHandler(w, r)
 		result := w.Body.String()
@@ -747,8 +746,8 @@ func TestLoginHandler(t *testing.T) {
 		},
 	}
   for _, tc := range tests {
-  	const url = "/loggedin/login"
-		r := httptest.NewRequest(http.MethodPost, url, nil)
+  	const u = "/loggedin/login"
+		r := httptest.NewRequest(http.MethodPost, u, nil)
 		w := httptest.NewRecorder()
 		loginHandler(w, r)
 		result := w.Body.String()
@@ -796,6 +795,32 @@ func TestShowQueryResults(t *testing.T) {
  		}
   }
   templates = nil
+}
+
+func TestGetStaticFileName(t *testing.T) {
+	tests := []struct {
+		name string
+		u string
+		expect string
+  }{
+		{
+			name: "empty query",
+			u: "app.js",
+			expect: "./web/app.js",
+		},
+	}
+  for _, tc := range tests {
+		u, err := url.Parse(tc.u)
+		if err != nil {
+			t.Fatalf("TestGetStaticFileName %s: cannot parse %s, error: %v", tc.name,
+					tc.u, err)
+		}
+  	got := getStaticFileName(*u)
+  	if got != tc.expect {
+			t.Errorf("TestGetStaticFileName %s: got %q, want %q: ", tc.name, got,
+					tc.expect)
+  	}
+  }
 }
 
 type mocTMSearcher struct{
@@ -859,8 +884,8 @@ func TestTranslationMemory(t *testing.T) {
   }
   for _, tc := range tests {
 		tmSearcher = mocTMSearcher{tc.words}
-  	url := "/findtm?query=" + tc.query
-		r := httptest.NewRequest(http.MethodGet, url, nil)
+  	u := "/findtm?query=" + tc.query
+		r := httptest.NewRequest(http.MethodGet, u, nil)
 		w := httptest.NewRecorder()
 		translationMemory(w, r)
 		result := w.Body.String()
@@ -959,9 +984,9 @@ func TestWordDetail(t *testing.T) {
 		},
 	}
   for _, tc := range tests {
-  	url := fmt.Sprintf("/words/%d.html", tc.hwId)
+  	u := fmt.Sprintf("/words/%d.html", tc.hwId)
   	dict = dictionary.NewDictionary(tc.wdict)
-		r := httptest.NewRequest(http.MethodGet, url, nil)
+		r := httptest.NewRequest(http.MethodGet, u, nil)
 		w := httptest.NewRecorder()
 		wordDetail(w, r)
 		result := w.Body.String()
