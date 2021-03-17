@@ -62,6 +62,7 @@ func (p NotesProcessor) process(notes string) string {
 		if re.MatchString(notes) {
 			s = re.ReplaceAllString(s, p.replaces[i])
 		}
+		log.Printf("notes.process, %d s: %s, s: %s ", i, s, p.replaces[i])
 	}
 	return s
 }
@@ -71,11 +72,11 @@ func (p NotesProcessor) Process(w dicttypes.Word) dicttypes.Word {
 	senses := []dicttypes.WordSense{}
 	for _, ws := range w.Senses {
 		n := p.process(ws.Notes)
+		log.Printf("notes.Process, ws.Notes: %s, n: %s ", ws.Notes, n)
 		if n == ws.Notes {
 			senses = append(senses, ws)
 			continue
 		}
-		log.Printf("notes.Process: n: %s ", n)
 		s := dicttypes.WordSense{
 			Id: ws.Id,
 			HeadwordId: ws.HeadwordId,

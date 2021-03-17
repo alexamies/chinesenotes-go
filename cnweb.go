@@ -1227,6 +1227,7 @@ func wordDetail(w http.ResponseWriter, r *http.Request) {
 			},
 		}
 		displayPage(w, "word_detail.html", content)
+		return
 	}
 
 	msg := fmt.Sprintf("Not found: %d", hwId)

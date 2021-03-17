@@ -102,7 +102,7 @@ func TestProcess(t *testing.T) {
 	ws := dicttypes.WordSense{
 		Id:          1,
 		Simplified:  s,
-		Notes:      "FGDB entry 15",
+		Notes:      "FGDB entry 9412",
 	}
 	hw := dicttypes.Word{
 		HeadwordId:	1,
@@ -121,7 +121,7 @@ func TestProcess(t *testing.T) {
 			match: `FGDB entry ([0-9]*)`, 
 			replace: `<a href="/web/${1}.html">FGDB entry</a>`,  
 			word: hw, 
-			expect: `<a href="/web/15.html">FGDB entry</a>`, 
+			expect: `<a href="/web/9412.html">FGDB entry</a>`, 
 		},
 	}
 	for _, tc := range testCases {
