@@ -70,8 +70,31 @@ func (p NotesProcessor) process(notes string) string {
 func (p NotesProcessor) Process(w dicttypes.Word) dicttypes.Word {
 	senses := []dicttypes.WordSense{}
 	for _, ws := range w.Senses {
-		ws.Notes = p.process(ws.Notes)
-		senses = append(senses, ws)
+		n := p.process(ws.Notes)
+		if n == ws.Notes {
+			senses = append(senses, ws)
+			continue
+		}
+		log.Printf("notes.Process: n: %s ", n)
+		s := dicttypes.WordSense{
+			Id: ws.Id,
+			HeadwordId: ws.HeadwordId,
+			Simplified: ws.Simplified,
+			Traditional: ws.Traditional,
+			Pinyin: ws.Pinyin,
+			English: ws.English,
+			Grammar: ws.Grammar,
+			Concept: ws.Concept,
+			ConceptCN: ws.ConceptCN,
+			Domain: ws.Domain,
+			DomainCN: ws.DomainCN,
+			Subdomain: ws.Subdomain,
+			SubdomainCN: ws.SubdomainCN,
+			Image: ws.Image,
+			MP3: ws.MP3,
+			Notes: n,
+		}
+		senses = append(senses, s)
 	}
 	return dicttypes.Word{
 		Simplified: w.Simplified,
