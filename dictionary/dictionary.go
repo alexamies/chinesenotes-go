@@ -217,6 +217,7 @@ func LoadDict(ctx context.Context, database *sql.DB,
 			}
 		}
 	}
-	log.Printf("LoadDict loading time: %d", time.Since(start))
+	log.Printf("LoadDict loaded from database in %d milliseconds",
+			time.Since(start).Milliseconds())
 	return wdict, nil
 }
