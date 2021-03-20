@@ -474,6 +474,23 @@ func findDocs(response http.ResponseWriter,
 			templateFile = "full_text_search.html"
 			r := highlightMatches(*results)
 			results = &r
+
+		// Transform notes field with regular expressions
+		} else if len(results.Terms) > 0 {
+			match := webConfig.GetVar("NotesReMatch")
+			replace := webConfig.GetVar("NotesReplace")
+			processor := dictionary.NewNotesProcessor(match, replace)
+			terms := []find.TextSegment{}
+			for _, t := range results.Terms {
+				word := processor.Process(t.DictEntry)
+				term := find.TextSegment{
+					QueryText: t.QueryText,
+					DictEntry: word,
+					Senses: t.Senses,
+				}
+				terms = append(terms, term)
+			}
+			results.Terms = terms
 		}
 		err = showQueryResults(response, *results, templateFile)
 		if err != nil {
