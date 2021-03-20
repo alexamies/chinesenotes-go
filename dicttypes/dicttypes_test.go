@@ -178,11 +178,6 @@ func TestNormalizePinyin(t *testing.T) {
 
 // Test hasNotesLabel
 func TestHasNotesLabel(t *testing.T) {
-	type test struct {
-		name string
-		input Word
-		expect bool
-  }
 	ws1 := WordSense{
 		Notes: "Sanskrit equivalent: prajñā",
 	}
@@ -203,20 +198,45 @@ func TestHasNotesLabel(t *testing.T) {
 		Pinyin: "xīn yǔ dào yī",
 		Senses: []WordSense{ws2},
 	}
-  tests := []test{
+	ws3 := WordSense{
+		Notes: "FGDB entry 27920",
+	}
+	ws4 := WordSense{
+		Notes: "Some other source",
+	}
+	w3 := Word{
+		HeadwordId: 3,
+		Simplified: "白象",
+		Pinyin: "báixiàng",
+		Senses: []WordSense{ws3, ws4},
+	}
+  tests := []struct {
+		name string
+		label string
+		input Word
+		expect bool
+  }{
 		{
 			name: "Has Sanskrit",
+			label: "Sanskrit equivalent:",
 			input: w1,
 			expect: true,
 		},
 		{
 			name: "Has nothing interesting",
+			label: "Sanskrit equivalent:",
 			input: w2,
 			expect: false,
 		},
+		{
+			name: "Multiple senses",
+			label: "FGDB entry",
+			input: w3,
+			expect: true,
+		},
 	}
   for _, tc := range tests {
-		got := tc.input.HasNotesLabel("Sanskrit equivalent:")
+		got := tc.input.HasNotesLabel(tc.label)
 		if got != tc.expect {
 			t.Errorf("TestHasNotesLabel %s: got %t but expected %t ", tc.name,
 				got, tc.expect)
