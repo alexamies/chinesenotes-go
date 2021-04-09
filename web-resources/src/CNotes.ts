@@ -69,7 +69,12 @@ export class CNotes {
   public init() {
     console.log("CNotes.init");
     this.initDialog();
-    this.load();
+    const partsTitle = document.querySelector("#partsTitle");
+    // Only download the dictionary if we need to split the term into parts
+    if (partsTitle) {
+      this.load();
+    }
+
   }
 
   /**
