@@ -40,11 +40,11 @@ func (f docTitleFinder) FindDocuments(ctx context.Context, query string) (*Query
 	}
 	if i, ok := f.infoCache[query]; ok {
 		d := Document{
-			GlossFile: i.GlossFile,
-			Title: i.Title,
-			CollectionFile: i.CollectionFile,
+			GlossFile:       i.GlossFile,
+			Title:           i.Title,
+			CollectionFile:  i.CollectionFile,
 			CollectionTitle: i.CollectionTitle,
-			TitleCNMatch: true,
+			TitleCNMatch:    true,
 		}
 		results.NumDocuments = 1
 		results.Documents = []Document{d}
@@ -67,8 +67,8 @@ func LoadDocInfo(r io.Reader) (map[string]DocInfo, map[string]DocInfo) {
 	reader.FieldsPerRecord = 8
 	reader.Comma = rune('\t')
 	reader.Comment = rune('#')
-	dInfoCN := make(map[string]DocInfo, 0)
-	dInfoGlossFN := make(map[string]DocInfo, 0)
+	dInfoCN := make(map[string]DocInfo)
+	dInfoGlossFN := make(map[string]DocInfo)
 	records, err := reader.ReadAll()
 	if err != nil {
 		log.Printf("loadDocInfo, error reading doc titles: %v", err)
@@ -79,12 +79,12 @@ func LoadDocInfo(r io.Reader) (map[string]DocInfo, map[string]DocInfo) {
 		glossFN := r[1]
 		titleCN := r[3]
 		d := DocInfo{
-			CorpusFile: r[0],
-			GlossFile: r[1],
-			Title: r[2],
-			TitleCN: r[3],
-			TitleEN: r[4],
-			CollectionFile: r[5],
+			CorpusFile:      r[0],
+			GlossFile:       r[1],
+			Title:           r[2],
+			TitleCN:         r[3],
+			TitleEN:         r[4],
+			CollectionFile:  r[5],
 			CollectionTitle: r[6],
 		}
 		dInfoCN[titleCN] = d

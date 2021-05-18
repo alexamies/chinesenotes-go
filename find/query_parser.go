@@ -25,34 +25,30 @@ type QueryParser interface {
 	ParseQuery(query string) []TextSegment
 }
 
-type DictQueryParser struct{Tokenizer tokenizer.DictTokenizer}
+type DictQueryParser struct{ Tokenizer tokenizer.DictTokenizer }
 
 // A text segment contains the QueryText searched for and possibly a matching
-// dictionary entry. There will only be matching dictionary entries for 
+// dictionary entry. There will only be matching dictionary entries for
 // Chinese words in the dictionary. Non-Chinese text, punctuation, and unknown
 // Chinese words will have nil DictEntry values and matching values will be
 // included in the Senses field.
-type TextSegment struct{
+type TextSegment struct {
 	QueryText string
 	DictEntry dicttypes.Word
-	Senses []dicttypes.WordSense
+	Senses    []dicttypes.WordSense
 }
 
 // Creates a QueryParser
 func MakeQueryParser(dict map[string]dicttypes.Word) QueryParser {
-	tokenizer := tokenizer.DictTokenizer{dict}
+	tokenizer := tokenizer.DictTokenizer{
+		WDict: dict,
+	}
 	return DictQueryParser{tokenizer}
 }
 
 // The method for parsing the query text in this function is based on dictionary
 // lookups
 func (parser DictQueryParser) ParseQuery(query string) []TextSegment {
-	terms := []TextSegment{}
-	if query != "" {
-		seg := TextSegment{}
-		seg.QueryText = query
-		terms = append(terms, seg)
-	}
 	return parser.get_chunks(query)
 }
 
@@ -72,9 +68,7 @@ func (parser DictQueryParser) get_chunks(text string) []TextSegment {
 			cjk += string(character)
 		} else if cjk != "" {
 			segments := parser.parse_chinese(cjk)
-			for _, s := range segments {
-				chunks = append(chunks, s)
-			}
+			chunks = append(chunks, segments...)
 			cjk = ""
 			noncjk += string(character)
 		} else {
@@ -83,9 +77,7 @@ func (parser DictQueryParser) get_chunks(text string) []TextSegment {
 	}
 	if cjk != "" {
 		segments := parser.parse_chinese(cjk)
-		for _, s := range segments {
-			chunks = append(chunks, s)
-		}
+		chunks = append(chunks, segments...)
 	}
 	if noncjk != "" {
 		seg := TextSegment{}

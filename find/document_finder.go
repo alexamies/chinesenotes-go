@@ -14,14 +14,15 @@
 package find
 
 import (
-	"database/sql"
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"sort"
 	"strings"
+
 	_ "github.com/go-sql-driver/mysql"
-	
+
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dictionary"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
@@ -29,15 +30,14 @@ import (
 )
 
 const (
-	maxReturned = 50
+	maxReturned   = 50
 	minSimilarity = -4.75
-	avDocLen = 4497
-	intercept = -4.75 // From logistic regression
+	avDocLen      = 4497
+	intercept     = -4.75 // From logistic regression
 )
 
 //  From logistic regression
 var WEIGHT = []float64{0.080, 2.327, 3.040} // [BM25 words, BM25 bigrams, bit vector]
-
 
 // DocFinder finds documents.
 type DocFinder interface {
@@ -51,24 +51,23 @@ type DocFinder interface {
 
 // databaseDocFinder holds stateful items needed for text search in database.
 type databaseDocFinder struct {
-	initialized bool
-	countColStmt *sql.Stmt
-	database *sql.DB
-	colMap map[string]string
-	docMap map[string]DocInfo
-	docFileMap map[string]string
-	docListStmt *sql.Stmt
-	findAllTitlesStmt, findAllColTitlesStmt  *sql.Stmt
-	findColStmt, findDocStmt, findDocInColStmt, findWordStmt  *sql.Stmt
-	simBM251Stmt, simBM252Stmt, simBM253Stmt, simBM254Stmt *sql.Stmt
-	simBM255Stmt, simBM256Stmt *sql.Stmt
+	initialized                                                        bool
+	countColStmt                                                       *sql.Stmt
+	database                                                           *sql.DB
+	colMap                                                             map[string]string
+	docMap                                                             map[string]DocInfo
+	docListStmt                                                        *sql.Stmt
+	findAllTitlesStmt, findAllColTitlesStmt                            *sql.Stmt
+	findColStmt, findDocStmt, findDocInColStmt, findWordStmt           *sql.Stmt
+	simBM251Stmt, simBM252Stmt, simBM253Stmt, simBM254Stmt             *sql.Stmt
+	simBM255Stmt, simBM256Stmt                                         *sql.Stmt
 	simBM25Col1Stmt, simBM25Col2Stmt, simBM25Col3Stmt, simBM25Col4Stmt *sql.Stmt
-	simBM25Col5Stmt, simBM25Col6Stmt *sql.Stmt
-	simBigram1Stmt, simBigram2Stmt, simBigram3Stmt, simBigram4Stmt *sql.Stmt
-	simBigram5Stmt *sql.Stmt
-	simBgCol1Stmt, simBgCol2Stmt, simBgCol3Stmt, simBgCol4Stmt *sql.Stmt
-	simBgCol5Stmt *sql.Stmt
-  avdl int // The average document length
+	simBM25Col5Stmt, simBM25Col6Stmt                                   *sql.Stmt
+	simBigram1Stmt, simBigram2Stmt, simBigram3Stmt, simBigram4Stmt     *sql.Stmt
+	simBigram5Stmt                                                     *sql.Stmt
+	simBgCol1Stmt, simBgCol2Stmt, simBgCol3Stmt, simBgCol4Stmt         *sql.Stmt
+	simBgCol5Stmt                                                      *sql.Stmt
+	avdl                                                               int // The average document length
 }
 
 type Collection struct {
@@ -77,29 +76,29 @@ type Collection struct {
 
 type Document struct {
 	GlossFile, Title, CollectionFile, CollectionTitle, ContainsWords string
-	ContainsBigrams string
-	SimTitle, SimWords, SimBigram, SimBitVector, Similarity float64
-	ContainsTerms []string
-	MatchDetails fulltext.MatchingText
-	TitleCNMatch bool
+	ContainsBigrams                                                  string
+	SimTitle, SimWords, SimBigram, SimBitVector, Similarity          float64
+	ContainsTerms                                                    []string
+	MatchDetails                                                     fulltext.MatchingText
+	TitleCNMatch                                                     bool
 }
 
 type QueryResults struct {
-	Query, CollectionFile string
+	Query, CollectionFile        string
 	NumCollections, NumDocuments int
-	Collections []Collection
-	Documents []Document
-	Terms []TextSegment
-	SimilarTerms []TextSegment
+	Collections                  []Collection
+	Documents                    []Document
+	Terms                        []TextSegment
+	SimilarTerms                 []TextSegment
 }
 
 // Create and initialize an implementation of the DocFinder interface
 func NewDocFinder(ctx context.Context,
-		database *sql.DB,
-		docMap map[string]DocInfo) DocFinder {
-	df := databaseDocFinder {
-		database: database,
-		docMap: docMap,
+	database *sql.DB,
+	docMap map[string]DocInfo) DocFinder {
+	df := databaseDocFinder{
+		database:    database,
+		docMap:      docMap,
 		initialized: false,
 	}
 	if database != nil {
@@ -120,13 +119,13 @@ func (df databaseDocFinder) Inititialized() bool {
 
 // For printing out retrieved document metadata
 func (doc Document) String() string {
-    return fmt.Sprintf("%s, %s, SimTitle %f, SimWords %f, SimBigram %f, " +
-    	"SimBitVector %f, Similarity %f, ContainsWords %s, ContainsBigrams %s" +
-    	", MatchDetails %v", 
-    	doc.GlossFile, doc.CollectionFile, doc.SimTitle, doc.SimWords,
-    	doc.SimBigram, doc.SimBitVector, doc.Similarity, doc.ContainsWords,
-    	doc.ContainsBigrams, doc.MatchDetails)
- }
+	return fmt.Sprintf("%s, %s, SimTitle %f, SimWords %f, SimBigram %f, "+
+		"SimBitVector %f, Similarity %f, ContainsWords %s, ContainsBigrams %s"+
+		", MatchDetails %v",
+		doc.GlossFile, doc.CollectionFile, doc.SimTitle, doc.SimWords,
+		doc.SimBigram, doc.SimBitVector, doc.Similarity, doc.ContainsWords,
+		doc.ContainsBigrams, doc.MatchDetails)
+}
 
 // Cache the details of all collecitons by target file name
 func (df *databaseDocFinder) cacheColDetails(ctx context.Context) map[string]string {
@@ -146,12 +145,12 @@ func (df *databaseDocFinder) cacheColDetails(ctx context.Context) map[string]str
 		results.Scan(&gloss_file, &title)
 		df.colMap[gloss_file] = title
 	}
-	log.Printf("cacheColDetails, len(colMap) = %d\n", len(df.colMap))
+	log.Printf("cacheColDetails, len(colMap) = %d", len(df.colMap))
 	return df.colMap
 }
 
 func (df databaseDocFinder) GetColMap() map[string]string {
-	return df.colMap 
+	return df.colMap
 }
 
 // Compute the combined similarity based on logistic regression of document
@@ -161,31 +160,31 @@ func combineByWeight(doc Document, maxSimWords, maxSimBigram float64) Document {
 	similarity := minSimilarity
 	if maxSimWords != 0.0 && maxSimBigram != 0.0 {
 		similarity = intercept +
-			WEIGHT[0] * doc.SimWords / maxSimWords +
-			WEIGHT[1] * doc.SimBigram / maxSimBigram +
-			WEIGHT[2] * doc.SimBitVector
+			WEIGHT[0]*doc.SimWords/maxSimWords +
+			WEIGHT[1]*doc.SimBigram/maxSimBigram +
+			WEIGHT[2]*doc.SimBitVector
 	}
 	simDoc := Document{
-		GlossFile: doc.GlossFile,
-		Title: doc.Title,
-		CollectionFile: doc.CollectionFile,
+		GlossFile:       doc.GlossFile,
+		Title:           doc.Title,
+		CollectionFile:  doc.CollectionFile,
 		CollectionTitle: doc.CollectionTitle,
-		SimTitle: doc.SimTitle,
-		SimWords: doc.SimWords,
-		SimBigram: doc.SimBigram,
-		SimBitVector: doc.SimBitVector,
-		Similarity: similarity,
-		ContainsWords: doc.ContainsWords,
+		SimTitle:        doc.SimTitle,
+		SimWords:        doc.SimWords,
+		SimBigram:       doc.SimBigram,
+		SimBitVector:    doc.SimBitVector,
+		Similarity:      similarity,
+		ContainsWords:   doc.ContainsWords,
 		ContainsBigrams: doc.ContainsBigrams,
-		ContainsTerms: doc.ContainsTerms,
-		MatchDetails: doc.MatchDetails,
+		ContainsTerms:   doc.ContainsTerms,
+		MatchDetails:    doc.MatchDetails,
 	}
 	return simDoc
 }
 
 func (df databaseDocFinder) countCollections(ctx context.Context, query string) (int, error) {
 	var count int
-	results, err := df.countColStmt.QueryContext(ctx, "%" + query + "%")
+	results, err := df.countColStmt.QueryContext(ctx, "%"+query+"%")
 	if err != nil {
 		return 0, fmt.Errorf("countCollections: query %s, error: %v", query, err)
 	}
@@ -208,19 +207,19 @@ func (df databaseDocFinder) findBodyBM25(ctx context.Context, terms []string) ([
 	} else if len(terms) == 3 {
 		results, err = df.simBM253Stmt.QueryContext(ctx, df.avdl, terms[0], terms[1],
 			terms[2])
-	}  else if len(terms) == 4 {
+	} else if len(terms) == 4 {
 		results, err = df.simBM254Stmt.QueryContext(ctx, df.avdl, terms[0], terms[1],
 			terms[2], terms[3])
-	}  else if len(terms) == 5 {
+	} else if len(terms) == 5 {
 		results, err = df.simBM255Stmt.QueryContext(ctx, df.avdl, terms[0], terms[1],
 			terms[2], terms[3], terms[4])
-	}  else {
+	} else {
 		// Ignore arguments beyond the first six
 		results, err = df.simBM256Stmt.QueryContext(ctx, df.avdl, terms[0], terms[1],
 			terms[2], terms[3], terms[4], terms[5])
 	}
 	if err != nil {
-		
+
 		return nil, fmt.Errorf("findBodyBM25, Error for query %v: %v", terms, err)
 	}
 	simSlice := []Document{}
@@ -238,7 +237,7 @@ func (df databaseDocFinder) findBodyBM25(ctx context.Context, terms []string) ([
 // specific collection.
 //  Param: terms - The decomposed query string with 1 < num elements < 7
 func (df databaseDocFinder) findBodyBM25InCol(ctx context.Context, terms []string,
-		col_gloss_file string) ([]Document, error) {
+	col_gloss_file string) ([]Document, error) {
 	log.Println("findBodyBM25InCol, terms = ", terms)
 	var results *sql.Rows
 	var err error
@@ -251,13 +250,13 @@ func (df databaseDocFinder) findBodyBM25InCol(ctx context.Context, terms []strin
 	} else if len(terms) == 3 {
 		results, err = df.simBM25Col3Stmt.QueryContext(ctx, df.avdl, terms[0],
 			terms[1], terms[2], col_gloss_file)
-	}  else if len(terms) == 4 {
+	} else if len(terms) == 4 {
 		results, err = df.simBM25Col4Stmt.QueryContext(ctx, df.avdl, terms[0],
 			terms[1], terms[2], terms[3], col_gloss_file)
-	}  else if len(terms) == 5 {
+	} else if len(terms) == 5 {
 		results, err = df.simBM25Col5Stmt.QueryContext(ctx, df.avdl, terms[0],
 			terms[1], terms[2], terms[3], terms[4], col_gloss_file)
-	}  else {
+	} else {
 		// Ignore arguments beyond the first six
 		results, err = df.simBM25Col6Stmt.QueryContext(ctx, df.avdl, terms[0],
 			terms[1], terms[2], terms[3], terms[4], terms[5],
@@ -294,20 +293,20 @@ func (df databaseDocFinder) findBodyBigram(ctx context.Context, terms []string) 
 		bigram1 := terms[0] + terms[1]
 		bigram2 := terms[1] + terms[2]
 		results, err = df.simBigram2Stmt.QueryContext(ctx, df.avdl, bigram1, bigram2)
-	}  else if len(terms) == 4 {
+	} else if len(terms) == 4 {
 		bigram1 := terms[0] + terms[1]
 		bigram2 := terms[1] + terms[2]
 		bigram3 := terms[2] + terms[3]
 		results, err = df.simBigram3Stmt.QueryContext(ctx, df.avdl, bigram1, bigram2,
 			bigram3)
-	}  else if len(terms) == 5 {
+	} else if len(terms) == 5 {
 		bigram1 := terms[0] + terms[1]
 		bigram2 := terms[1] + terms[2]
 		bigram3 := terms[2] + terms[3]
 		bigram4 := terms[3] + terms[4]
 		results, err = df.simBigram4Stmt.QueryContext(ctx, df.avdl, bigram1, bigram2,
 			bigram3, bigram4)
-	}  else {
+	} else {
 		// Ignore arguments beyond the first six
 		bigram1 := terms[0] + terms[1]
 		bigram2 := terms[1] + terms[2]
@@ -335,7 +334,7 @@ func (df databaseDocFinder) findBodyBigram(ctx context.Context, terms []string) 
 // model within a specific collection
 //  Param: terms - The decomposed query string with 1 < num elements < 7
 func (df databaseDocFinder) findBodyBgInCol(ctx context.Context, terms []string,
-		col_gloss_file string) ([]Document, error) {
+	col_gloss_file string) ([]Document, error) {
 	log.Println("findBodyBgInCol, terms = ", terms)
 	var results *sql.Rows
 	var err error
@@ -356,7 +355,7 @@ func (df databaseDocFinder) findBodyBgInCol(ctx context.Context, terms []string,
 		bigram2 := terms[1] + terms[2]
 		results, err = df.simBgCol2Stmt.QueryContext(ctx, df.avdl, bigram1, bigram2,
 			col_gloss_file)
-	}  else if len(terms) == 4 {
+	} else if len(terms) == 4 {
 		if df.simBgCol3Stmt == nil {
 			return []Document{}, nil
 		}
@@ -365,14 +364,14 @@ func (df databaseDocFinder) findBodyBgInCol(ctx context.Context, terms []string,
 		bigram3 := terms[2] + terms[3]
 		results, err = df.simBgCol3Stmt.QueryContext(ctx, df.avdl, bigram1, bigram2,
 			bigram3, col_gloss_file)
-	}  else if len(terms) == 5 {
+	} else if len(terms) == 5 {
 		bigram1 := terms[0] + terms[1]
 		bigram2 := terms[1] + terms[2]
 		bigram3 := terms[2] + terms[3]
 		bigram4 := terms[3] + terms[4]
 		results, err = df.simBgCol4Stmt.QueryContext(ctx, df.avdl, bigram1, bigram2,
 			bigram3, bigram4, col_gloss_file)
-	}  else {
+	} else {
 		// Ignore arguments beyond the first six
 		bigram1 := terms[0] + terms[1]
 		bigram2 := terms[1] + terms[2]
@@ -398,7 +397,7 @@ func (df databaseDocFinder) findBodyBgInCol(ctx context.Context, terms []string,
 }
 
 func (df databaseDocFinder) findCollections(ctx context.Context, query string) []Collection {
-	results, err := df.findColStmt.QueryContext(ctx, "%" + query + "%")
+	results, err := df.findColStmt.QueryContext(ctx, "%"+query+"%")
 	if err != nil {
 		log.Printf("findCollections, Error for query %v: %v", query, err)
 		return nil
@@ -415,7 +414,7 @@ func (df databaseDocFinder) findCollections(ctx context.Context, query string) [
 
 // findDocsByTitle find documents based on a match in title
 func (df databaseDocFinder) findDocsByTitle(ctx context.Context, query string) ([]Document, error) {
-	results, err := df.findDocStmt.QueryContext(ctx, "%" + query + "%")
+	results, err := df.findDocStmt.QueryContext(ctx, "%"+query+"%")
 	if err != nil {
 		return nil, fmt.Errorf("findDocsByTitle, Error for query %v: %v", query, err)
 	}
@@ -434,8 +433,8 @@ func (df databaseDocFinder) findDocsByTitle(ctx context.Context, query string) (
 
 // findDocsByTitleInCol find documents based on a match in title within a specific collection
 func (df databaseDocFinder) findDocsByTitleInCol(ctx context.Context,
-		query, col_gloss_file string) ([]Document, error) {
-	results, err := df.findDocInColStmt.QueryContext(ctx, "%" + query + "%",
+	query, col_gloss_file string) ([]Document, error) {
+	results, err := df.findDocInColStmt.QueryContext(ctx, "%"+query+"%",
 		col_gloss_file)
 	if err != nil {
 		return nil, fmt.Errorf("findDocsByTitleInCol, Error for query %v: %v", query, err)
@@ -456,10 +455,10 @@ func (df databaseDocFinder) findDocsByTitleInCol(ctx context.Context,
 
 // findDocuments find documents by both title and contents, and merge the lists
 func (df databaseDocFinder) findDocuments(
-		ctx context.Context,
-		query string,
-		terms []TextSegment,
-		advanced bool) ([]Document, error) {
+	ctx context.Context,
+	query string,
+	terms []TextSegment,
+	advanced bool) ([]Document, error) {
 	log.Printf("findDocuments, enter: %s", query)
 	docs, err := df.findDocsByTitle(ctx, query)
 	if err != nil {
@@ -467,7 +466,7 @@ func (df databaseDocFinder) findDocuments(
 	}
 	log.Printf("findDocuments, by title len(docs): %s, %d", query, len(docs))
 	queryTerms := toQueryTerms(terms)
-	if (!advanced) {
+	if !advanced {
 		return docs, nil
 	}
 
@@ -483,7 +482,7 @@ func (df databaseDocFinder) findDocuments(
 	// If less than 2 terms then do not need to check bigrams
 	if len(terms) < 2 {
 		sortedDocs := toSortedDocList(simDocMap)
-		log.Printf("findDocuments, < 2 len(sortedDocs): %s, %d", query, 
+		log.Printf("findDocuments, < 2 len(sortedDocs): %s, %d", query,
 			len(sortedDocs))
 		relevantDocs := toRelevantDocList(df, sortedDocs, queryTerms)
 		return relevantDocs, nil
@@ -503,7 +502,7 @@ func (df databaseDocFinder) findDocuments(
 // findDocumentsInCol finds documents in a specific collection by both title and contents, and
 // merge the lists
 func (df databaseDocFinder) findDocumentsInCol(ctx context.Context, query string, terms []TextSegment,
-		col_gloss_file string) ([]Document, error) {
+	col_gloss_file string) ([]Document, error) {
 	log.Printf("findDocumentsInCol, col_gloss_file, terms: %s, %v",
 		col_gloss_file, terms)
 	docs, err := df.findDocsByTitleInCol(ctx, query, col_gloss_file)
@@ -530,7 +529,7 @@ func (df databaseDocFinder) findDocumentsInCol(ctx context.Context, query string
 		//log.Println("findDocumentsInCol, len(simBGDocs) ", len(simBGDocs))
 		if err != nil {
 			return nil, fmt.Errorf("findDocumentsInCol, findBodyBgInCol error: %v",
-					err)
+				err)
 		}
 		mergeDocList(df, simDocMap, simBGDocs)
 	}
@@ -538,28 +537,28 @@ func (df databaseDocFinder) findDocumentsInCol(ctx context.Context, query string
 	log.Printf("findDocumentsInCol, len(sortedDocs): %d", len(sortedDocs))
 	relevantDocs := toRelevantDocList(df, sortedDocs, queryTerms)
 	log.Printf("findDocumentsInCol, len(relevantDocs): %s, %d", query,
-			len(relevantDocs))
+		len(relevantDocs))
 	return relevantDocs, nil
 }
 
 // FindDocuments returns a QueryResults object containing matching collections, documents,
 // and dictionary words. For dictionary lookup, a text segment will
 // contains the QueryText searched for and possibly a matching
-// dictionary entry. There will only be matching dictionary entries for 
+// dictionary entry. There will only be matching dictionary entries for
 // Chinese words in the dictionary. If there are no Chinese words in the query
 // then the Chinese word senses matching the English or Pinyin will be included
 // in the TextSegment.Senses field.
 func (df databaseDocFinder) FindDocuments(ctx context.Context,
-		dictSearcher *dictionary.Searcher,
-		parser QueryParser, query string,
-		advanced bool) (*QueryResults, error) {
+	dictSearcher *dictionary.Searcher,
+	parser QueryParser, query string,
+	advanced bool) (*QueryResults, error) {
 	if query == "" {
 		return nil, fmt.Errorf("FindDocuments, Empty query string")
 	}
 	terms := parser.ParseQuery(query)
 	if (len(terms) == 1) && (terms[0].DictEntry.HeadwordId == 0) {
-	    log.Printf("FindDocuments,Query does not contain Chinese, look for " +
-	    	"English and Pinyin matches: %s", query)
+		log.Printf("FindDocuments,Query does not contain Chinese, look for "+
+			"English and Pinyin matches: %s", query)
 		senses, err := dictSearcher.FindWordsByEnglish(ctx, terms[0].QueryText)
 		if err != nil {
 			return nil, err
@@ -570,14 +569,14 @@ func (df databaseDocFinder) FindDocuments(ctx context.Context,
 
 	if df.database == nil {
 		return &QueryResults{
-			Query: query,
+			Query:          query,
 			CollectionFile: "",
 			NumCollections: 0,
-			NumDocuments: 0,
-			Collections: nil,
-			Documents: nil,
-			Terms: terms,
-			SimilarTerms: nil,
+			NumDocuments:   0,
+			Collections:    nil,
+			Documents:      nil,
+			Terms:          terms,
+			SimilarTerms:   nil,
 		}, nil
 	}
 
@@ -592,16 +591,16 @@ func (df databaseDocFinder) FindDocuments(ctx context.Context,
 	}
 	nDoc := len(documents)
 	log.Printf("FindDocuments, query %s, nTerms %d, collection %d, doc count %d: ",
-			query, len(terms), nCol, nDoc)
+		query, len(terms), nCol, nDoc)
 	return &QueryResults{
-		Query: query,
+		Query:          query,
 		CollectionFile: "",
-		NumCollections: nCol, 
-		NumDocuments: nDoc,
-		Collections: collections,
-		Documents: documents,
-		Terms: terms,
-		SimilarTerms: nil,
+		NumCollections: nCol,
+		NumDocuments:   nDoc,
+		Collections:    collections,
+		Documents:      documents,
+		Terms:          terms,
+		SimilarTerms:   nil,
 	}, nil
 }
 
@@ -609,20 +608,20 @@ func (df databaseDocFinder) FindDocuments(ctx context.Context,
 // and dictionary words within a specific collecion.
 // For dictionary lookup, a text segment will
 // contains the QueryText searched for and possibly a matching
-// dictionary entry. There will only be matching dictionary entries for 
+// dictionary entry. There will only be matching dictionary entries for
 // Chinese words in the dictionary. If there are no Chinese words in the query
 // then the Chinese word senses matching the English or Pinyin will be included
 // in the TextSegment.Senses field.
 func (df databaseDocFinder) FindDocumentsInCol(ctx context.Context,
-		dictSearcher *dictionary.Searcher, parser QueryParser, query,
-		col_gloss_file string) (*QueryResults, error) {
+	dictSearcher *dictionary.Searcher, parser QueryParser, query,
+	col_gloss_file string) (*QueryResults, error) {
 	if query == "" {
 		return nil, fmt.Errorf("FindDocumentsInCol, Empty query string")
 	}
 	terms := parser.ParseQuery(query)
 	if (len(terms) == 1) && (terms[0].DictEntry.HeadwordId == 0) {
-	    log.Printf("FindDocumentsInCol, Query does not contain Chinese, " +
-	    	"look for English and Pinyin matches query: %s", query)
+		log.Printf("FindDocumentsInCol, Query does not contain Chinese, "+
+			"look for English and Pinyin matches query: %s", query)
 		senses, err := dictSearcher.FindWordsByEnglish(ctx, terms[0].QueryText)
 		if err != nil {
 			return nil, err
@@ -636,16 +635,16 @@ func (df databaseDocFinder) FindDocumentsInCol(ctx context.Context,
 	}
 	nDoc := len(documents)
 	log.Printf("FindDocumentsInCol, query %s, nTerms %d, collection %d, doc count %d ",
-			query, len(terms), 1, nDoc)
+		query, len(terms), 1, nDoc)
 	return &QueryResults{
-		Query: query,
+		Query:          query,
 		CollectionFile: col_gloss_file,
 		NumCollections: 1,
-		NumDocuments: nDoc,
-		Collections: []Collection{},
-		Documents: documents,
-		Terms: terms,
-		SimilarTerms: nil,
+		NumDocuments:   nDoc,
+		Collections:    []Collection{},
+		Documents:      documents,
+		Terms:          terms,
+		SimilarTerms:   nil,
 	}, err
 }
 
@@ -682,7 +681,7 @@ func (df *databaseDocFinder) initFind(ctx context.Context) error {
 	err := df.initStatements(ctx)
 	if err != nil {
 		conString := config.DBConfig()
-		return fmt.Errorf("find.initFind: got error with conString %s: \n%v\n", conString, err)
+		return fmt.Errorf("find.initFind: got error with conString %s: \n%v", conString, err)
 	}
 	if err != nil {
 		return err
@@ -698,410 +697,409 @@ func (df *databaseDocFinder) initStatements(ctx context.Context) error {
 	}
 
 	df.docListStmt, err = df.database.PrepareContext(ctx,
-		"SELECT plain_text_file, gloss_file " +
-		"FROM document")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for docListStmt: %v\n", err)
-    }
+		"SELECT plain_text_file, gloss_file "+
+			"FROM document")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for docListStmt: %v", err)
+	}
 
 	df.findColStmt, err = df.database.PrepareContext(ctx,
 		"SELECT title, gloss_file FROM collection WHERE title LIKE ? LIMIT 20")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error preparing collection stmt: %v\n",
-        	err)
-    }
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error preparing collection stmt: %v",
+			err)
+	}
 
 	df.countColStmt, err = df.database.PrepareContext(ctx,
 		"SELECT count(title) FROM collection WHERE title LIKE ?")
-    if err != nil {
-    	return fmt.Errorf("find.initStatements() Error preparing cstmt: %v\n",err)
-    }
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error preparing cstmt: %v", err)
+	}
 
-    // Search documents by title substring
+	// Search documents by title substring
 	df.findDocStmt, err = df.database.PrepareContext(ctx,
-		"SELECT title, gloss_file, col_gloss_file, col_title " +
-		"FROM document " +
-		"WHERE col_plus_doc_title LIKE ? LIMIT 20")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error preparing dstmt: %v\n", err)
-    }
+		"SELECT title, gloss_file, col_gloss_file, col_title "+
+			"FROM document "+
+			"WHERE col_plus_doc_title LIKE ? LIMIT 20")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error preparing dstmt: %v", err)
+	}
 
-    // Search documents by title substring within a collection
+	// Search documents by title substring within a collection
 	df.findDocInColStmt, err = df.database.PrepareContext(ctx,
-		"SELECT title, gloss_file, col_title " +
-		"FROM document " +
-		"WHERE col_plus_doc_title LIKE ? " +
-		"AND col_gloss_file = ? " +
-		"LIMIT 500")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error preparing dstmt: %v\n", err)
-    }
+		"SELECT title, gloss_file, col_title "+
+			"FROM document "+
+			"WHERE col_plus_doc_title LIKE ? "+
+			"AND col_gloss_file = ? "+
+			"LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error preparing dstmt: %v", err)
+	}
 
-	df.findWordStmt, err = df.database.PrepareContext(ctx, 
-		"SELECT simplified, traditional, pinyin, headword FROM words WHERE " +
-		"simplified = ? OR traditional = ? LIMIT 1")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error preparing fwstmt: %v", err)
-    }
+	df.findWordStmt, err = df.database.PrepareContext(ctx,
+		"SELECT simplified, traditional, pinyin, headword FROM words WHERE "+
+			"simplified = ? OR traditional = ? LIMIT 1")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error preparing fwstmt: %v", err)
+	}
 
-    // Document similarity with BM25 using 1-6 terms, k = 1.5, b = 0.65
-	df.simBM251Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" COUNT(frequency) AS bitvector, " +
-		" GROUP_CONCAT(word) AS contains_words, " +
-		" collection, document " +
-		"FROM word_freq_doc " +
-		"WHERE word = ? " +
-		"GROUP BY collection, document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for simBM251Stmt: %v", err)
-    }
+	// Document similarity with BM25 using 1-6 terms, k = 1.5, b = 0.65
+	df.simBM251Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" COUNT(frequency) AS bitvector, "+
+			" GROUP_CONCAT(word) AS contains_words, "+
+			" collection, document "+
+			"FROM word_freq_doc "+
+			"WHERE word = ? "+
+			"GROUP BY collection, document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBM251Stmt: %v", err)
+	}
 
-	df.simBM252Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" COUNT(frequency) / 2.0 AS bitvector, " +
-		" GROUP_CONCAT(word) AS contains_words, " +
-		" collection, document " +
-		"FROM word_freq_doc " +
-		"WHERE word = ? OR word = ? " +
-		"GROUP BY collection, document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for simBM252Stmt: %s\n", err)
-    }
+	df.simBM252Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" COUNT(frequency) / 2.0 AS bitvector, "+
+			" GROUP_CONCAT(word) AS contains_words, "+
+			" collection, document "+
+			"FROM word_freq_doc "+
+			"WHERE word = ? OR word = ? "+
+			"GROUP BY collection, document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBM252Stmt: %s", err)
+	}
 
-	df.simBM253Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" COUNT(frequency) / 3.0 AS bitvector, " +
-		" GROUP_CONCAT(word) AS contains_words, " +
-		" collection, document " +
-		"FROM word_freq_doc " +
-		"WHERE word = ? OR word = ? OR word = ? " +
-		"GROUP BY collection, document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for simBM253Stmt: %v\n", err)
-    }
+	df.simBM253Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" COUNT(frequency) / 3.0 AS bitvector, "+
+			" GROUP_CONCAT(word) AS contains_words, "+
+			" collection, document "+
+			"FROM word_freq_doc "+
+			"WHERE word = ? OR word = ? OR word = ? "+
+			"GROUP BY collection, document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBM253Stmt: %v", err)
+	}
 
-	df.simBM254Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" COUNT(frequency) / 4.0 AS bitvector, " +
-		" GROUP_CONCAT(word) AS contains_words, " +
-		" collection, document " +
-		"FROM word_freq_doc " +
-		"WHERE word = ? OR word = ? OR word = ? OR word = ? " +
-		"GROUP BY collection, document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for simBM254Stmt: %v\n", err)
-    }
+	df.simBM254Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" COUNT(frequency) / 4.0 AS bitvector, "+
+			" GROUP_CONCAT(word) AS contains_words, "+
+			" collection, document "+
+			"FROM word_freq_doc "+
+			"WHERE word = ? OR word = ? OR word = ? OR word = ? "+
+			"GROUP BY collection, document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBM254Stmt: %v", err)
+	}
 
+	df.simBM255Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" COUNT(frequency) / 5.0 AS bitvector, "+
+			" GROUP_CONCAT(word) AS contains_words, "+
+			" collection, document "+
+			"FROM word_freq_doc "+
+			"WHERE word = ? OR word = ? OR word = ? OR word = ? OR word = ? "+
+			"GROUP BY collection, document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBM255Stmt: %v", err)
+	}
 
-	df.simBM255Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" COUNT(frequency) / 5.0 AS bitvector, " +
-		" GROUP_CONCAT(word) AS contains_words, " +
-		" collection, document " +
-		"FROM word_freq_doc " +
-		"WHERE word = ? OR word = ? OR word = ? OR word = ? OR word = ? " +
-		"GROUP BY collection, document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-       return fmt.Errorf("find.initStatements() Error for simBM255Stmt: %v\n", err)
-    }
+	df.simBM256Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" COUNT(frequency) / 5.0 AS bitvector, "+
+			" GROUP_CONCAT(word) AS contains_words, "+
+			" collection, document "+
+			"FROM word_freq_doc "+
+			"WHERE word = ? OR word = ? OR word = ? OR word = ? OR word = ? "+
+			"OR word = ? "+
+			"GROUP BY collection, document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBM256Stmt: %v", err)
+	}
 
-	df.simBM256Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" COUNT(frequency) / 5.0 AS bitvector, " +
-		" GROUP_CONCAT(word) AS contains_words, " +
-		" collection, document " +
-		"FROM word_freq_doc " +
-		"WHERE word = ? OR word = ? OR word = ? OR word = ? OR word = ? " +
-		"OR word = ? " +
-		"GROUP BY collection, document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-       return fmt.Errorf("find.initStatements() Error for simBM256Stmt: %v\n", err)
-    }
+	// Document similarity with BM25 using 2-6 terms, for a specific collection
+	df.simBM25Col1Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" SUM(2.5 * frequency * idf / (frequency + 1.5)) AS bm25, "+
+			" COUNT(frequency) / 1.0 AS bitvector, "+
+			" GROUP_CONCAT(word) AS contains_words, "+
+			" document "+
+			"FROM word_freq_doc "+
+			"WHERE "+
+			" (word = ?) AND collection = ? "+
+			"GROUP BY document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBM25Col1Stmt: %v", err)
+	}
 
-    // Document similarity with BM25 using 2-6 terms, for a specific collection
-	df.simBM25Col1Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" SUM(2.5 * frequency * idf / (frequency + 1.5)) AS bm25, " +
-		" COUNT(frequency) / 1.0 AS bitvector, " +
-		" GROUP_CONCAT(word) AS contains_words, " +
-		" document " +
-		"FROM word_freq_doc " +
-		"WHERE " +
-		" (word = ?) AND collection = ? " +
-		"GROUP BY document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-       return fmt.Errorf("find.initStatements() Error for simBM25Col1Stmt: %v\n", err)
-    }
+	df.simBM25Col2Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" COUNT(frequency) / 2.0 AS bitvector, "+
+			" GROUP_CONCAT(word) AS contains_words, "+
+			" document "+
+			"FROM word_freq_doc "+
+			"WHERE (word = ? OR word = ?) "+
+			"AND collection = ? "+
+			"GROUP BY document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBM252Stmt: %v", err)
+	}
 
-	df.simBM25Col2Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" COUNT(frequency) / 2.0 AS bitvector, " +
-		" GROUP_CONCAT(word) AS contains_words, " +
-		" document " +
-		"FROM word_freq_doc " +
-		"WHERE (word = ? OR word = ?) " +
-		"AND collection = ? " +
-		"GROUP BY document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for simBM252Stmt: %v\n", err)
-    }
+	df.simBM25Col3Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" COUNT(frequency) / 3.0 AS bitvector, "+
+			" GROUP_CONCAT(word) AS contains_words, "+
+			" document "+
+			"FROM word_freq_doc "+
+			"WHERE (word = ? OR word = ? OR word = ?) "+
+			"AND collection = ? "+
+			"GROUP BY document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBM253Stmt: %v", err)
+	}
 
-	df.simBM25Col3Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" COUNT(frequency) / 3.0 AS bitvector, " +
-		" GROUP_CONCAT(word) AS contains_words, " +
-		" document " +
-		"FROM word_freq_doc " +
-		"WHERE (word = ? OR word = ? OR word = ?) " +
-		"AND collection = ? " +
-		"GROUP BY document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for simBM253Stmt: %v\n", err)
-    }
+	df.simBM25Col4Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" COUNT(frequency) / 4.0 AS bitvector, "+
+			" GROUP_CONCAT(word) AS contains_words, "+
+			" document "+
+			"FROM word_freq_doc "+
+			"WHERE (word = ? OR word = ? OR word = ? OR word = ?) "+
+			"AND collection = ? "+
+			"GROUP BY document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBM254Stmt: %v", err)
+	}
 
-	df.simBM25Col4Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" COUNT(frequency) / 4.0 AS bitvector, " +
-		" GROUP_CONCAT(word) AS contains_words, " +
-		" document " +
-		"FROM word_freq_doc " +
-		"WHERE (word = ? OR word = ? OR word = ? OR word = ?) " +
-		"AND collection = ? " +
-		"GROUP BY document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for simBM254Stmt: %v\n", err)
-    }
+	df.simBM25Col5Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" COUNT(frequency) / 5.0 AS bitvector, "+
+			" GROUP_CONCAT(word) AS contains_words, "+
+			" document "+
+			"FROM word_freq_doc "+
+			"WHERE (word = ? OR word = ? OR word = ? OR word = ? OR word = ?) "+
+			"AND collection = ? "+
+			"GROUP BY document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBM255Stmt: %v", err)
+	}
 
-	df.simBM25Col5Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" COUNT(frequency) / 5.0 AS bitvector, " +
-		" GROUP_CONCAT(word) AS contains_words, " +
-		" document " +
-		"FROM word_freq_doc " +
-		"WHERE (word = ? OR word = ? OR word = ? OR word = ? OR word = ?) " +
-		"AND collection = ? " +
-		"GROUP BY document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for simBM255Stmt: %v\n", err)
-    }
+	df.simBM25Col6Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" COUNT(frequency) / 5.0 AS bitvector, "+
+			" GROUP_CONCAT(word) AS contains_words, "+
+			" document "+
+			"FROM word_freq_doc "+
+			"WHERE (word = ? OR word = ? OR word = ? OR word = ? OR word = ? "+
+			"OR word = ?) "+
+			"AND collection = ? "+
+			"GROUP BY collection, document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBM256Stmt: %v", err)
+	}
 
-	df.simBM25Col6Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" COUNT(frequency) / 5.0 AS bitvector, " +
-		" GROUP_CONCAT(word) AS contains_words, " +
-		" document " +
-		"FROM word_freq_doc " +
-		"WHERE (word = ? OR word = ? OR word = ? OR word = ? OR word = ? " +
-		"OR word = ?) " +
-		"AND collection = ? " +
-		"GROUP BY collection, document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for simBM256Stmt: %v\n", err)
-    }
+	// Document similarity with Bigram using 1-6 bigrams, k = 1.5, b = 0
+	df.simBigram1Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" GROUP_CONCAT(bigram) AS contains_bigrams, "+
+			" collection, document "+
+			"FROM bigram_freq_doc "+
+			"WHERE bigram = ? "+
+			"GROUP BY collection, document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBigram1Stmt: %v", err)
+	}
 
-    // Document similarity with Bigram using 1-6 bigrams, k = 1.5, b = 0
-	df.simBigram1Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" GROUP_CONCAT(bigram) AS contains_bigrams, " +
-		" collection, document " +
-		"FROM bigram_freq_doc " +
-		"WHERE bigram = ? " +
-		"GROUP BY collection, document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for simBigram1Stmt: %v\n", err)
-    }
+	df.simBigram2Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" GROUP_CONCAT(bigram) AS contains_bigrams, "+
+			" collection, document "+
+			"FROM bigram_freq_doc "+
+			"WHERE bigram = ? OR bigram = ? GROUP BY collection, document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBM252Stmt: %v", err)
+	}
 
-	df.simBigram2Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" GROUP_CONCAT(bigram) AS contains_bigrams, " +
-		" collection, document " +
-		"FROM bigram_freq_doc " +
-		"WHERE bigram = ? OR bigram = ? GROUP BY collection, document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for simBM252Stmt: %v\n", err)
-    }
+	df.simBigram3Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" GROUP_CONCAT(bigram) AS contains_bigrams, "+
+			" collection, document "+
+			"FROM bigram_freq_doc "+
+			"WHERE bigram = ? OR bigram = ? OR bigram = ? "+
+			"GROUP BY collection, document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBigram3Stmt: %v", err)
+	}
 
-	df.simBigram3Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" GROUP_CONCAT(bigram) AS contains_bigrams, " +
-		" collection, document " +
-		"FROM bigram_freq_doc " +
-		"WHERE bigram = ? OR bigram = ? OR bigram = ? " +
-		"GROUP BY collection, document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for simBigram3Stmt: %v\n", err)
-    }
+	df.simBigram4Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" GROUP_CONCAT(bigram) AS contains_bigrams, "+
+			" collection, document "+
+			"FROM bigram_freq_doc "+
+			"WHERE bigram = ? OR bigram = ? OR bigram = ? OR bigram = ? "+
+			"GROUP BY collection, document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBigram4Stmt: %v", err)
+	}
 
-	df.simBigram4Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" GROUP_CONCAT(bigram) AS contains_bigrams, " +
-		" collection, document " +
-		"FROM bigram_freq_doc " +
-		"WHERE bigram = ? OR bigram = ? OR bigram = ? OR bigram = ? " +
-		"GROUP BY collection, document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for simBigram4Stmt: %v\n", err)
-    }
+	df.simBigram5Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" GROUP_CONCAT(bigram) AS contains_bigrams, "+
+			" collection, document "+
+			"FROM bigram_freq_doc "+
+			"WHERE bigram = ? OR bigram = ? OR bigram = ? OR bigram = ? "+
+			"OR bigram = ? "+
+			"GROUP BY collection, document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBigram5Stmt: %v", err)
+	}
 
-	df.simBigram5Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" GROUP_CONCAT(bigram) AS contains_bigrams, " +
-		" collection, document " +
-		"FROM bigram_freq_doc " +
-		"WHERE bigram = ? OR bigram = ? OR bigram = ? OR bigram = ? " +
-		"OR bigram = ? " +
-		"GROUP BY collection, document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for simBigram5Stmt: %v\n", err)
-    }
+	// Document similarity with Bigram using 1-6 bigrams, within a specific
+	// collection
+	df.simBgCol1Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" GROUP_CONCAT(bigram) AS contains_bigrams, "+
+			" document "+
+			"FROM bigram_freq_doc "+
+			"WHERE bigram = ? "+
+			"AND collection = ? "+
+			"GROUP BY document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBgCol1Stmt: %v", err)
+	}
 
-    // Document similarity with Bigram using 1-6 bigrams, within a specific
-    // collection
-	df.simBgCol1Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" GROUP_CONCAT(bigram) AS contains_bigrams, " +
-		" document " +
-		"FROM bigram_freq_doc " +
-		"WHERE bigram = ? " +
-		"AND collection = ? " +
-		"GROUP BY document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for simBgCol1Stmt: %v\n", err)
-    }
+	df.simBgCol2Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" GROUP_CONCAT(bigram) AS contains_bigrams, "+
+			" document "+
+			"FROM bigram_freq_doc "+
+			"WHERE (bigram = ? OR bigram = ?) "+
+			"AND collection = ? "+
+			"GROUP BY document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBgCol2Stmt: %v", err)
+	}
 
-	df.simBgCol2Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" GROUP_CONCAT(bigram) AS contains_bigrams, " +
-		" document " +
-		"FROM bigram_freq_doc " +
-		"WHERE (bigram = ? OR bigram = ?) " +
-		"AND collection = ? " +
-		"GROUP BY document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for simBgCol2Stmt: %v", err)
-    }
+	df.simBgCol3Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" GROUP_CONCAT(bigram) AS contains_bigrams, "+
+			" document "+
+			"FROM bigram_freq_doc "+
+			"WHERE bigram = ? OR bigram = ? OR bigram = ? "+
+			"AND collection = ? "+
+			"GROUP BY document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBgCol3Stmt: %v", err)
+	}
 
-	df.simBgCol3Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" GROUP_CONCAT(bigram) AS contains_bigrams, " +
-		" document " +
-		"FROM bigram_freq_doc " +
-		"WHERE bigram = ? OR bigram = ? OR bigram = ? " +
-		"AND collection = ? " +
-		"GROUP BY document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for simBgCol3Stmt: %v\n", err)
-    }
+	df.simBgCol4Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" GROUP_CONCAT(bigram) AS contains_bigrams, "+
+			" document "+
+			"FROM bigram_freq_doc "+
+			"WHERE (bigram = ? OR bigram = ? OR bigram = ? OR bigram = ?) "+
+			"AND collection = ? "+
+			"GROUP BY document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBgCol4Stmt: %v", err)
+	}
 
-	df.simBgCol4Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" GROUP_CONCAT(bigram) AS contains_bigrams, " +
-		" document " +
-		"FROM bigram_freq_doc " +
-		"WHERE (bigram = ? OR bigram = ? OR bigram = ? OR bigram = ?) " +
-		"AND collection = ? " +
-		"GROUP BY document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for simBgCol4Stmt: %v\n", err)
-    }
+	df.simBgCol5Stmt, err = df.database.PrepareContext(ctx,
+		"SELECT "+
+			" SUM((1.5 + 1) * frequency * idf / "+
+			"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, "+
+			" GROUP_CONCAT(bigram) AS contains_bigrams, "+
+			" document "+
+			"FROM bigram_freq_doc "+
+			"WHERE (bigram = ? OR bigram = ? OR bigram = ? OR bigram = ? "+
+			"OR bigram = ?) "+
+			"AND collection = ? "+
+			"GROUP BY document "+
+			"ORDER BY bm25 DESC LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for simBgCol5Stmt: %v", err)
+	}
 
-	df.simBgCol5Stmt, err = df.database.PrepareContext(ctx, 
-		"SELECT " +
-		" SUM((1.5 + 1) * frequency * idf / " +
-		"  (frequency + 1.5 * (1 - 0.65 + 0.65 * (doc_len / ?)))) AS bm25, " +
-		" GROUP_CONCAT(bigram) AS contains_bigrams, " +
-		" document " +
-		"FROM bigram_freq_doc " +
-		"WHERE (bigram = ? OR bigram = ? OR bigram = ? OR bigram = ? " +
-		"OR bigram = ?) " +
-		"AND collection = ? " +
-		"GROUP BY document " +
-		"ORDER BY bm25 DESC LIMIT 500")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for simBgCol5Stmt: %v\n", err)
-    }
+	// Find the titles of all documents
+	df.findAllTitlesStmt, err = df.database.PrepareContext(ctx,
+		"SELECT gloss_file, title, col_gloss_file, col_title "+
+			"FROM document LIMIT 5000000")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for findAllTitlesStmt: %v", err)
+	}
 
-    // Find the titles of all documents
-	df.findAllTitlesStmt, err = df.database.PrepareContext(ctx, 
-		"SELECT gloss_file, title, col_gloss_file, col_title " +
-		"FROM document LIMIT 5000000")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for findAllTitlesStmt: %v\n", err)
-    }
-
-    // Find the titles of all documents
-	df.findAllColTitlesStmt, err = df.database.PrepareContext(ctx, 
+	// Find the titles of all documents
+	df.findAllColTitlesStmt, err = df.database.PrepareContext(ctx,
 		"SELECT gloss_file, title FROM collection LIMIT 500000")
-    if err != nil {
-        return fmt.Errorf("find.initStatements() Error for findAllColTitlesStmt: %v\n",
-        	err)
-    }
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error for findAllColTitlesStmt: %v",
+			err)
+	}
 
-    return nil
+	return nil
 }
 
 // Merge a list of documents with map of similar docs, adding the similarity
@@ -1128,38 +1126,38 @@ func mergeDocList(df databaseDocFinder, simDocMap map[string]Document, docList [
 		} else {
 			colTitle, ok1 := df.GetColMap()[simDoc.CollectionFile]
 			document, ok2 := df.docMap[simDoc.GlossFile]
-			if (ok1 && ok2) {
+			if ok1 && ok2 {
 				doc := Document{CollectionFile: simDoc.CollectionFile,
-								CollectionTitle: colTitle, 
-								GlossFile: simDoc.GlossFile,
-								Title: document.Title, 
-								SimTitle: simDoc.SimTitle,
-								SimWords: simDoc.SimWords,
-								SimBigram: simDoc.SimBigram,
-								SimBitVector: simDoc.SimBitVector,
-								Similarity: simDoc.Similarity,
-								ContainsWords: simDoc.ContainsWords,
-								ContainsBigrams: simDoc.ContainsBigrams,
-							}
+					CollectionTitle: colTitle,
+					GlossFile:       simDoc.GlossFile,
+					Title:           document.Title,
+					SimTitle:        simDoc.SimTitle,
+					SimWords:        simDoc.SimWords,
+					SimBigram:       simDoc.SimBigram,
+					SimBitVector:    simDoc.SimBitVector,
+					Similarity:      simDoc.Similarity,
+					ContainsWords:   simDoc.ContainsWords,
+					ContainsBigrams: simDoc.ContainsBigrams,
+				}
 				simDocMap[simDoc.GlossFile] = doc
 			} else if ok2 {
 				log.Println("mergeDocList, collection title not found: ",
 					simDoc)
 				doc := Document{CollectionFile: "",
-								CollectionTitle: "", 
-								GlossFile: simDoc.GlossFile,
-								Title: document.Title, 
-								SimTitle: simDoc.SimTitle,
-								SimWords: simDoc.SimWords,
-								SimBigram: simDoc.SimBigram,
-								SimBitVector: simDoc.SimBitVector,
-								Similarity: simDoc.Similarity,
-								ContainsWords: simDoc.ContainsWords,
-								ContainsBigrams: simDoc.ContainsBigrams,
-							}
+					CollectionTitle: "",
+					GlossFile:       simDoc.GlossFile,
+					Title:           document.Title,
+					SimTitle:        simDoc.SimTitle,
+					SimWords:        simDoc.SimWords,
+					SimBigram:       simDoc.SimBigram,
+					SimBitVector:    simDoc.SimBitVector,
+					Similarity:      simDoc.Similarity,
+					ContainsWords:   simDoc.ContainsWords,
+					ContainsBigrams: simDoc.ContainsBigrams,
+				}
 				simDocMap[simDoc.GlossFile] = doc
 			} else {
-				log.Printf("mergeDocList, doc title not found: %v\n", simDoc)
+				log.Printf("mergeDocList, doc title not found: %v", simDoc)
 				simDocMap[simDoc.GlossFile] = simDoc
 			}
 		}
@@ -1168,23 +1166,23 @@ func mergeDocList(df databaseDocFinder, simDocMap map[string]Document, docList [
 
 // Organizes the contains terms found of the document in a form that helps
 // the user.
-// 
+//
 // doc.ContainsWords is a contained list of terms found in the query and doc
 // doc.ContainsBigrams is a contained list of bigrams found in the query and doc
 // doc.ContainsTerms is a list of terms found both in the query and the doc
 // sorted in the same order as the query terms with words merged to bigrams
 func setMatchDetails(doc Document, terms []string, docMatch fulltext.DocMatch) Document {
-	log.Printf("sortContainsWords: %v\n", terms)
+	log.Printf("sortContainsWords: %v", terms)
 	containsTems := []string{}
 	for i, term := range terms {
-		//fmt.Printf("sortContainsWords: i = %d\n", i)
+		//fmt.Printf("sortContainsWords: i = %d", i)
 		bigram := ""
-		if (i > 0) {
-			bigram = terms[i - 1] + terms[i]
+		if i > 0 {
+			bigram = terms[i-1] + terms[i]
 		}
 		if (i > 0) && strings.Contains(doc.ContainsBigrams, bigram) {
 			j := len(containsTems)
-			if (j > 0) && strings.Contains(bigram, containsTems[j - 1]) {
+			if (j > 0) && strings.Contains(bigram, containsTems[j-1]) {
 				containsTems[j-1] = bigram
 			} else {
 				containsTems = append(containsTems, bigram)
@@ -1216,23 +1214,23 @@ func toRelevantDocList(df databaseDocFinder, docs []Document, terms []string) []
 		return docs
 	}
 	keys := []string{}
-	for _, doc  := range docs {
+	for _, doc := range docs {
 		d, ok := df.docMap[doc.GlossFile]
 		if !ok {
-			log.Printf("find.toRelevantDocList could not find %s\n", doc.GlossFile)
+			log.Printf("find.toRelevantDocList could not find %s", doc.GlossFile)
 			continue
 		}
 		keys = append(keys, d.CorpusFile)
 	}
 	docMatches := fulltext.GetMatches(keys, terms)
 	relDocs := []Document{}
-	for _, doc  := range docs {
-		log.Printf("toRelevantDocList, check Similarity %f, min %f, gloss %s, " +
-				"title: %s\n", doc.Similarity, minSimilarity, doc.GlossFile,
-				doc.Title)
+	for _, doc := range docs {
+		log.Printf("toRelevantDocList, check Similarity %f, min %f, gloss %s, "+
+			"title: %s", doc.Similarity, minSimilarity, doc.GlossFile,
+			doc.Title)
 		d, ok := df.docMap[doc.GlossFile]
 		if !ok {
-			log.Printf("find.toRelevantDocList 2 could not find %s\n", doc.GlossFile)
+			log.Printf("find.toRelevantDocList 2 could not find %s", doc.GlossFile)
 			continue
 		}
 		docMatch := docMatches[d.CorpusFile]
@@ -1249,19 +1247,19 @@ func toRelevantDocList(df databaseDocFinder, docs []Document, terms []string) []
 // Convert list to a map of similar docs with similarity set to 1.0
 func toSimilarDocMap(docs []Document) map[string]Document {
 	similarDocMap := map[string]Document{}
-	for _, doc  := range docs {
+	for _, doc := range docs {
 		simDoc := Document{
-			GlossFile: doc.GlossFile,
-			Title: doc.Title,
-			CollectionFile: doc.CollectionFile,
+			GlossFile:       doc.GlossFile,
+			Title:           doc.Title,
+			CollectionFile:  doc.CollectionFile,
 			CollectionTitle: doc.CollectionTitle,
-			SimTitle: doc.SimTitle,
-			SimWords: doc.SimWords,
-			SimBigram: doc.SimBigram,
-			SimBitVector: doc.SimBitVector,
-			ContainsWords: doc.ContainsWords,
+			SimTitle:        doc.SimTitle,
+			SimWords:        doc.SimWords,
+			SimBigram:       doc.SimBigram,
+			SimBitVector:    doc.SimBitVector,
+			ContainsWords:   doc.ContainsWords,
 			ContainsBigrams: doc.ContainsBigrams,
-			Similarity: doc.Similarity,
+			Similarity:      doc.Similarity,
 		}
 		similarDocMap[doc.GlossFile] = simDoc
 	}
@@ -1274,7 +1272,7 @@ func toSortedDocList(similarDocMap map[string]Document) []Document {
 	if len(similarDocMap) < 1 {
 		return docs
 	}
-	for _, similarDoc  := range similarDocMap {
+	for _, similarDoc := range similarDocMap {
 		docs = append(docs, similarDoc)
 	}
 	// First sort by BM25 bigrams
@@ -1284,7 +1282,7 @@ func toSortedDocList(similarDocMap map[string]Document) []Document {
 	maxSimWords := docs[0].SimWords
 	maxSimBigram := docs[0].SimBigram
 	simDocs := []Document{}
-	for _, doc  := range docs {
+	for _, doc := range docs {
 		simDoc := combineByWeight(doc, maxSimWords, maxSimBigram)
 		simDocs = append(simDocs, simDoc)
 	}
