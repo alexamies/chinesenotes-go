@@ -83,9 +83,12 @@ func loadDictReader(r io.Reader, wdict map[string]dicttypes.Word,
 		return fmt.Errorf("Could not parse lexical units file: %v", err)
 	}
 	for i, row := range rawCSVdata {
+		if len(row) < 15 {
+			fmt.Printf("only %d elements (less than 15) for row %d, text: %v", len(row), i, row)
+		}
 		id, err := strconv.ParseInt(row[0], 10, 0)
 		if err != nil {
-			return fmt.Errorf("Could not parse word id %d for word %v", i, err)
+			fmt.Printf("Could not parse word id %d for word %v", i, err)
 		}
 		simp := row[1]
 		trad := row[2]
