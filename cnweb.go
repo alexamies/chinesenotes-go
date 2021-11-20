@@ -35,50 +35,50 @@ import (
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dictionary"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
-	"github.com/alexamies/chinesenotes-go/fulltext"
 	"github.com/alexamies/chinesenotes-go/find"
+	"github.com/alexamies/chinesenotes-go/fulltext"
 	"github.com/alexamies/chinesenotes-go/identity"
 	"github.com/alexamies/chinesenotes-go/media"
 	"github.com/alexamies/chinesenotes-go/transmemory"
 )
 
 const (
-	defTitle = "Chinese Notes Translation Portal"
+	defTitle     = "Chinese Notes Translation Portal"
 	titleIndexFN = "documents.tsv"
 )
 
 var (
-	appConfig config.AppConfig
-	webConfig config.WebAppConfig
-	database *sql.DB
-	parser find.QueryParser
-	dict dictionary.Dictionary
-	dictSearcher *dictionary.Searcher
-	tmSearcher transmemory.Searcher
-	df find.DocFinder
-	authenticator *identity.Authenticator
-	mediaSearcher *media.MediaSearcher
-	templates map[string]*template.Template
+	appConfig      config.AppConfig
+	webConfig      config.WebAppConfig
+	database       *sql.DB
+	parser         find.QueryParser
+	dict           dictionary.Dictionary
+	dictSearcher   *dictionary.Searcher
+	tmSearcher     transmemory.Searcher
+	df             find.DocFinder
+	authenticator  *identity.Authenticator
+	mediaSearcher  *media.MediaSearcher
+	templates      map[string]*template.Template
 	docTitleFinder find.DocTitleFinder
-	docMap map[string]find.DocInfo
+	docMap         map[string]find.DocInfo
 )
 
 // Content for HTML template
 type htmlContent struct {
-	Title string
-	Query string
-	ErrorMsg string
-	Results find.QueryResults
+	Title     string
+	Query     string
+	ErrorMsg  string
+	Results   find.QueryResults
 	TMResults *transmemory.Results
-	Data interface{}
+	Data      interface{}
 }
 
 // Content for change password page
 type ChangePasswordHTML struct {
-	Title string
+	Title            string
 	OldPasswordValid bool
 	ChangeSuccessful bool
-	ShowNewForm bool
+	ShowNewForm      bool
 }
 
 func initApp(ctx context.Context) error {
@@ -102,7 +102,7 @@ func initApp(ctx context.Context) error {
 		dict = dictionary.NewDictionary(wdict)
 	} else {
 		// Load from web for zero-config Quickstart
-  	const url = "https://github.com/alexamies/chinesenotes.com/blob/master/data/words.txt?raw=true"
+		const url = "https://github.com/alexamies/chinesenotes.com/blob/master/data/cnotes_zh_en_dict.tsv?raw=true"
 		wdict, err := dictionary.LoadDictURL(appConfig, url)
 		if err != nil {
 			return fmt.Errorf("main.initApp() unable to load dictionary from net: %v", err)
@@ -142,7 +142,7 @@ func initDocTitleFinder() (find.DocTitleFinder, error) {
 	r, err := os.Open(titleFileName)
 	if err != nil {
 		return nil, fmt.Errorf("initDocTitleFinder: Error opening %s: %v",
-				titleFileName, err)
+			titleFileName, err)
 	}
 	defer r.Close()
 	var dInfoCN map[string]find.DocInfo
@@ -157,7 +157,7 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 	if len(d) == 0 {
 		log.Printf("adminHandler databsae not initialized")
 		http.Error(w, "Not authorized", http.StatusForbidden)
-		return 
+		return
 	}
 	ctx := context.Background()
 	if authenticator == nil {
@@ -202,7 +202,7 @@ func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
 	if len(d) == 0 {
 		log.Printf("changePasswordHandler databsae not initialized")
 		http.Error(w, "Not authorized", http.StatusForbidden)
-		return 
+		return
 	}
 	ctx := context.Background()
 	if authenticator == nil {
@@ -219,15 +219,15 @@ func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
 		password := r.PostFormValue("Password")
 		result := authenticator.ChangePassword(ctx, sessionInfo.User, oldPassword,
 			password)
-    	if strings.Contains(r.Header.Get("Accept"), "application/json") {
-    		sendJSON(w, result)
+		if strings.Contains(r.Header.Get("Accept"), "application/json") {
+			sendJSON(w, result)
 		} else {
 			title := webConfig.GetVarWithDefault("Title", defTitle)
 			content := ChangePasswordHTML{
-				Title: title,
+				Title:            title,
 				OldPasswordValid: result.OldPasswordValid,
 				ChangeSuccessful: result.ChangeSuccessful,
-				ShowNewForm: result.ShowNewForm,
+				ShowNewForm:      result.ShowNewForm,
 			}
 			displayPage(w, "change_password_form.html", content)
 		}
@@ -240,16 +240,16 @@ func changePasswordFormHandler(w http.ResponseWriter, r *http.Request) {
 	if len(d) == 0 {
 		log.Printf("changePasswordFormHandler databsae not initialized")
 		http.Error(w, "Not authorized", http.StatusForbidden)
-		return 
+		return
 	}
 	sessionInfo := enforceValidSession(w, r)
 	if sessionInfo.Authenticated == 1 {
 		title := webConfig.GetVarWithDefault("Title", defTitle)
 		result := ChangePasswordHTML{
-			Title: title,
+			Title:            title,
 			OldPasswordValid: false,
 			ChangeSuccessful: false,
-			ShowNewForm: true,
+			ShowNewForm:      true,
 		}
 		displayPage(w, "change_password_form.html", result)
 	}
@@ -272,7 +272,7 @@ func displayPage(w http.ResponseWriter, templateName string, content interface{}
 	if err != nil {
 		log.Printf("displayPage: error rendering template %v", err)
 		http.Error(w, "Server Error", http.StatusInternalServerError)
-	}	
+	}
 }
 
 // displayHome shows a simple page, for health checks and testing.
@@ -283,7 +283,7 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 	// Tell health check probes that we are alive
 	if !acceptHTML(r) {
 		fmt.Fprintln(w, "OK")
-    return
+		return
 	}
 
 	title := webConfig.GetVarWithDefault("Title", defTitle)
@@ -375,15 +375,15 @@ func findFullText(response http.ResponseWriter, request *http.Request) {
 
 // findDocs finds documents matching the given query.
 func findDocs(response http.ResponseWriter,
-		request *http.Request,
-		fullText bool) {
+	request *http.Request,
+	fullText bool) {
 	q := getSingleValue(request, "query")
 	if len(q) == 0 {
 		q = getSingleValue(request, "text")
 	}
 	// No query, eg someone nativated directly to the HTML page, redisplay it
 	var err error
-	if len(q) == 0 && acceptHTML(request){
+	if len(q) == 0 && acceptHTML(request) {
 		log.Printf("main.findDocs No query provided")
 		templateFile := "find_results.html"
 		if fullText {
@@ -415,7 +415,7 @@ func findDocs(response http.ResponseWriter,
 	}
 	if len(c) > 0 {
 		results, err = df.FindDocumentsInCol(ctx, dictSearcher, parser, q, c)
-	} else 	if len(findTitle) > 0 {
+	} else if len(findTitle) > 0 {
 		docTitleFinder, err := initDocTitleFinder()
 		if err == nil {
 			results, err = docTitleFinder.FindDocuments(ctx, q)
@@ -433,8 +433,8 @@ func findDocs(response http.ResponseWriter,
 	// Add similar results from translation memory, only do this when more than
 	// one term is found and when the query string is between 2 and 8 characters
 	// in length
-	if (!fullText && (tmSearcher != nil) && (len([]rune(q)) > 1) &&
-			(len([]rune(q)) < 9) && (len(results.Terms) > 1)) {
+	if !fullText && (tmSearcher != nil) && (len([]rune(q)) > 1) &&
+		(len([]rune(q)) < 9) && (len(results.Terms) > 1) {
 		tmResults, err := tmSearcher.Search(ctx, q, "", false, dict.Wdict)
 		if err != nil {
 			// Not essential to the main request
@@ -443,7 +443,7 @@ func findDocs(response http.ResponseWriter,
 			similarTerms := []find.TextSegment{}
 			for _, w := range tmResults.Words {
 				chinese := w.Simplified
-				if ((len(w.Traditional) > 0) && (w.Traditional != "\\N")) {
+				if (len(w.Traditional) > 0) && (w.Traditional != "\\N") {
 					chinese += " (" + w.Traditional + ")"
 				}
 				seg := find.TextSegment{
@@ -454,7 +454,7 @@ func findDocs(response http.ResponseWriter,
 			}
 			results.SimilarTerms = similarTerms
 			log.Printf("main.findDocs, for query %s, found %d similar phrases",
-					q, len(results.SimilarTerms))
+				q, len(results.SimilarTerms))
 		}
 	}
 
@@ -475,7 +475,7 @@ func findDocs(response http.ResponseWriter,
 			r := highlightMatches(*results)
 			results = &r
 
-		// Transform notes field with regular expressions
+			// Transform notes field with regular expressions
 		} else if len(results.Terms) > 0 {
 			match := webConfig.GetVar("NotesReMatch")
 			replace := webConfig.GetVar("NotesReplace")
@@ -486,7 +486,7 @@ func findDocs(response http.ResponseWriter,
 				term := find.TextSegment{
 					QueryText: t.QueryText,
 					DictEntry: word,
-					Senses: t.Senses,
+					Senses:    t.Senses,
 				}
 				terms = append(terms, term)
 			}
@@ -508,7 +508,7 @@ func findDocs(response http.ResponseWriter,
 		http.Error(response, "Error marshalling results",
 			http.StatusInternalServerError)
 	} else {
-		if (q != "hello" && q != "Eight" ) { // Health check monitoring probe
+		if q != "hello" && q != "Eight" { // Health check monitoring probe
 			log.Printf("main.findDocs, results: %q", string(resultsJson))
 		}
 		response.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -542,14 +542,14 @@ func getSingleValue(r *http.Request, key string) string {
 // highlightMatches adds a HTML span element with highlight for matches in the
 // snippets of full texts search results
 func highlightMatches(r find.QueryResults) find.QueryResults {
-	results := find.QueryResults {
-		Query: r.Query,
+	results := find.QueryResults{
+		Query:          r.Query,
 		CollectionFile: r.CollectionFile,
 		NumCollections: r.NumCollections,
-		NumDocuments: r.NumDocuments,
-		Collections: r.Collections,
-		Terms: r.Terms,
-		SimilarTerms: r.SimilarTerms,
+		NumDocuments:   r.NumDocuments,
+		Collections:    r.Collections,
+		Terms:          r.Terms,
+		SimilarTerms:   r.SimilarTerms,
 	}
 	documents := []find.Document{}
 	for _, d := range r.Documents {
@@ -557,25 +557,25 @@ func highlightMatches(r find.QueryResults) find.QueryResults {
 		span := fmt.Sprintf("<span class='usage-highlight'>%s</span>", lm)
 		s := strings.Replace(d.MatchDetails.Snippet, lm, span, 1)
 		md := fulltext.MatchingText{
-			Snippet: s,
+			Snippet:      s,
 			LongestMatch: lm,
-			ExactMatch: d.MatchDetails.ExactMatch,
+			ExactMatch:   d.MatchDetails.ExactMatch,
 		}
 		doc := find.Document{
-			GlossFile: d.GlossFile,
-			Title: d.Title,
-			CollectionFile: d.CollectionFile,
+			GlossFile:       d.GlossFile,
+			Title:           d.Title,
+			CollectionFile:  d.CollectionFile,
 			CollectionTitle: d.CollectionTitle,
-			ContainsWords: d.ContainsWords,
+			ContainsWords:   d.ContainsWords,
 			ContainsBigrams: d.ContainsBigrams,
-			SimTitle: d.SimTitle,
-			SimWords: d.SimWords,
-			SimBigram: d.SimBigram,
-			SimBitVector: d.SimBigram,
-			Similarity: d.Similarity,
-			ContainsTerms: d.ContainsTerms,
-			MatchDetails: md,
-			TitleCNMatch: d.TitleCNMatch,
+			SimTitle:        d.SimTitle,
+			SimWords:        d.SimWords,
+			SimBigram:       d.SimBigram,
+			SimBitVector:    d.SimBigram,
+			Similarity:      d.Similarity,
+			ContainsTerms:   d.ContainsTerms,
+			MatchDetails:    md,
+			TitleCNMatch:    d.TitleCNMatch,
 		}
 		documents = append(documents, doc)
 	}
@@ -585,7 +585,7 @@ func highlightMatches(r find.QueryResults) find.QueryResults {
 
 // showQueryResults displays query results on a HTML page
 func showQueryResults(w io.Writer, results find.QueryResults,
-		templateFile string) error {
+	templateFile string) error {
 	res := results
 	staticDir := appConfig.GetVar("GoStaticDir")
 	// log.Printf("showQueryResults, staticDir: %s", staticDir)
@@ -594,42 +594,42 @@ func showQueryResults(w io.Writer, results find.QueryResults,
 		docs := []find.Document{}
 		for _, doc := range results.Documents {
 			d := find.Document{
-				GlossFile: "/" + staticDir + "/" + doc.GlossFile,
-				Title: doc.Title,
-				CollectionFile: "/" + staticDir + "/" + doc.CollectionFile,
+				GlossFile:       "/" + staticDir + "/" + doc.GlossFile,
+				Title:           doc.Title,
+				CollectionFile:  "/" + staticDir + "/" + doc.CollectionFile,
 				CollectionTitle: doc.CollectionTitle,
-				ContainsWords: doc.ContainsWords,
+				ContainsWords:   doc.ContainsWords,
 				ContainsBigrams: doc.ContainsBigrams,
-				SimTitle: doc.SimTitle,
-				SimWords: doc.SimWords,
-				SimBigram: doc.SimBigram,
-				SimBitVector: doc.SimBitVector,
-				Similarity: doc.Similarity,
-				ContainsTerms: doc.ContainsTerms,
-				MatchDetails: doc.MatchDetails,
-				TitleCNMatch: doc.TitleCNMatch,
+				SimTitle:        doc.SimTitle,
+				SimWords:        doc.SimWords,
+				SimBigram:       doc.SimBigram,
+				SimBitVector:    doc.SimBitVector,
+				Similarity:      doc.Similarity,
+				ContainsTerms:   doc.ContainsTerms,
+				MatchDetails:    doc.MatchDetails,
+				TitleCNMatch:    doc.TitleCNMatch,
 			}
 			log.Printf("showQueryResults, adding: %s", d.Title)
 			docs = append(docs, d)
 		}
 		res = find.QueryResults{
-			Query: results.Query,
+			Query:          results.Query,
 			CollectionFile: staticDir + "/" + results.CollectionFile,
 			NumCollections: results.NumCollections,
-			NumDocuments: results.NumDocuments,
-			Collections: results.Collections,
-			Documents: docs,
-			Terms: results.Terms,
-			SimilarTerms: results.SimilarTerms,
+			NumDocuments:   results.NumDocuments,
+			Collections:    results.Collections,
+			Documents:      docs,
+			Terms:          results.Terms,
+			SimilarTerms:   results.SimilarTerms,
 		}
 	}
 	title := webConfig.GetVarWithDefault("Title", defTitle)
 	content := htmlContent{
-		Title: title,
+		Title:   title,
 		Results: res,
 	}
 	var tmpl *template.Template
-	var err error 
+	var err error
 	tmpl = templates[templateFile]
 	if err != nil {
 		return fmt.Errorf("showQueryResults: error parsing template %v", err)
@@ -674,7 +674,7 @@ func findSubstring(response http.ResponseWriter, request *http.Request) {
 	if len(d) == 0 {
 		log.Printf("findSubstring databsae not initialized")
 		http.Error(response, "Server not configured", http.StatusInternalServerError)
-		return 
+		return
 	}
 	ctx := context.Background()
 	results, err := dictSearcher.LookupSubstr(ctx, q, t, st)
@@ -793,18 +793,18 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("loginHandler: setting new session %s for domain %s",
 				sessionid, domain)
 			cookie := &http.Cookie{
-        		Name: "session",
-        		Value: sessionid,
-        		Domain: domain,
-        		Path: "/",
-        		MaxAge: 86400*30, // One month
-        	}
-        	http.SetCookie(w, cookie)
-        	sessionInfo = authenticator.SaveSession(ctx, sessionid, users[0], 1)
-        }
-    }
-    if strings.Contains(r.Header.Get("Accept"), "application/json") {
-    	sendJSON(w, sessionInfo)
+				Name:   "session",
+				Value:  sessionid,
+				Domain: domain,
+				Path:   "/",
+				MaxAge: 86400 * 30, // One month
+			}
+			http.SetCookie(w, cookie)
+			sessionInfo = authenticator.SaveSession(ctx, sessionid, users[0], 1)
+		}
+	}
+	if strings.Contains(r.Header.Get("Accept"), "application/json") {
+		sendJSON(w, sessionInfo)
 	} else {
 		if sessionInfo.Authenticated == 1 {
 			displayHome(w, r)
@@ -852,8 +852,8 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		content := htmlContent{
 			Title: title,
 		}
-    displayPage(w, "logged_out.html", content)
-    return
+		displayPage(w, "logged_out.html", content)
+		return
 	}
 
 	message := "Please come back again"
@@ -864,12 +864,12 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 // Retrieves detail about media objects
 func mediaDetailHandler(response http.ResponseWriter, request *http.Request) {
 	ctx := context.Background()
-	if (mediaSearcher == nil) {
+	if mediaSearcher == nil {
 		mediaSearcher = media.NewMediaSearcher(database, ctx)
 		if !mediaSearcher.Initialized() {
 			log.Println("main.mediaDetailHandler initializing media searcher")
 			http.Error(response, "Error marshalling results",
-					http.StatusInternalServerError)
+				http.StatusInternalServerError)
 			return
 		}
 	}
@@ -961,7 +961,7 @@ func portalLibraryHandler(w http.ResponseWriter, r *http.Request) {
 		_, err := os.Stat(filename)
 		if err != nil {
 			log.Printf("portalLibraryHandler os.Stat error: %v for file %s",
-					err, filename)
+				err, filename)
 			custom404(w, r, filename)
 			return
 		}
@@ -979,11 +979,11 @@ func requestResetFormHandler(w http.ResponseWriter, r *http.Request) {
 	data := identity.RequestResetResult{true, false, true,
 		identity.InvalidUser(), ""}
 	title := webConfig.GetVarWithDefault("Title", defTitle)
-	content := htmlContent {
-		Title: title,
-		ErrorMsg: "",
+	content := htmlContent{
+		Title:     title,
+		ErrorMsg:  "",
 		TMResults: nil,
-		Data: data,
+		Data:      data,
 	}
 	displayPage(w, "request_reset_form.html", content)
 }
@@ -1008,15 +1008,15 @@ func requestResetHandler(w http.ResponseWriter, r *http.Request) {
 			result.RequestResetSuccess = false
 		}
 	}
-    if strings.Contains(r.Header.Get("Accept"), "application/json") {
-    	sendJSON(w, result)
+	if strings.Contains(r.Header.Get("Accept"), "application/json") {
+		sendJSON(w, result)
 	} else {
 		title := webConfig.GetVarWithDefault("Title", defTitle)
-		content := htmlContent {
-			Title: title,
-			ErrorMsg: "",
+		content := htmlContent{
+			Title:     title,
+			ErrorMsg:  "",
 			TMResults: nil,
-			Data: result,
+			Data:      result,
 		}
 		displayPage(w, "request_reset_form.html", content)
 	}
@@ -1052,8 +1052,8 @@ func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	if result {
 		content["ResetPasswordSuccessful"] = true
 	}
-    if strings.Contains(r.Header.Get("Accept"), "application/json") {
-    	sendJSON(w, result)
+	if strings.Contains(r.Header.Get("Accept"), "application/json") {
+		sendJSON(w, result)
 	} else {
 		displayPage(w, "reset_password_confirmation.html", content)
 	}
@@ -1092,21 +1092,21 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("sessionHandler: creating a new cookie")
 		sessionid := identity.NewSessionId()
 		cookie := &http.Cookie{
-        	Name: "session",
-        	Value: sessionid,
-        	Domain: config.GetSiteDomain(),
-        	Path: "/",
-        	MaxAge: 86400, // One day
-        }
-        http.SetCookie(w, cookie)
-        userInfo := identity.UserInfo{
-			UserID: 1,
-			UserName: "",
-			Email: "",
-			FullName: "",
-			Role: "",
+			Name:   "session",
+			Value:  sessionid,
+			Domain: config.GetSiteDomain(),
+			Path:   "/",
+			MaxAge: 86400, // One day
 		}
-    authenticator.SaveSession(ctx, sessionid, userInfo, 0)
+		http.SetCookie(w, cookie)
+		userInfo := identity.UserInfo{
+			UserID:   1,
+			UserName: "",
+			Email:    "",
+			FullName: "",
+			Role:     "",
+		}
+		authenticator.SaveSession(ctx, sessionid, userInfo, 0)
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	resultsJson, err := json.Marshal(sessionInfo)
@@ -1179,8 +1179,8 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 	}
 	if acceptHTML(r) {
 		content := htmlContent{
-			Title: title,
-			Query: q,
+			Title:     title,
+			Query:     q,
 			TMResults: results,
 		}
 		displayPage(w, "findtm.html", content)
@@ -1287,7 +1287,7 @@ func main() {
 	http.HandleFunc("/words/", wordDetail)
 
 	portStr := ":" + strconv.Itoa(config.GetPort())
-	log.Printf("cnweb.main Starting http server on port %s", portStr)
+	log.Printf("cnweb.main Starting http server at http://localhost%s", portStr)
 	err = http.ListenAndServe(portStr, nil)
 	if err != nil {
 		log.Printf("main() error for starting server: %v", err)

@@ -72,7 +72,7 @@ When you see the output
 
 ```
 ...
-Starting http server on port :8080
+Starting http server at http://localhost:8080
 ```
 
 navigate to http://localhost:8080 with your browser. Enter some Chinese words
@@ -478,7 +478,7 @@ to build the Docker image and upload it to the Google Container Registry:
 
 ```shell
 export PROJECT_ID=[Your project]
-BUILD_ID=r001
+BUILD_ID=[your build id]
 gcloud builds submit --config cloudbuild.yaml . \
   --substitutions=_IMAGE_TAG="$BUILD_ID"
 ```
