@@ -64,37 +64,82 @@
 
       <main class="main-content" id="main-content">
         <div class="mdc-top-app-bar--fixed-adjust">
-          <p>
-            Enter Chinese text into the input field below to find each word and its
-            English equivalent.
-          </p>
-          <form name="findForm" method="post" action="/find/">
-            <div>
-              <label for="findInput">Search for</label>
-              <input type="text" name="query" size="40" required/>
-              <button type="submit">Find</button>
-            </div>
-          </form>
-        </div>
-      </main>
-      <footer class="page-footer">
-      <p>
-        Copyright Fo Guang Shan 佛光山 2020-2021.
-        The Chinese-English dictionary is reproduced from the <a 
-        href="http://ntireader.org/" target="_blank"
-        > NTI Buddhist Text Reader</a> under the <a 
-        href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank"
-        >Creative Commons Attribution-Share Alike 3.0 License</a>
-        (CCASE 3.0). 
-        The site is powered by open source
-        software under an <a 
-        href="http://www.apache.org/licenses/LICENSE-2.0.html"
-        >Apache 2.0 license</a>.
-        Other content shown in password protected versions of this site is
-        copyright protected.
-      </p>
-      </footer>
-    </div> <!-- mdc-drawer-app-content-->
-    <script type="module" src="/web/cnotes-compiled.js" async></script>
-  </body>
+<h1>Machine Translation Prototype</h1>
+
+<form action='/translateprocess' method='POST'>
+
+  <h2>Source Text</h2>
+  <p>
+    Enter source text in Chinese.
+  </p>
+  <textarea name='source' rows='10' cols='80'>{{.SourceText}}</textarea><br>
+  <p>
+    <input type='submit' value='Translate to English'>
+    <span>
+      <input type="radio" id="deepL" name="platform" value="DeepL"
+             {{.DeepLChecked}}>
+      <label for="deepL">DeepL</label>
+    </span>
+    <span>
+      <input type="radio" id="gcp" name="platform" value="gcp"
+             {{.GCPChecked}}>
+      <label for="gcp">Google Translation API</label>
+    </span>
+    <span>
+      <input type="radio" id="withGlossary" name="platform" value="withGlossary"
+             {{.GlossaryChecked}}>
+      <label for="gcp">Google API with Glossary</label>
+    </span>
+  </p>
+  <p>
+    <span>
+      <input type="checkbox" id="processing" name="processing" checked>
+      <label for="processing">Checking of Machine Translation*</label>
+    </span>
+  </p>
+
+  <h2>Translated Text</h2>
+  <textarea name='translated' rows='10' cols='80'>{{.SuggestedText}}</textarea><br>
+</form>
+<p>
+  {{.Message}}
+</p>
+<p>
+  Notes:
+  <ul>
+  {{range .Notes}}  
+    <li>{{.}}</li>
+  {{end}}
+  </ul>
+</p>
+<p>
+  * Enabling checking of machine translation will do basic processing of the
+  output text to check for ommissions and do automatic substitutions of known
+  errors for Buddhist terms and terms that do not agree with the FGS style.
+</p>
+<p>
+  <a href='/translate'>Start again</a>
+</p>
+</div>
+</main>
+<footer class="page-footer">
+<p>
+  Copyright Fo Guang Shan 佛光山 2021.
+  The Chinese-English dictionary is reproduced from the <a 
+  href="http://ntireader.org/" target="_blank"
+  > NTI Buddhist Text Reader</a> under the <a 
+  href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank"
+  >Creative Commons Attribution-Share Alike 3.0 License</a>
+  (CCASE 3.0). 
+  The site is powered by open source
+  software under an <a 
+  href="http://www.apache.org/licenses/LICENSE-2.0.html"
+  >Apache 2.0 license</a>.
+  Other content shown in password protected versions of this site is
+  copyright protected.
+</p>
+</footer>
+</div> <!-- mdc-drawer-app-content-->
+<script type="module" src="/web/cnotes-compiled.js" async></script>
+</body>
 </html>

@@ -13,11 +13,11 @@
 package main
 
 import (
-  "fmt"
+	"fmt"
+	"log"
 	"text/template"
-  "log"
 
-  "github.com/alexamies/chinesenotes-go/config"
+	"github.com/alexamies/chinesenotes-go/config"
 )
 
 // HTML fragment for page head
@@ -658,28 +658,29 @@ const resetFormTmp = `
 // newTemplateMap builds the template map
 func newTemplateMap(webConfig config.WebAppConfig) map[string]*template.Template {
 	tNames := map[string]string{
-    "404.html": notFoundTmpl,
-    "admin_portal.html": adminPortalTmpl,
-    "change_password_form.html": changePasswordTmpl,
-    "doc_results.html": docResultsTmpl,
-    "find_results.html": findResultsTmpl,
-    "findtm.html": findTMTmpl,
-    "full_text_search.html": fullTextSearchTmpl,
-    "index.html": indexTmpl,
-		"index_auth.html": indexAuthTmpl,
-    "library.html": libraryTmpl,
-    "logged_out.html": loggedOutTmp,
-    "login_form.html": loginTmp,
-    "logout.html": logoutTmp,
-    "request_reset_form.html": requestResetTmp,
-    "reset_password_confirmation.html": resetConfTmp,
-    "reset_password_form.html": resetFormTmp,
-    "word_detail.html": wordDetailTmpl,
+		"404.html":                         notFoundTmpl,
+		"admin_portal.html":                adminPortalTmpl,
+		"change_password_form.html":        changePasswordTmpl,
+		"doc_results.html":                 docResultsTmpl,
+		"find_results.html":                findResultsTmpl,
+		"findtm.html":                      findTMTmpl,
+		"full_text_search.html":            fullTextSearchTmpl,
+		"index.html":                       indexTmpl,
+		"index_auth.html":                  indexAuthTmpl,
+		"library.html":                     libraryTmpl,
+		"logged_out.html":                  loggedOutTmp,
+		"login_form.html":                  loginTmp,
+		"logout.html":                      logoutTmp,
+		"request_reset_form.html":          requestResetTmp,
+		"reset_password_confirmation.html": resetConfTmp,
+		"reset_password_form.html":         resetFormTmp,
+		"translation.html":                 notFoundTmpl,
+		"word_detail.html":                 wordDetailTmpl,
 	}
-  templateMap := make(map[string]*template.Template)
-  templDir := webConfig.GetVar("TemplateDir")
+	templateMap := make(map[string]*template.Template)
+	templDir := webConfig.GetVar("TemplateDir")
 	if len(templDir) > 0 {
-    log.Printf("newTemplateMap, using TemplateDir: %s", templDir)
+		log.Printf("newTemplateMap, using TemplateDir: %s", templDir)
 		for tName, defTmpl := range tNames {
 			fileName := templDir + "/" + tName
 			var tmpl *template.Template
@@ -687,15 +688,15 @@ func newTemplateMap(webConfig config.WebAppConfig) map[string]*template.Template
 			tmpl, err = template.New(tName).ParseFiles(fileName)
 			if err != nil {
 				log.Printf("newTemplateMap: error parsing template, using default %s: %v",
-						tName, err)
-        t := fmt.Sprintf(defTmpl, head, header, nav, footer)
+					tName, err)
+				t := fmt.Sprintf(defTmpl, head, header, nav, footer)
 				tmpl = template.Must(template.New(tName).Parse(t))
 			}
 			templateMap[tName] = tmpl
 		}
 	} else {
 		for tName, defTmpl := range tNames {
-      t := fmt.Sprintf(defTmpl, head, header, nav, footer)
+			t := fmt.Sprintf(defTmpl, head, header, nav, footer)
 			tmpl := template.Must(template.New(tName).Parse(t))
 			templateMap[tName] = tmpl
 		}

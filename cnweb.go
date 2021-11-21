@@ -40,27 +40,32 @@ import (
 	"github.com/alexamies/chinesenotes-go/identity"
 	"github.com/alexamies/chinesenotes-go/media"
 	"github.com/alexamies/chinesenotes-go/transmemory"
+	"github.com/alexamies/chinesenotes-go/transtools"
 )
 
 const (
-	defTitle     = "Chinese Notes Translation Portal"
-	titleIndexFN = "documents.tsv"
+	deepLKeyName         = "DEEPL_AUTH_KEY"
+	defTitle             = "Chinese Notes Translation Portal"
+	titleIndexFN         = "documents.tsv"
+	translationTemplFile = "web-resources/translation.html"
 )
 
 var (
-	appConfig      config.AppConfig
-	webConfig      config.WebAppConfig
-	database       *sql.DB
-	parser         find.QueryParser
-	dict           dictionary.Dictionary
-	dictSearcher   *dictionary.Searcher
-	tmSearcher     transmemory.Searcher
-	df             find.DocFinder
-	authenticator  *identity.Authenticator
-	mediaSearcher  *media.MediaSearcher
-	templates      map[string]*template.Template
-	docTitleFinder find.DocTitleFinder
-	docMap         map[string]find.DocInfo
+	appConfig                                             config.AppConfig
+	webConfig                                             config.WebAppConfig
+	database                                              *sql.DB
+	parser                                                find.QueryParser
+	dict                                                  dictionary.Dictionary
+	dictSearcher                                          *dictionary.Searcher
+	tmSearcher                                            transmemory.Searcher
+	df                                                    find.DocFinder
+	authenticator                                         *identity.Authenticator
+	mediaSearcher                                         *media.MediaSearcher
+	templates                                             map[string]*template.Template
+	docTitleFinder                                        find.DocTitleFinder
+	docMap                                                map[string]find.DocInfo
+	translationProcessor                                  transtools.Processor
+	deepLApiClient, translateApiClient, glossaryApiClient transtools.ApiClient
 )
 
 // Content for HTML template
@@ -79,6 +84,13 @@ type ChangePasswordHTML struct {
 	OldPasswordValid bool
 	ChangeSuccessful bool
 	ShowNewForm      bool
+}
+
+// Data for displaying the translation page.
+type translationPage struct {
+	SourceText, TranslatedText, SuggestedText, Message, Title string
+	Notes                                                     []string
+	DeepLChecked, GCPChecked, GlossaryChecked                 string
 }
 
 func initApp(ctx context.Context) error {
@@ -155,7 +167,7 @@ func initDocTitleFinder() (find.DocTitleFinder, error) {
 func adminHandler(w http.ResponseWriter, r *http.Request) {
 	d := os.Getenv("DATABASE")
 	if len(d) == 0 {
-		log.Printf("adminHandler databsae not initialized")
+		log.Print("adminHandler databsae not initialized")
 		http.Error(w, "Not authorized", http.StatusForbidden)
 		return
 	}
@@ -200,7 +212,7 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
 	d := os.Getenv("DATABASE")
 	if len(d) == 0 {
-		log.Printf("changePasswordHandler databsae not initialized")
+		log.Print("changePasswordHandler databsae not initialized")
 		http.Error(w, "Not authorized", http.StatusForbidden)
 		return
 	}
@@ -238,7 +250,7 @@ func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
 func changePasswordFormHandler(w http.ResponseWriter, r *http.Request) {
 	d := os.Getenv("DATABASE")
 	if len(d) == 0 {
-		log.Printf("changePasswordFormHandler databsae not initialized")
+		log.Print("changePasswordFormHandler databsae not initialized")
 		http.Error(w, "Not authorized", http.StatusForbidden)
 		return
 	}
@@ -384,7 +396,7 @@ func findDocs(response http.ResponseWriter,
 	// No query, eg someone nativated directly to the HTML page, redisplay it
 	var err error
 	if len(q) == 0 && acceptHTML(request) {
-		log.Printf("main.findDocs No query provided")
+		log.Print("main.findDocs No query provided")
 		templateFile := "find_results.html"
 		if fullText {
 			templateFile = "full_text_search.html"
@@ -512,7 +524,7 @@ func findDocs(response http.ResponseWriter,
 			log.Printf("main.findDocs, results: %q", string(resultsJson))
 		}
 		response.Header().Set("Content-Type", "application/json; charset=utf-8")
-		fmt.Fprintf(response, string(resultsJson))
+		fmt.Fprint(response, string(resultsJson))
 	}
 }
 
@@ -583,12 +595,92 @@ func highlightMatches(r find.QueryResults) find.QueryResults {
 	return results
 }
 
+// Initializes translation API clients and processing utility.
+func initTranslationClients() {
+	deepLKey, ok := os.LookupEnv(deepLKeyName)
+	if !ok {
+		log.Printf("%s not set\n", deepLKeyName)
+	} else {
+		deepLApiClient = transtools.NewDeepLClient(deepLKey)
+	}
+	translateApiClient = transtools.NewGoogleClient()
+	glossaryApiClient = transtools.NewGlossaryClient()
+	translationProcessor = transtools.NewProcessor()
+}
+
+// Performs post processing of translated text.
+func processTranslation(w http.ResponseWriter, r *http.Request) {
+	source := r.FormValue("source")
+	trText := r.FormValue("translated")
+	suggested := r.FormValue("suggested")
+	message := ""
+	notes := []string{}
+	deepLChecked := "checked"
+	gcpChecked := ""
+	glossaryChecked := ""
+	platform := r.FormValue("platform")
+	if platform == "gcp" {
+		deepLChecked = ""
+		gcpChecked = "checked"
+		glossaryChecked = ""
+	} else if platform == "withGlossary" {
+		deepLChecked = ""
+		gcpChecked = ""
+		glossaryChecked = "checked"
+	}
+	processingChecked := r.FormValue("processing")
+	if len(source) > 0 {
+		log.Printf("platform: %s", platform)
+		translated, err := translate(source, platform)
+		if err != nil {
+			log.Printf("Translation error: %v", err)
+			message = err.Error()
+		} else {
+			log.Printf("Translation result: %s", *translated)
+			trText = *translated
+		}
+	} else {
+		message = "Please enter translated text or click Translate for a machine translation"
+	}
+	if len(trText) > 0 && processingChecked == "on" {
+		log.Printf("suggestion result: %s", suggested)
+		result, err := translationProcessor.Suggest(source, trText)
+		if err != nil {
+			log.Printf("Translation error: %v", err)
+			message = err.Error()
+		} else {
+			suggested = result.Replacement
+			notes = result.Notes
+		}
+	}
+	log.Printf("deepLChecked: %s, gcpChecked: %s, glossaryChecked: %s, processingChecked: %s",
+		deepLChecked, gcpChecked, glossaryChecked, processingChecked)
+	if config.PasswordProtected() {
+		sessionInfo := enforceValidSession(w, r)
+		if !sessionInfo.Valid {
+			return
+		}
+	}
+	title := webConfig.GetVarWithDefault("Title", defTitle)
+	p := &translationPage{
+		SourceText:      source,
+		TranslatedText:  trText,
+		SuggestedText:   suggested,
+		Message:         message,
+		Title:           title,
+		Notes:           notes,
+		DeepLChecked:    deepLChecked,
+		GCPChecked:      gcpChecked,
+		GlossaryChecked: glossaryChecked,
+	}
+	showTranslationPage(w, r, p)
+}
+
 // showQueryResults displays query results on a HTML page
 func showQueryResults(w io.Writer, results find.QueryResults,
 	templateFile string) error {
 	res := results
 	staticDir := appConfig.GetVar("GoStaticDir")
-	// log.Printf("showQueryResults, staticDir: %s", staticDir)
 	if len(staticDir) > 0 && len(results.Documents) > 0 {
 		log.Printf("showQueryResults, len(Documents): %d", len(results.Documents))
 		docs := []find.Document{}
@@ -644,6 +736,11 @@ func showQueryResults(w io.Writer, results find.QueryResults,
 	return nil
 }
 
+// Displays the translation page.
+func showTranslationPage(w http.ResponseWriter, r *http.Request, p *translationPage) {
+	displayPage(w, "translation.html", p)
+}
+
 // findHandler finds documents matching the given query.
 func findHandler(response http.ResponseWriter, request *http.Request) {
 	log.Printf("findHandler: url %s", request.URL.Path)
@@ -672,7 +769,7 @@ func findSubstring(response http.ResponseWriter, request *http.Request) {
 	}
 	d := os.Getenv("DATABASE")
 	if len(d) == 0 {
-		log.Printf("findSubstring databsae not initialized")
+		log.Print("findSubstring databsae not initialized")
 		http.Error(response, "Server not configured", http.StatusInternalServerError)
 		return
 	}
@@ -691,7 +788,7 @@ func findSubstring(response http.ResponseWriter, request *http.Request) {
 			http.StatusInternalServerError)
 	} else {
 		response.Header().Set("Content-Type", "application/json; charset=utf-8")
-		fmt.Fprintf(response, string(resultsJson))
+		fmt.Fprint(response, string(resultsJson))
 	}
 }
 
@@ -816,7 +913,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 // logoutForm displays a form button to logout the user
 func logoutForm(w http.ResponseWriter, r *http.Request) {
-	log.Printf("logoutForm: display form")
+	log.Print("logoutForm: display form")
 	title := webConfig.GetVarWithDefault("Title", defTitle)
 	content := htmlContent{
 		Title: title,
@@ -826,7 +923,7 @@ func logoutForm(w http.ResponseWriter, r *http.Request) {
 
 // logoutHandler logs the user out of their session
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("logoutHandler: process form")
+	log.Print("logoutHandler: process form")
 	ctx := context.Background()
 	if authenticator == nil {
 		var err error
@@ -898,7 +995,7 @@ func mediaDetailHandler(response http.ResponseWriter, request *http.Request) {
 			http.StatusInternalServerError)
 	} else {
 		response.Header().Set("Content-Type", "application/json; charset=utf-8")
-		fmt.Fprintf(response, string(resultsJson))
+		fmt.Fprint(response, string(resultsJson))
 	}
 }
 
@@ -1067,7 +1164,7 @@ func sendJSON(w http.ResponseWriter, obj interface{}) {
 		http.Error(w, "Error checking login", http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintf(w, string(resultsJson))
+	fmt.Fprint(w, string(resultsJson))
 }
 
 // sessionHandler checks to see if the user has a session.
@@ -1110,7 +1207,10 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	resultsJson, err := json.Marshal(sessionInfo)
-	fmt.Fprintf(w, string(resultsJson))
+	if err != nil {
+		log.Println("sessionHandler: error marshalling JSON, %v", err)
+	}
+	fmt.Fprint(w, string(resultsJson))
 }
 
 func getStaticFileName(u url.URL) string {
@@ -1131,6 +1231,39 @@ func (h StaticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fname := getStaticFileName(*r.URL)
 	log.Printf("ServeHTTP fname: %s", fname)
 	http.ServeFile(w, r, fname)
+}
+
+// Call the relevant API to translate text.
+func translate(sourceText, platform string) (*string, error) {
+	if platform == "DeepL" {
+		return deepLApiClient.Translate(sourceText)
+	}
+	if platform == "gcp" {
+		return translateApiClient.Translate(sourceText)
+	}
+	return glossaryApiClient.Translate(sourceText)
+}
+
+// Initialzie an empty translation page and display it.
+func translationHome(w http.ResponseWriter, r *http.Request) {
+	if config.PasswordProtected() {
+		sessionInfo := enforceValidSession(w, r)
+		if !sessionInfo.Valid {
+			return
+		}
+	}
+	title := webConfig.GetVarWithDefault("Title", defTitle)
+	p := &translationPage{
+		SourceText:      "",
+		TranslatedText:  "",
+		SuggestedText:   "",
+		Message:         "",
+		Title:           title,
+		DeepLChecked:    "checked",
+		GCPChecked:      "",
+		GlossaryChecked: "",
+	}
+	showTranslationPage(w, r, p)
 }
 
 // translationMemory handles requests for translation memory searches
@@ -1193,7 +1326,7 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	fmt.Fprintf(w, string(resultsJson))
+	fmt.Fprint(w, string(resultsJson))
 }
 
 var wordsRe *regexp.Regexp = regexp.MustCompile(`[0-9]+`)
@@ -1204,7 +1337,7 @@ var wordsRe *regexp.Regexp = regexp.MustCompile(`[0-9]+`)
 func getHeadwordId(path string) (int, error) {
 	hwIdStr := wordsRe.FindString(path)
 	if len(hwIdStr) == 0 {
-		return -1, fmt.Errorf("No headword id provided: %s", path)
+		return -1, fmt.Errorf("no headword id provided: %s", path)
 	}
 	hwId, err := strconv.Atoi(hwIdStr)
 	if err != nil {
@@ -1283,6 +1416,9 @@ func main() {
 	http.HandleFunc("/loggedin/reset_password", resetPasswordFormHandler)
 	http.HandleFunc("/loggedin/reset_password_submit", resetPasswordHandler)
 	http.HandleFunc("/loggedin/submitcpwd", changePasswordHandler)
+	initTranslationClients()
+	http.HandleFunc("/translateprocess", processTranslation)
+	http.HandleFunc("/translate", translationHome)
 	http.Handle("/web/", http.StripPrefix("/web/", StaticHandler{}))
 	http.HandleFunc("/words/", wordDetail)
 

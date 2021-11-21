@@ -1,0 +1,12 @@
+{
+  "name":"projects/hbreader-162018/locations/us-central1/glossaries/test-fgdb-glossary",
+  "languagePair": {
+    "sourceLanguageCode": "zh",
+    "targetLanguageCode": "en"
+    },
+  "inputConfig": {
+    "gcsSource": {
+      "inputUri": "gs://fgdb_glossaries/fgdb-test-glossary.csv"
+    }
+  }
+}

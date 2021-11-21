@@ -3,3 +3,4 @@ chinesenotes-go
 config.yaml
 coverage.html
 coverage.out
+service-account-file.json
