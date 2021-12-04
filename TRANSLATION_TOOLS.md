@@ -36,32 +36,47 @@ Install and initialize the Cloud SDK.
 Follow instructions at
 https://cloud.google.com/translate/docs/advanced/glossary
 
-Upload the glossary to GCS using the console. Edit the file
-`glossary_request.json`. Create the glossary sources with the command
+Upload the glossary to GCS using the command:
 
 ```shell
+GLOSSARY_BUCKET=[your bucket name]
+GLOSSARY_FILE=data/glossary/hb_glossary.csv
+gsutil cp $GLOSSARY_FILE gs://${GLOSSARY_BUCKET}/
+```
+
+Check contents of the bucket:
+
+```shell
+gsutil ls -r gs://${GLOSSARY_BUCKET}/**
+```
+
+Edit the file `glossary_request.json`. Create the glossary sources with the
+command
+
+```shell
+PROJECT_ID=hbreader-162018
 curl -X POST \
   -H "Authorization: Bearer "$(gcloud auth application-default print-access-token) \
   -H "Content-Type: application/json; charset=utf-8" \
   -d @glossary_request.json \
-  "https://translation.googleapis.com/v3/projects/hbreader-162018/locations/us-central1/glossaries"
+  "https://translation.googleapis.com/v3/projects/${PROJECT_ID}/locations/us-central1/glossaries"
 ```
 
 check status of operation
 
 ```shell
-OPERATION_ID="20211120-13001637442017-6195e620-0000-2114-bf27-14c14ef28b38"
+OPERATION_ID="20211204-11321638646361-6195e5b8-0000-215f-920a-582429aa5674"
 curl -X GET \
 -H "Authorization: Bearer "$(gcloud auth application-default print-access-token) \
-"https://translation.googleapis.com/v3/projects/hbreader-162018/locations/us-central1/operations/$OPERATION_ID"
+"https://translation.googleapis.com/v3/projects/${PROJECT_ID}/locations/us-central1/operations/${OPERATION_ID}"
 ```
 
-Check glossary has been created successfully:
+Check glossary has been created successfully by listing glossaries:
 
 ```shell
 curl -X GET \
 -H "Authorization: Bearer "$(gcloud auth application-default print-access-token) \
-"https://translation.googleapis.com/v3/projects/hbreader-162018/locations/us-central1/glossaries"
+"https://translation.googleapis.com/v3/projects/${PROJECT_ID}/locations/us-central1/glossaries"
 ```
 
 Delete a glossary
@@ -69,5 +84,5 @@ Delete a glossary
 ```shell
 curl -X DELETE \
 -H "Authorization: Bearer "$(gcloud auth application-default print-access-token) \
-"https://translation.googleapis.com/v3/projects/hbreader-162018/locations/us-central1/glossaries/test-fgdb-glossary"
+"https://translation.googleapis.com/v3/projects/${PROJECT_ID}/locations/us-central1/glossaries/test-fgdb-glossary"
 ```
