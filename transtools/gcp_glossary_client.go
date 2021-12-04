@@ -10,18 +10,20 @@ import (
 
 const (
 	location   = "us-central1"
-	projectID  = "hbreader-162018"
 	sourceLang = "zh"
 	targetLang = "en"
-	glossaryID = "test-fgdb-glossary"
 )
 
 type glossaryApiClient struct {
+	projectID, glossaryID string
 }
 
 // NewGoogleClient creates a Google Translation API that uses a glossary.
-func NewGlossaryClient() ApiClient {
-	return glossaryApiClient{}
+func NewGlossaryClient(projectID, glossaryID string) ApiClient {
+	return glossaryApiClient{
+		projectID:  projectID,
+		glossaryID: glossaryID,
+	}
 }
 
 func (client glossaryApiClient) Translate(sourceText string) (*string, error) {
@@ -33,13 +35,13 @@ func (client glossaryApiClient) Translate(sourceText string) (*string, error) {
 	defer cl.Close()
 
 	req := &translatepb.TranslateTextRequest{
-		Parent:             fmt.Sprintf("projects/%s/locations/%s", projectID, location),
+		Parent:             fmt.Sprintf("projects/%s/locations/%s", client.projectID, location),
 		SourceLanguageCode: sourceLang,
 		TargetLanguageCode: targetLang,
 		MimeType:           "text/plain", // Mime types: "text/plain", "text/html"
 		Contents:           []string{sourceText},
 		GlossaryConfig: &translatepb.TranslateTextGlossaryConfig{
-			Glossary: fmt.Sprintf("projects/%s/locations/%s/glossaries/%s", projectID, location, glossaryID),
+			Glossary: fmt.Sprintf("projects/%s/locations/%s/glossaries/%s", client.projectID, location, client.glossaryID),
 		},
 	}
 

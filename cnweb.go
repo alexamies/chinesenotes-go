@@ -44,8 +44,10 @@ import (
 )
 
 const (
-	deepLKeyName         = "DEEPL_AUTH_KEY"
+	deepLKeyName         = "DEEPL_AUTH_KEY" // Only needed if using machine translation
 	defTitle             = "Chinese Notes Translation Portal"
+	glossaryKeyName      = "TRANSLATION_GLOSSARY" // Google Translation API glossary
+	projectIDKey         = "GCP_PROJECT_ID"       // For translation glossary location
 	titleIndexFN         = "documents.tsv"
 	translationTemplFile = "web-resources/translation.html"
 )
@@ -432,6 +434,11 @@ func findDocs(response http.ResponseWriter,
 		if err == nil {
 			results, err = docTitleFinder.FindDocuments(ctx, q)
 		}
+		if err != nil {
+			log.Printf("main.findDocs Error finding docs, %v", err)
+			http.Error(response, "Internal error", http.StatusInternalServerError)
+			return
+		}
 	} else {
 		results, err = df.FindDocuments(ctx, dictSearcher, parser, q, fullText)
 	}
@@ -604,7 +611,17 @@ func initTranslationClients() {
 		deepLApiClient = transtools.NewDeepLClient(deepLKey)
 	}
 	translateApiClient = transtools.NewGoogleClient()
-	glossaryApiClient = transtools.NewGlossaryClient()
+	glossaryName, ok := os.LookupEnv(glossaryKeyName)
+	if !ok {
+		log.Printf("%s not set\n", glossaryKeyName)
+	} else {
+		projectID, ok := os.LookupEnv(projectIDKey)
+		if !ok {
+			log.Printf("%s not set\n", projectIDKey)
+		} else {
+			glossaryApiClient = transtools.NewGlossaryClient(projectID, glossaryName)
+		}
+	}
 	translationProcessor = transtools.NewProcessor()
 }
 
@@ -1208,7 +1225,7 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	resultsJson, err := json.Marshal(sessionInfo)
 	if err != nil {
-		log.Println("sessionHandler: error marshalling JSON, %v", err)
+		log.Printf("sessionHandler: error marshalling JSON, %v", err)
 	}
 	fmt.Fprint(w, string(resultsJson))
 }
