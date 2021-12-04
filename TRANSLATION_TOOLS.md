@@ -40,7 +40,7 @@ Upload the glossary to GCS using the command:
 
 ```shell
 GLOSSARY_BUCKET=[your bucket name]
-GLOSSARY_FILE=data/glossary/hb_glossary.csv
+GLOSSARY_FILE=data/glossary/[your CSV glossary]
 gsutil cp $GLOSSARY_FILE gs://${GLOSSARY_BUCKET}/
 ```
 
@@ -54,7 +54,7 @@ Edit the file `glossary_request.json`. Create the glossary sources with the
 command
 
 ```shell
-PROJECT_ID=hbreader-162018
+PROJECT_ID=[your project]
 curl -X POST \
   -H "Authorization: Bearer "$(gcloud auth application-default print-access-token) \
   -H "Content-Type: application/json; charset=utf-8" \
