@@ -93,13 +93,13 @@
   </p>
   <p>
     <span>
-      <input type="checkbox" id="processing" name="processing" checked>
+      <input type="checkbox" id="processing" name="processing" {{.PostProcessing}}>
       <label for="processing">Checking of Machine Translation*</label>
     </span>
   </p>
 
   <h2>Translated Text</h2>
-  <textarea name='translated' rows='10' cols='80'>{{.SuggestedText}}</textarea><br>
+  <textarea name='translated' rows='10' cols='80'>{{.TranslatedText}}</textarea><br>
 </form>
 <p>
   {{.Message}}

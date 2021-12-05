@@ -92,7 +92,7 @@ type ChangePasswordHTML struct {
 type translationPage struct {
 	SourceText, TranslatedText, SuggestedText, Message, Title string
 	Notes                                                     []string
-	DeepLChecked, GCPChecked, GlossaryChecked                 string
+	DeepLChecked, GCPChecked, GlossaryChecked, PostProcessing string
 }
 
 func initApp(ctx context.Context) error {
@@ -643,19 +643,19 @@ func initTranslationClients() {
 	translationProcessor = transtools.NewProcessor(fExpected, fReplace)
 }
 
-// Performs post processing of translated text.
+// Performs translation and post processing of source text.
 func processTranslation(w http.ResponseWriter, r *http.Request) {
 	title := webConfig.GetVarWithDefault("Title", defTitle)
 	if translationProcessor == nil {
 		p := &translationPage{
-			Message: "Translation processor not initialized",
-			Title:   title,
+			Message:        "Translation processor not initialized",
+			Title:          title,
+			PostProcessing: "checked",
 		}
 		showTranslationPage(w, r, p)
 	}
 	source := r.FormValue("source")
-	trText := r.FormValue("translated")
-	suggested := r.FormValue("suggested")
+	translated := ""
 	message := ""
 	notes := []string{}
 	deepLChecked := "checked"
@@ -674,21 +674,21 @@ func processTranslation(w http.ResponseWriter, r *http.Request) {
 	processingChecked := r.FormValue("processing")
 	if len(source) > 0 {
 		log.Printf("platform: %s", platform)
-		translated, err := translate(source, platform)
+		trText, err := translate(source, platform)
 		if err != nil {
 			log.Printf("Translation error: %v", err)
 			message = err.Error()
 		} else {
-			log.Printf("Translation result: %s", *translated)
-			trText = *translated
+			log.Printf("Translation result: %s", *trText)
+			translated = *trText
 		}
 	} else {
 		message = "Please enter translated text or click Translate for a machine translation"
 	}
-	if len(trText) > 0 && processingChecked == "on" {
-		log.Printf("suggestion result: %s", suggested)
-		result := translationProcessor.Suggest(source, trText)
-		suggested = result.Replacement
+	if len(translated) > 0 && processingChecked == "on" {
+		log.Printf("suggestion result: %s", translated)
+		result := translationProcessor.Suggest(source, translated)
+		translated = result.Replacement
 		notes = result.Notes
 	}
 	log.Printf("deepLChecked: %s, gcpChecked: %s, glossaryChecked: %s, processingChecked: %s",
@@ -699,16 +699,20 @@ func processTranslation(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	postProcessing := ""
+	if processingChecked == "on" {
+		postProcessing = "checked"
+	}
 	p := &translationPage{
 		SourceText:      source,
-		TranslatedText:  trText,
-		SuggestedText:   suggested,
+		TranslatedText:  translated,
 		Message:         message,
 		Title:           title,
 		Notes:           notes,
 		DeepLChecked:    deepLChecked,
 		GCPChecked:      gcpChecked,
 		GlossaryChecked: glossaryChecked,
+		PostProcessing:  postProcessing,
 	}
 	showTranslationPage(w, r, p)
 }
@@ -1302,12 +1306,12 @@ func translationHome(w http.ResponseWriter, r *http.Request) {
 	p := &translationPage{
 		SourceText:      "",
 		TranslatedText:  "",
-		SuggestedText:   "",
 		Message:         "",
 		Title:           title,
 		DeepLChecked:    "checked",
 		GCPChecked:      "",
 		GlossaryChecked: "",
+		PostProcessing:  "checked",
 	}
 	showTranslationPage(w, r, p)
 }
