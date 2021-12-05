@@ -1,18 +1,33 @@
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package transtools
 
 import (
 	"encoding/csv"
 	"fmt"
+	"io"
 	"log"
-	"os"
 	"strings"
 )
 
-const expectedDataFile = "data/expected.csv"
-const replaceDataFile = "data/suggestions.csv"
+// File name for expected translation elements
+const ExpectedDataFile = "data/glossary/expected.csv"
+
+// File name for suggested translation elements
+const ReplaceDataFile = "data/glossary/suggestions.csv"
 
 type Processor interface {
-	Suggest(source, translation string) (*Results, error)
+	Suggest(source, translation string) Results
 }
 
 type processor struct {
@@ -25,24 +40,14 @@ type Results struct {
 	Notes       []string
 }
 
-func loadData(dataFile string) (*map[string]string, error) {
+func loadData(f io.Reader) (*map[string]string, error) {
 	data := make(map[string]string)
-	f, err := os.Open(dataFile)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if err = f.Close(); err != nil {
-			log.Fatal(err)
-		}
-	}()
-
 	r := csv.NewReader(f)
 	r.Comma = ';'
 	r.Comment = '#'
 	rows, err := r.ReadAll()
 	if err != nil {
-		log.Printf("Error reading suggestion data %s, %v", dataFile, err)
+		log.Printf("Error reading suggestion data, %v", err)
 	}
 	for i, row := range rows {
 		if len(row) < 2 {
@@ -51,12 +56,12 @@ func loadData(dataFile string) (*map[string]string, error) {
 		}
 		data[row[0]] = row[1]
 	}
-	log.Printf("Loaded suggestion data from %s with %d rows", dataFile, len(data))
+	log.Printf("Loaded suggestion data from with %d rows", len(data))
 	return &data, nil
 }
 
-func (p *processor) loadExpectedData() error {
-	d, err := loadData(expectedDataFile)
+func (p *processor) loadExpectedData(r io.Reader) error {
+	d, err := loadData(r)
 	if err != nil {
 		return err
 	}
@@ -64,8 +69,8 @@ func (p *processor) loadExpectedData() error {
 	return nil
 }
 
-func (p *processor) loadReplaceData() error {
-	d, err := loadData(replaceDataFile)
+func (p *processor) loadReplaceData(r io.Reader) error {
+	d, err := loadData(r)
 	if err != nil {
 		return err
 	}
@@ -73,14 +78,14 @@ func (p *processor) loadReplaceData() error {
 	return nil
 }
 
-func NewProcessor() Processor {
+func NewProcessor(eReader, rReader io.Reader) Processor {
 	p := processor{}
-	p.loadExpectedData()
-	p.loadReplaceData()
+	p.loadExpectedData(eReader)
+	p.loadReplaceData(rReader)
 	return p
 }
 
-func (p processor) Suggest(source, translation string) (*Results, error) {
+func (p processor) Suggest(source, translation string) Results {
 	log.Printf("Suggest replacements with %d rows", len(p.replaceData))
 	replacement := translation
 	notes := []string{}
@@ -94,15 +99,14 @@ func (p processor) Suggest(source, translation string) (*Results, error) {
 	}
 	rLC := strings.ToLower(replacement)
 	for k, v := range p.expectedData {
-		log.Printf("Check translation of string with %s to include %s", k, v)
+		// log.Printf("Check translation of string with %s to include %s", k, v)
 		if strings.Contains(source, k) && !strings.Contains(rLC, v) {
 			note := fmt.Sprintf("Expect translation of phrase with %s to include '%s'", k, v)
 			notes = append(notes, note)
 		}
 	}
-	r := Results{
+	return Results{
 		Replacement: replacement,
 		Notes:       notes,
 	}
-	return &r, nil
 }

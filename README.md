@@ -741,7 +741,10 @@ gcloud run deploy --platform=managed $SERVICE \
 --set-env-vars CNREADER_HOME="/" \
 --set-env-vars PROTECTED="$PROTECTED" \
 --set-env-vars SITEDOMAIN="$SITEDOMAIN" \
---set-env-vars SENDGRID_API_KEY="$SENDGRID_API_KEY"
+--set-env-vars SENDGRID_API_KEY="$SENDGRID_API_KEY"\
+--set-env-vars DEEPL_AUTH_KEY="$DEEPL_AUTH_KEY" \
+--set-env-vars TRANSLATION_GLOSSARY="$TRANSLATION_GLOSSARY" \
+--set-env-vars PROJECT_ID="$PROJECT_ID"
 ```
 
 You will need to add the users manually using SQL statements. There is no

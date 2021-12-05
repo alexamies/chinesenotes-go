@@ -47,7 +47,7 @@ const (
 	deepLKeyName         = "DEEPL_AUTH_KEY" // Only needed if using machine translation
 	defTitle             = "Chinese Notes Translation Portal"
 	glossaryKeyName      = "TRANSLATION_GLOSSARY" // Google Translation API glossary
-	projectIDKey         = "GCP_PROJECT_ID"       // For translation glossary location
+	projectIDKey         = "PROJECT_ID"           // For translation glossary location
 	titleIndexFN         = "documents.tsv"
 	translationTemplFile = "web-resources/translation.html"
 )
@@ -622,11 +622,37 @@ func initTranslationClients() {
 			glossaryApiClient = transtools.NewGlossaryClient(projectID, glossaryName)
 		}
 	}
-	translationProcessor = transtools.NewProcessor()
+	fExpected, err := os.Open(transtools.ExpectedDataFile)
+	if err != nil {
+		log.Printf("initTranslationClients: Error opening expected file: %v", err)
+		return
+	}
+	fReplace, err := os.Open(transtools.ReplaceDataFile)
+	if err != nil {
+		log.Printf("initTranslationClients: Error opening replace file: %v", err)
+		return
+	}
+	defer func() {
+		if err = fExpected.Close(); err != nil {
+			log.Printf("Error closing expected file: %v", err)
+		}
+		if err = fReplace.Close(); err != nil {
+			log.Printf("Error closing replace file: %v", err)
+		}
+	}()
+	translationProcessor = transtools.NewProcessor(fExpected, fReplace)
 }
 
 // Performs post processing of translated text.
 func processTranslation(w http.ResponseWriter, r *http.Request) {
+	title := webConfig.GetVarWithDefault("Title", defTitle)
+	if translationProcessor == nil {
+		p := &translationPage{
+			Message: "Translation processor not initialized",
+			Title:   title,
+		}
+		showTranslationPage(w, r, p)
+	}
 	source := r.FormValue("source")
 	trText := r.FormValue("translated")
 	suggested := r.FormValue("suggested")
@@ -661,14 +687,9 @@ func processTranslation(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(trText) > 0 && processingChecked == "on" {
 		log.Printf("suggestion result: %s", suggested)
-		result, err := translationProcessor.Suggest(source, trText)
-		if err != nil {
-			log.Printf("Translation error: %v", err)
-			message = err.Error()
-		} else {
-			suggested = result.Replacement
-			notes = result.Notes
-		}
+		result := translationProcessor.Suggest(source, trText)
+		suggested = result.Replacement
+		notes = result.Notes
 	}
 	log.Printf("deepLChecked: %s, gcpChecked: %s, glossaryChecked: %s, processingChecked: %s",
 		deepLChecked, gcpChecked, glossaryChecked, processingChecked)
@@ -678,7 +699,6 @@ func processTranslation(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	title := webConfig.GetVarWithDefault("Title", defTitle)
 	p := &translationPage{
 		SourceText:      source,
 		TranslatedText:  trText,
@@ -1253,10 +1273,19 @@ func (h StaticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // Call the relevant API to translate text.
 func translate(sourceText, platform string) (*string, error) {
 	if platform == "DeepL" {
+		if deepLApiClient == nil {
+			return nil, fmt.Errorf("API client not initialized: %s", platform)
+		}
 		return deepLApiClient.Translate(sourceText)
 	}
 	if platform == "gcp" {
+		if translateApiClient == nil {
+			return nil, fmt.Errorf("API client not initialized: %s", platform)
+		}
 		return translateApiClient.Translate(sourceText)
+	}
+	if glossaryApiClient == nil {
+		return nil, fmt.Errorf("API client not initialized: %s", platform)
 	}
 	return glossaryApiClient.Translate(sourceText)
 }
