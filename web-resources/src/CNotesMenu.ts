@@ -36,6 +36,13 @@ export class CNotesMenu {
     const myDrawer = document.querySelector(".mdc-drawer");
     if (myDrawer && myDrawer instanceof Element) {
       const drawer = MDCDrawer.attachTo(myDrawer);
+      const listEl = document.querySelector('.mdc-drawer .mdc-list');
+      if (listEl && listEl instanceof Element) {
+        listEl.addEventListener('click', (event) => {
+          console.log("CNotesMenu draw list clicked");
+          drawer.open = false;
+        });
+      }
       const myAppBar = document.getElementById("app-bar");
       if (myAppBar && myAppBar instanceof Element) {
         const topAppBar = MDCTopAppBar.attachTo(myAppBar);
@@ -44,15 +51,19 @@ export class CNotesMenu {
           topAppBar.setScrollTarget(mainContent);
         }
         topAppBar.listen("MDCTopAppBar:nav", () => {
-            drawer.open = !drawer.open;
-          });
+          drawer.open = !drawer.open;
+        });
         const mainContentEl = document.querySelector(".main-content");
         if (mainContentEl) {
           mainContentEl.addEventListener("click", (event) => {
             drawer.open = false;
           });
         }
+      } else {
+        console.log("CNotesMenu problem finding app-bar");
       }
+    } else {
+      console.log("CNotesMenu problem instantiating the navigation drawer");
     }
   }
 }

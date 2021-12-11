@@ -3,13 +3,18 @@ $mdc-theme-secondary: #888; // dark grey
 $mdc-theme-background: #FFF;
 $mdc-theme-on-primary: #FFF;
 
-@use "@material/dialog";
 @use "@material/button/mdc-button";
+@use "@material/dialog";
+@use "@material/drawer";
+@use "@material/list";
+@use "@material/tooltip/styles";
 @use "@material/top-app-bar/mdc-top-app-bar";
-@use "@material/drawer/mdc-drawer";
-@use "@material/list/mdc-list";
 
 @include dialog.core-styles;
+@include drawer.core-styles;
+@include drawer.dismissible-core-styles;
+@include drawer.modal-core-styles;
+@include list.deprecated-core-styles;
 
 html, body {
   max-width: 1000px;
@@ -28,6 +33,12 @@ body {
 
 .main-content {
   overflow: auto;
+}
+
+/* Normal blue link with underline */
+a.regular {
+  color: $mdc-theme-primary;
+  text-decoration: underline;
 }
 
 .app-bar {

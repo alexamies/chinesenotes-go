@@ -64,6 +64,15 @@ func TestSuggest(t *testing.T) {
 				Notes:       []string{"Replaced green color with green"},
 			},
 		},
+		{
+			name:        "Should be case insensitive",
+			source:      "綠色",
+			translation: "Green",
+			expected: Results{
+				Replacement: "Green",
+				Notes:       []string{},
+			},
+		},
 	}
 	expectedReader := strings.NewReader(expected)
 	replacementReader := strings.NewReader(replacement)

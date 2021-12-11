@@ -16,26 +16,33 @@
   <body class="mdc-typography">
     <aside class="mdc-drawer mdc-drawer--dismissible"> <!-- Menu drawer-->
       <div class="mdc-drawer__content">
-        <nav class="mdc-list">
-          <a class="mdc-list-item" href="/">
-            <i class="material-icons mdc-list-item__graphic"
+        <nav class="mdc-deprecated-list">
+          <a class="mdc-deprecated-list-item" href="/">
+            <i class="material-icons mdc-deprecated-list-item__graphic"
               aria-hidden="true">home</i>
-            <span class="mdc-list-item__text">Home</span>
+            <span class="mdc-deprecated-list-item__text">Home</span>
           </a>
-          <a class="mdc-list-item" href="/findtm">
-            <i class="material-icons mdc-list-item__graphic"
-              aria-hidden="true">bookmark</i>
-            <span class="mdc-list-item__text">Translation Memory</span>
+          <a class="mdc-deprecated-list-item mdc-deprecated-list-item--activated"
+             href="/translate"
+             aria-current="page">
+            <i class="material-icons mdc-deprecated-list-item__graphic"
+              aria-hidden="true">translate</i>
+            <span class="mdc-deprecated-list-item__text">Machine Translation</span>
           </a>
-          <a class="mdc-list-item" href="/findadvanced/">
-            <i class="material-icons mdc-list-item__graphic"
+          <a class="mdc-deprecated-list-item" href="/findadvanced/">
+            <i class="material-icons mdc-deprecated-list-item__graphic"
               aria-hidden="true">search</i>
-            <span class="mdc-list-item__text">Full Text Search</span>
+            <span class="mdc-deprecated-list-item__text">Full Text Search</span>
           </a>
-          <a class="mdc-list-item" href="/web/texts.html">
-            <i class="material-icons mdc-list-item__graphic"
+          <a class="mdc-deprecated-list-item" href="/findtm">
+            <i class="material-icons mdc-deprecated-list-item__graphic"
+              aria-hidden="true">bookmark</i>
+            <span class="mdc-deprecated-list-item__text">Translation Memory</span>
+          </a>
+          <a class="mdc-deprecated-list-item" href="/web/texts.html">
+            <i class="material-icons mdc-deprecated-list-item__graphic"
               aria-hidden="true">book</i>
-            <span class="mdc-list-item__text">Library</span>
+            <span class="mdc-deprecated-list-item__text">Library</span>
           </a>
         </nav>
       </div>
@@ -118,7 +125,9 @@
   errors for Buddhist terms and terms that do not agree with the FGS style.
 </p>
 <p>
-  <a href='/translate'>Start again</a>
+  <a class='regular'
+     href='/translate'
+     title='Clear the form to start again'>Start again</a>
 </p>
 </div>
 </main>
