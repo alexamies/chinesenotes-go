@@ -65,7 +65,7 @@ curl -X POST \
 check status of operation
 
 ```shell
-OPERATION_ID="20211204-11321638646361-6195e5b8-0000-215f-920a-582429aa5674"
+OPERATION_ID="20211211-20361639283800-61b24088-0000-2322-9179-582429be8618"
 curl -X GET \
 -H "Authorization: Bearer "$(gcloud auth application-default print-access-token) \
 "https://translation.googleapis.com/v3/projects/${PROJECT_ID}/locations/us-central1/operations/${OPERATION_ID}"
