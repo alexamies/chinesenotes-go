@@ -71,8 +71,12 @@ export class CNotes {
     this.initDialog();
     const partsTitle = document.querySelector("#partsTitle");
     // Only download the dictionary if we need to split the term into parts
-    if (partsTitle) {
+    // and on a device with screen width >= 1200 px, ie not a mobile device
+    const w = window.innerWidth;
+    if (partsTitle && w >= 1200) {
       this.load();
+    } else {
+      console.log(`Not loading dictionary: partsTitle: ${partsTitle}, w: ${w}`);
     }
 
   }
