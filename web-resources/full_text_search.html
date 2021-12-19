@@ -62,10 +62,17 @@
           {{ else }}
             <p>Enter Chinese text into to the most relevant documents</p>
           <form name="findForm" method="post" action="/findadvanced/">
-            <div>
-              <label for="findInput">Search for</label>
-              <input type="text" name="query" size="40" required value="{{.Results.Query}}"/>
-              <button type="submit">Find</button>
+            <div class="mdc-text-field">
+              <label class="mdc-floating-label" for="findInput">
+                Search for
+              </label>
+              <input class="mdc-text-field__input" type="text" name="query"
+                   id="findInput" size="40" value="{{.Results.Query}}" required/>
+              <div class="mdc-line-ripple"></div>
+              <button class="mdc-button mdc-button--raised" type="submit"
+                    id="findSubmit">
+                <span class="mdc-button__label">Find</span>
+              </button>
             </div>
           </form>
           {{ end }}
