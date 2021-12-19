@@ -81,7 +81,10 @@
   </p>
   <textarea name='source' rows='10' cols='80'>{{.SourceText}}</textarea><br>
   <p>
-    <input type='submit' value='Translate to English'>
+    <button class="mdc-button mdc-button--raised" type="submit"
+      id="findSubmit">
+      <span class="mdc-button__label">Find</span>
+    </button>
     <span>
       <input type="radio" id="deepL" name="platform" value="DeepL"
              {{.DeepLChecked}}>
