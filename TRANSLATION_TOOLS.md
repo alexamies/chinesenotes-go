@@ -1,4 +1,5 @@
-# translatetools
+# Computer Aided Translation
+
 A prototype for translation of Chinese docs with machine translation APIs and
 related processing of output text for style.
 
@@ -84,5 +85,5 @@ Delete a glossary
 ```shell
 curl -X DELETE \
 -H "Authorization: Bearer "$(gcloud auth application-default print-access-token) \
-"https://translation.googleapis.com/v3/projects/${PROJECT_ID}/locations/us-central1/glossaries/test-fgdb-glossary"
+"https://translation.googleapis.com/v3/projects/${PROJECT_ID}/locations/us-central1/glossaries/{$TRANSLATION_GLOSSARY}"
 ```

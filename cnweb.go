@@ -352,7 +352,11 @@ func enforceValidSession(w http.ResponseWriter, r *http.Request) identity.Sessio
 	if err == nil {
 		sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
 		if sessionInfo.Authenticated != 1 {
-			http.Error(w, "Not authorized", http.StatusForbidden)
+			if acceptHTML(r) {
+				displayPage(w, "login_form.html", nil)
+			} else {
+				http.Error(w, "Not authorized", http.StatusForbidden)
+			}
 			return sessionInfo
 		}
 	} else {
