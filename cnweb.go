@@ -945,7 +945,11 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		sendJSON(w, sessionInfo)
 	} else {
 		if sessionInfo.Authenticated == 1 {
-			displayHome(w, r)
+			title := webConfig.GetVarWithDefault("Title", defTitle)
+			content := htmlContent{
+				Title: title,
+			}
+			displayPage(w, "index.html", content)
 		} else {
 			loginFormHandler(w, r)
 		}
@@ -1270,7 +1274,6 @@ func (h StaticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	fname := getStaticFileName(*r.URL)
-	log.Printf("ServeHTTP fname: %s", fname)
 	http.ServeFile(w, r, fname)
 }
 
