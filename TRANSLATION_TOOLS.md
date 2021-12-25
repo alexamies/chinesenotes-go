@@ -85,5 +85,18 @@ Delete a glossary
 ```shell
 curl -X DELETE \
 -H "Authorization: Bearer "$(gcloud auth application-default print-access-token) \
-"https://translation.googleapis.com/v3/projects/${PROJECT_ID}/locations/us-central1/glossaries/{$TRANSLATION_GLOSSARY}"
+"https://translation.googleapis.com/v3/projects/${PROJECT_ID}/locations/us-central1/glossaries/${TRANSLATION_GLOSSARY}"
+```
+
+## Tests for evaluation of glossary with translation quality
+
+Run the command
+
+```shell
+TEST_FILE=data/glossary/glossary_test_suite.csv
+OUT_FILE=glossary_test_output.csv
+go run cmd/glossary_eval.go \
+  --glossary=${TRANSLATION_GLOSSARY} \
+  --test_file=${TEST_FILE} \
+  --out_file=${OUT_FILE}
 ```

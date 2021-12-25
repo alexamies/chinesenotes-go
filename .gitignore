@@ -4,4 +4,5 @@ chinesenotes-go
 config.yaml
 coverage.html
 coverage.out
+glossary_test_output.csv
 service-account-file.json
