@@ -395,6 +395,14 @@ func findFullText(response http.ResponseWriter, request *http.Request) {
 func findDocs(response http.ResponseWriter,
 	request *http.Request,
 	fullText bool) {
+
+	if config.PasswordProtected() {
+		sessionInfo := enforceValidSession(response, request)
+		if !sessionInfo.Valid {
+			return
+		}
+	}
+
 	q := getSingleValue(request, "query")
 	if len(q) == 0 {
 		q = getSingleValue(request, "text")
@@ -478,13 +486,6 @@ func findDocs(response http.ResponseWriter,
 			results.SimilarTerms = similarTerms
 			log.Printf("main.findDocs, for query %s, found %d similar phrases",
 				q, len(results.SimilarTerms))
-		}
-	}
-
-	if config.PasswordProtected() {
-		sessionInfo := enforceValidSession(response, request)
-		if !sessionInfo.Valid {
-			return
 		}
 	}
 
