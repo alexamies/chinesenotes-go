@@ -33,6 +33,9 @@ import (
 )
 
 const (
+    maxDiff = 0.25
+    maxLen = 1.15
+    minLen = 0.9
     projectIDKey = "PROJECT_ID"
 )
 
@@ -41,13 +44,57 @@ var (
 )
 
 type testCase struct {
-    source, target string
+    testNo, description, sourceRef, source, model string
     mustInclude []string
 }
 
 type testResult struct {
-    source, target, reason string
+    testNo, source, target, reason string
     pass bool
+}
+
+// Compare similarity of model translation and output from translation engine
+func compareSimilarity(model, targetText string) (bool, string) {
+    log.Printf("Comparing model '%s' with target '%s'", model, targetText)
+    mWords := strings.Split(model, " ")
+    tWords := strings.Split(targetText, " ")
+    if len(tWords) < int(float64(len(mWords)) * minLen) {
+        reason := fmt.Sprintf("Target is shorter than %.0f %% in length than model",
+            minLen * 100.0)
+        return false, reason
+    }
+    if len(tWords) > int(float64(len(mWords)) * maxLen) {
+        reason := fmt.Sprintf("Target (%d) is longer than %.0f %% the length of the model (%d)",
+            len(tWords), (maxLen - 1.0) * 100.0, len(mWords))
+        return false, reason
+    }
+    mWSet := make(map[string]bool)
+    for _, w := range mWords {
+        term := strings.ToLower(strings.ReplaceAll(w, ".", ""))
+        if len(term) > 1 {
+            mWSet[term] = true
+        }
+    }
+    tWSet := make(map[string]bool)
+    for _, w := range tWords {
+        term := strings.ToLower(strings.ReplaceAll(w, ".", ""))
+        if len(term) > 1 {
+            tWSet[term] = true
+        }
+    }
+    // Find number of words that are in model but not in target
+    numDiff := 0
+    for w := range mWSet {
+        if _, ok := tWSet[w]; !ok {
+            numDiff++
+        }
+    }
+    if numDiff > int(float64(len(mWSet)) * maxDiff) {
+        reason := fmt.Sprintf("%d different words, more than %.0f %%.",
+            numDiff, maxDiff * 100.0)
+        return false, reason
+    }
+    return true, ""
 }
 
 // Initializes translation API client with glossary
@@ -69,24 +116,26 @@ func loadTestSuite(f io.Reader) (*[]testCase, error) {
         return nil, fmt.Errorf("Error reading test suite data, %v", err)
     }
     for i, row := range rows {
-        if len(row) < 3 {
+        if len(row) < 6 {
             return nil, fmt.Errorf("Error reading row %d, got %d fields, %v",
                 i, len(row), row)
         }
-        mustInclude := strings.Split(row[2], ",")
+        mustInclude := strings.Split(row[5], ",")
         tc := testCase{
-            source: row[0],
-            target: row[1],
-            mustInclude: mustInclude,
+            testNo:         row[0],
+            description:    row[1],
+            sourceRef:      row[2],
+            source:         row[3],
+            model:          row[4],
+            mustInclude:    mustInclude,
         }
         testSuite = append(testSuite, tc)
     }
-    log.Printf("Loaded test suite data from with %d rows", len(testSuite))
+    log.Printf("Loaded test suite data from with %d tests", len(testSuite))
     return &testSuite, nil
 }
 
 func runTestSuite(glossaryName string, testSuite *[]testCase) (*[]testResult, error) {
-    log.Printf("Running test suite data from with %d tests", len(*testSuite))
     glossaryApiClient, err := initTranslationClient(glossaryName)
     if err != nil {
         return nil, err
@@ -97,11 +146,13 @@ func runTestSuite(glossaryName string, testSuite *[]testCase) (*[]testResult, er
         if err != nil {
             return nil, err
         }
+        pass, reason := compareSimilarity(tc.model,*trText)
         tr := testResult{
+            testNo: tc.testNo,
             source: tc.source,
             target: *trText,
-            pass: true,
-            reason: "",
+            pass: pass,
+            reason: reason,
         }
         for _, w := range tc.mustInclude {
             if !strings.Contains(*trText, w) {
@@ -109,7 +160,7 @@ func runTestSuite(glossaryName string, testSuite *[]testCase) (*[]testResult, er
                 if len(tr.reason) > 0 {
                     tr.reason += ", "
                 }
-                tr.reason += "missing " + w
+                tr.reason += fmt.Sprintf("missing '%s'", w)
             }
         }
         results = append(results, tr)
@@ -119,12 +170,19 @@ func runTestSuite(glossaryName string, testSuite *[]testCase) (*[]testResult, er
 
 func writeResults(w io.Writer, results *[]testResult) {
     log.Printf("Writing test results")
-    io.WriteString(w, "Source text, Translated text, Pass, Reason\n")
+    io.WriteString(w,
+        "Test no., Source text, Translated text, Pass, Failure reason\n")
+    passing := 0
     for _, tr := range *results {
-        line := fmt.Sprintf("\"%s\",\"%s\",\"%t\",\"%s\"\n", tr.source, tr.target,
-            tr.pass, tr.reason)
+        if tr.pass {
+            passing++
+        }
+        line := fmt.Sprintf("\"%s\",\"%s\",\"%s\",\"%t\",\"%s\"\n", tr.testNo,
+            tr.source, tr.target, tr.pass, tr.reason)
         io.WriteString(w, line)
     }
+    summary := fmt.Sprintf("%d tests run, %d passing", len(*results), passing)
+    io.WriteString(w, summary)
 }
 
 func main() {

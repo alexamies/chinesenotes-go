@@ -65,7 +65,7 @@ func (client glossaryApiClient) Translate(sourceText string) (*string, error) {
 	targetText := ""
 	for _, translation := range resp.GetGlossaryTranslations() {
 		targetText = translation.GetTranslatedText()
-		fmt.Printf("Translated text: %v\n", translation.GetTranslatedText())
+		// fmt.Printf("Translated text: %v\n", translation.GetTranslatedText())
 	}
 
 	return &targetText, nil
