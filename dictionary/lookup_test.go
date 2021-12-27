@@ -15,6 +15,7 @@ package dictionary
 
 import (
 	"context"
+	"os"
 	"testing"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
@@ -39,11 +40,14 @@ func TestAddWordSense2Map(t *testing.T) {
 
 // Test trivial query with empty query, expect error
 func TestLookupSubstr(t *testing.T) {
+	if dbHost := os.Getenv("DATABASE"); len(dbHost) == 0 {
+		t.Skip("TestFindWordsByEnglish: skipping")
+	}
 	t.Log("TestLookupSubstr: Begin unit tests")
 	ctx := context.Background()
 	database, err := initDBCon()
 	if err != nil {
-		t.Skipf("TestLookupSubstr: cannot connect to database: %v", err)
+		t.Fatalf("error creating db connection: %v", err)
 	}
 	dictSearcher := NewSearcher(ctx, database)
 	if !dictSearcher.Initialized() {

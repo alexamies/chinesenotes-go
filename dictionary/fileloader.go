@@ -85,6 +85,7 @@ func loadDictReader(r io.Reader, wdict map[string]dicttypes.Word,
 	for i, row := range rawCSVdata {
 		if len(row) < 15 {
 			fmt.Printf("only %d elements (less than 15) for row %d, text: %v", len(row), i, row)
+			continue
 		}
 		id, err := strconv.ParseInt(row[0], 10, 0)
 		if err != nil {

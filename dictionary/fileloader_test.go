@@ -76,7 +76,7 @@ func TestLoadDictReader(t *testing.T) {
 		{
 			name: "Invalid entry",
 			input: "Hello, Dictionary!",
-			expectError: true,
+			expectError: false,
 			expectSize: 0,
 			exampleSimp: "",
 			expectPinyin: "",
@@ -168,6 +168,9 @@ func TestLoadDictReader(t *testing.T) {
 		gotSize := len(wdict)
 		if tc.expectSize != gotSize {
 			t.Fatalf("%s: expectSize %d != %d", tc.name, tc.expectSize, gotSize)
+		}
+		if tc.expectSize == 0 {
+			continue
 		}
 		w, ok := wdict[tc.exampleSimp]
 		if !ok {

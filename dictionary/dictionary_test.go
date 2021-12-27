@@ -17,6 +17,7 @@ package dictionary
 import (
 	"context"
 	"database/sql"
+	"os"
 	"testing"
 
 	"github.com/alexamies/chinesenotes-go/config"
@@ -29,7 +30,10 @@ func initDBCon() (*sql.DB, error) {
 
 // Test trivial query with empty dictionary
 func TestFindWordsByEnglish(t *testing.T) {
-	t.Log("TestFindWordsByEnglish1: Begin unit tests")
+	if dbHost := os.Getenv("DATABASE"); len(dbHost) == 0 {
+		t.Skip("TestFindWordsByEnglish: skipping")
+	}
+	t.Log("TestFindWordsByEnglish: Begin unit tests")
 	ctx := context.Background()
 	database, err := initDBCon()
 	if err != nil {

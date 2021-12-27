@@ -55,7 +55,6 @@ type testResult struct {
 
 // Compare similarity of model translation and output from translation engine
 func compareSimilarity(model, targetText string) (bool, string) {
-    log.Printf("Comparing model '%s' with target '%s'", model, targetText)
     mWords := strings.Split(model, " ")
     tWords := strings.Split(targetText, " ")
     if len(tWords) < int(float64(len(mWords)) * minLen) {
@@ -169,7 +168,6 @@ func runTestSuite(glossaryName string, testSuite *[]testCase) (*[]testResult, er
 }
 
 func writeResults(w io.Writer, results *[]testResult) {
-    log.Printf("Writing test results")
     io.WriteString(w,
         "Test no., Source text, Translated text, Pass, Failure reason\n")
     passing := 0
@@ -183,6 +181,7 @@ func writeResults(w io.Writer, results *[]testResult) {
     }
     summary := fmt.Sprintf("%d tests run, %d passing", len(*results), passing)
     io.WriteString(w, summary)
+    log.Printf(summary)
 }
 
 func main() {
@@ -197,7 +196,7 @@ func main() {
         *glossary, *testFile, *outFile)
     r, err := os.Open(*testFile)
     if err != nil {
-        log.Fatalf("Error opening %s: %v", testFile, err)
+        log.Fatalf("Error opening %s: %v", *testFile, err)
     }
     defer r.Close()
     testSuite, err := loadTestSuite(r)
@@ -210,7 +209,7 @@ func main() {
     }
     w, err := os.Create(*outFile)
     if err != nil {
-        log.Fatalf("Error creating %s: %v", testFile, err)
+        log.Fatalf("Error creating %s: %v", *testFile, err)
     }
     defer w.Close()
     writeResults(w, results)
