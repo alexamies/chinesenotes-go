@@ -33,9 +33,10 @@ import (
 )
 
 const (
-    maxDiff = 0.25
-    maxLen = 1.15
-    minLen = 0.9
+    deepLKeyName = "DEEPL_AUTH_KEY"
+    maxDiff = 0.60
+    maxLen = 1.6
+    minLen = 0.85
     projectIDKey = "PROJECT_ID"
 )
 
@@ -49,14 +50,24 @@ type testCase struct {
 }
 
 type testResult struct {
-    testNo, source, target, reason string
-    pass bool
+    testNo, source string
+    glossaryTarget string
+    glossaryPass bool
+    glossaryReason string
+    deepLTarget string
+    deepLPass bool
+    deepLReason string
+    googleTarget string
+    googlePass bool
+    googleReason string
 }
 
 // Compare similarity of model translation and output from translation engine
-func compareSimilarity(model, targetText string) (bool, string) {
-    mWords := strings.Split(model, " ")
-    tWords := strings.Split(targetText, " ")
+func compareSimilarity(model, targetText string, mustInclude []string) (bool, string) {
+    modelLower := strings.ToLower(strings.ReplaceAll(model, ".", ""))
+    mWords := strings.Split(modelLower, " ")
+    targetLower := strings.ToLower(strings.ReplaceAll(targetText, ".", ""))
+    tWords := strings.Split(targetLower, " ")
     if len(tWords) < int(float64(len(mWords)) * minLen) {
         reason := fmt.Sprintf("Target is shorter than %.0f %% in length than model",
             minLen * 100.0)
@@ -69,16 +80,14 @@ func compareSimilarity(model, targetText string) (bool, string) {
     }
     mWSet := make(map[string]bool)
     for _, w := range mWords {
-        term := strings.ToLower(strings.ReplaceAll(w, ".", ""))
-        if len(term) > 1 {
-            mWSet[term] = true
+        if len(w) > 1 {
+            mWSet[w] = true
         }
     }
     tWSet := make(map[string]bool)
     for _, w := range tWords {
-        term := strings.ToLower(strings.ReplaceAll(w, ".", ""))
-        if len(term) > 1 {
-            tWSet[term] = true
+        if len(w) > 1 {
+            tWSet[w] = true
         }
     }
     // Find number of words that are in model but not in target
@@ -88,16 +97,43 @@ func compareSimilarity(model, targetText string) (bool, string) {
             numDiff++
         }
     }
+    var passing bool
+    reason := ""
     if numDiff > int(float64(len(mWSet)) * maxDiff) {
-        reason := fmt.Sprintf("%d different words, more than %.0f %%.",
+        reason = fmt.Sprintf("%d different words, more than %.0f %%.",
             numDiff, maxDiff * 100.0)
-        return false, reason
+    } else {
+        passing = true
     }
-    return true, ""
+    for _, w := range mustInclude {
+        term := strings.ToLower(w)
+        if !strings.Contains(targetLower, term) {
+            passing = false
+            if len(reason) > 0 {
+                reason += ", "
+            }
+            reason += fmt.Sprintf("missing '%s'", w)
+        }
+    }
+    return passing, reason
+}
+
+// Initializes DeepL translation API client
+func initDeepLClient() (transtools.ApiClient, error) {
+    deepLKey, ok := os.LookupEnv(deepLKeyName)
+    if !ok {
+        return nil, fmt.Errorf("%s not set\n", deepLKeyName)
+    }
+    return transtools.NewDeepLClient(deepLKey), nil
+}
+
+// Initializes Google translation API client
+func initGoogleClient() (transtools.ApiClient, error) {
+    return transtools.NewGoogleClient(), nil
 }
 
 // Initializes translation API client with glossary
-func initTranslationClient(glossaryName string) (transtools.ApiClient, error) {
+func initGlossaryClient(glossaryName string) (transtools.ApiClient, error) {
     projectID, ok := os.LookupEnv(projectIDKey)
     if !ok {
         return nil, fmt.Errorf("%s not set\n", projectIDKey)
@@ -135,32 +171,50 @@ func loadTestSuite(f io.Reader) (*[]testCase, error) {
 }
 
 func runTestSuite(glossaryName string, testSuite *[]testCase) (*[]testResult, error) {
-    glossaryApiClient, err := initTranslationClient(glossaryName)
+    glossaryApiClient, err := initGlossaryClient(glossaryName)
+    if err != nil {
+        return nil, err
+    }
+    deepLApiClient, err := initDeepLClient()
+    if err != nil {
+        return nil, err
+    }
+    googleApiClient, err := initGoogleClient()
     if err != nil {
         return nil, err
     }
     results := []testResult{}
     for _, tc := range *testSuite {
-        trText, err := glossaryApiClient.Translate(tc.source)
+        glossaryTarget, err := glossaryApiClient.Translate(tc.source)
         if err != nil {
             return nil, err
         }
-        pass, reason := compareSimilarity(tc.model,*trText)
+        glossaryPass, glossaryReason := compareSimilarity(tc.model,*glossaryTarget, tc.mustInclude)
+
+        deepLTarget, err := deepLApiClient.Translate(tc.source)
+        if err != nil {
+            return nil, err
+        }
+        deepLPass, deepLReason := compareSimilarity(tc.model,*deepLTarget, tc.mustInclude)
+
+        googleTarget, err := googleApiClient.Translate(tc.source)
+        if err != nil {
+            return nil, err
+        }
+        googlePass, googleReason := compareSimilarity(tc.model,*googleTarget, tc.mustInclude)
+
         tr := testResult{
             testNo: tc.testNo,
             source: tc.source,
-            target: *trText,
-            pass: pass,
-            reason: reason,
-        }
-        for _, w := range tc.mustInclude {
-            if !strings.Contains(*trText, w) {
-                tr.pass = false
-                if len(tr.reason) > 0 {
-                    tr.reason += ", "
-                }
-                tr.reason += fmt.Sprintf("missing '%s'", w)
-            }
+            glossaryTarget: *glossaryTarget,
+            glossaryPass: glossaryPass,
+            glossaryReason: glossaryReason,
+            deepLTarget: *deepLTarget,
+            deepLPass: deepLPass,
+            deepLReason: deepLReason,
+            googleTarget: *googleTarget,
+            googlePass: googlePass,
+            googleReason: googleReason,
         }
         results = append(results, tr)
     }
@@ -169,17 +223,33 @@ func runTestSuite(glossaryName string, testSuite *[]testCase) (*[]testResult, er
 
 func writeResults(w io.Writer, results *[]testResult) {
     io.WriteString(w,
-        "Test no., Source text, Translated text, Pass, Failure reason\n")
-    passing := 0
+        "Test no., Source text, " +
+        "Glossary translated text,Glossary Pass,Glossary Failure reason," +
+        "DeepL translated text,DeepL Pass, DeepL Failure reason" +
+        "Google translated text,Google Pass,Google Failure reason\n")
+    glossaryPass := 0
+    deepLPass := 0
+    googlePass := 0
     for _, tr := range *results {
-        if tr.pass {
-            passing++
+        if tr.glossaryPass {
+            glossaryPass++
         }
-        line := fmt.Sprintf("\"%s\",\"%s\",\"%s\",\"%t\",\"%s\"\n", tr.testNo,
-            tr.source, tr.target, tr.pass, tr.reason)
+        if tr.deepLPass {
+            deepLPass++
+        }
+        if tr.googlePass {
+            googlePass++
+        }
+        line := fmt.Sprintf("\"%s\",\"%s\",\"%s\",%t,\"%s\",\"%s\",%t,\"%s\",\"%s\",%t,\"%s\"\n",
+            tr.testNo, tr.source,
+            tr.glossaryTarget, tr.glossaryPass, tr.glossaryReason,
+            tr.deepLTarget, tr.deepLPass, tr.deepLReason,
+            tr.googleTarget, tr.googlePass, tr.googleReason,
+        )
         io.WriteString(w, line)
     }
-    summary := fmt.Sprintf("%d tests run, %d passing", len(*results), passing)
+    summary := fmt.Sprintf("Total test: %d. API with glossary passing: %d. DeepL passing: %d. Google passing: %d.",
+        len(*results), glossaryPass, deepLPass, googlePass)
     io.WriteString(w, summary)
     log.Printf(summary)
 }
