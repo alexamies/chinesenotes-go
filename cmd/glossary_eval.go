@@ -67,6 +67,9 @@ func compareSimilarity(model, targetText string, mustInclude []string) (bool, st
     modelLower := strings.ToLower(strings.ReplaceAll(model, ".", ""))
     mWords := strings.Split(modelLower, " ")
     targetLower := strings.ToLower(strings.ReplaceAll(targetText, ".", ""))
+    targetLower = strings.ReplaceAll(targetLower, "&#", " ")
+    targetLower = strings.ReplaceAll(targetLower, ";", " ")
+    targetLower = strings.ReplaceAll(targetLower, ",", " ")
     tWords := strings.Split(targetLower, " ")
     if len(tWords) < int(float64(len(mWords)) * minLen) {
         reason := fmt.Sprintf("Target is shorter than %.0f %% in length than model",

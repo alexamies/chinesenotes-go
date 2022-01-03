@@ -58,6 +58,11 @@ func TestLoadDictReader(t *testing.T) {
 	const inputTradDifferent = `# comment
 8422	汉语	漢語	hànyǔ	Chinese language	noun	\N	\N	现代汉语	Modern Chinese	\N	\N	\N	\N	\N	8422
 `
+	const inputTrad2SimpleNot121 = `# comment
+393	了	\N	le	completion of an action	particle	动态助词	Aspectual Particle	现代汉语	Modern Chinese	虚词	Function Words	\N	le.mp3	In this usage 了 is an aspectual particle	393
+5630	了	瞭	liǎo	to understand; to know	verb	\N	\N	文言文	Literary Chinese	\N	\N	\N	liao3.mp3	Traditional: 瞭; in the sense of 明白 or 清楚; as in 了解 (Guoyu '瞭' v 1)	393
+16959	了	\N	le	modal particle	particle	语气助词	Modal Particle	现代汉语	Modern Chinese	虚词	Function Words	\N	le.mp3	In this use 了 appears at the end of a sentence as a modal particle	393
+`
 
 	type test struct {
 		name string
@@ -151,6 +156,19 @@ func TestLoadDictReader(t *testing.T) {
 			expectSubdomain: "",
 			expectNotes: "",
 		},
+		{
+			name: "Traditional to simplified not 1:1",
+			input: inputTrad2SimpleNot121,
+			expectError: false,
+			expectSize: 2,
+			exampleSimp: "了",
+			expectPinyin: "le",
+			expectNoSenses: 3,
+			expectDomain: "Modern Chinese",
+			expectConcept: "Aspectual Particle",
+			expectSubdomain: "Function Words",
+			expectNotes: "In this usage 了 is an aspectual particle",
+		},
    }
   for _, tc := range tests {
 		wdict := make(map[string]dicttypes.Word)
@@ -167,7 +185,7 @@ func TestLoadDictReader(t *testing.T) {
 		}
 		gotSize := len(wdict)
 		if tc.expectSize != gotSize {
-			t.Fatalf("%s: expectSize %d != %d", tc.name, tc.expectSize, gotSize)
+			t.Fatalf("%s: expectSize got %d, want %d", tc.name, gotSize, tc.expectSize)
 		}
 		if tc.expectSize == 0 {
 			continue
