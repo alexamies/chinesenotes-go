@@ -60,7 +60,7 @@ type Searcher interface {
 		query string,
 		domain string,
 		includeSubstrings bool,
-		wdict map[string]dicttypes.Word) (*Results, error)
+		wdict map[string]*dicttypes.Word) (*Results, error)
 }
 
 // Encapsulates translation memory searcher
@@ -166,7 +166,7 @@ ORDER BY count DESC LIMIT 50`)
 
 // Search the trans memory for words containing the given unigrams
 func (searcher dbSearcher) queryPinyin(ctx context.Context, query,
-		domain string, wdict map[string]dicttypes.Word) ([]tmResult, error) {
+		domain string, wdict map[string]*dicttypes.Word) ([]tmResult, error) {
 	pinyin := findPinyin(query, wdict)
 	if len(pinyin) == 0 {
 		return nil, fmt.Errorf("queryPinyin, No pinyin for query,\n%s", query)
@@ -241,7 +241,7 @@ func (searcher dbSearcher) Search(ctx context.Context,
 		query string,
 		domain string,
 		includeSubstrings bool,
-		wdict map[string]dicttypes.Word) (*Results, error) {
+		wdict map[string]*dicttypes.Word) (*Results, error) {
 	chars := getChars(query)
 	matches, err := searcher.queryUnigram(ctx, chars, domain)
 	if err != nil {
@@ -266,7 +266,7 @@ func absInt(x int) int {
 // Combines matches with dictionary defintions to send back to client
 func combineResults(query string,
 		matches, pinyinMatches []tmResult,
-		wdict map[string]dicttypes.Word) []dicttypes.Word {
+		wdict map[string]*dicttypes.Word) []dicttypes.Word {
 	relevantMap := map[string]tmResult{}
 	for _, m := range matches {
 		m.hamming = hammingDist(query, m.term)
@@ -309,7 +309,7 @@ func combineResults(query string,
 	var words []dicttypes.Word
 	for _, match := range relevantMatches {
 		if word, ok := wdict[match.term]; ok {
-			words = append(words, word)
+			words = append(words, *word)
 		}
 	}
 	log.Printf("transmemory.combineResults, query: %s, matchs (%d): ", query,
@@ -322,7 +322,7 @@ func combineResults(query string,
 // way around.
 func combineResultsNoSubstrings(query string,
 		matches, pinyinMatches []tmResult,
-		wdict map[string]dicttypes.Word) []dicttypes.Word {
+		wdict map[string]*dicttypes.Word) []dicttypes.Word {
 	relevantMap := map[string]tmResult{}
 	for _, m := range matches {
 		m.hamming = hammingDist(query, m.term)
@@ -370,7 +370,7 @@ func combineResultsNoSubstrings(query string,
 	for _, match := range relevantMatches {
 		// log.Printf("transmemory.combineResultsNoSubstrings, words: %s",match.term)
 		if word, ok := wdict[match.term]; ok {
-			words = append(words, word)
+			words = append(words, *word)
 		}
 	}
 	log.Printf("transmemory.combineResultsNoSubstrings, query: %s, matchs (%d): ",
@@ -421,7 +421,7 @@ func predictRelevanceNorm(query string, m tmResult) int {
 }
 
 // Finds the pinyin for a given Chinese string
-func findPinyin(query string, wdict map[string]dicttypes.Word) string {
+func findPinyin(query string, wdict map[string]*dicttypes.Word) string {
 	pinyin := ""
 	for _, ch := range query {
 		if word, ok := wdict[string(ch)]; ok {

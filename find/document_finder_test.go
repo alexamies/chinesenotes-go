@@ -111,7 +111,7 @@ func TestFindDocuments(t *testing.T) {
 	if !dictSearcher.Initialized() {
 		t.Skipf("TestFindDocuments: cannot create dictSearcher: %v", err)
 	}
-	dict := map[string]dicttypes.Word{}
+	dict := map[string]*dicttypes.Word{}
 	parser := MakeQueryParser(dict)
 
 	// Test data
@@ -251,7 +251,7 @@ func TestFindDocumentsInCol(t *testing.T) {
 	if !dictSearcher.Initialized() {
 		t.Skipf("TestFindDocumentsInCol: cannot create dictSearcher: %v", err)
 	}
-	dict := map[string]dicttypes.Word{}
+	dict := map[string]*dicttypes.Word{}
 	parser := MakeQueryParser(dict)
 
 	// Test data

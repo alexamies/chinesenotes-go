@@ -32,7 +32,7 @@ func TestLoadNoDictFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("TestLoadNoDictFile: Got error %v", err)
 	}
-	if len(dict) != 0 {
+	if len(dict.Wdict) != 0 {
 		t.Error("TestLoadNoDictFile: len(dict) != 0")
 	}
 }
@@ -161,7 +161,7 @@ func TestLoadDictReader(t *testing.T) {
 			input: inputTrad2SimpleNot121,
 			expectError: false,
 			expectSize: 2,
-			exampleSimp: "了",
+			exampleSimp: "瞭",
 			expectPinyin: "le",
 			expectNoSenses: 3,
 			expectDomain: "Modern Chinese",
@@ -171,7 +171,7 @@ func TestLoadDictReader(t *testing.T) {
 		},
    }
   for _, tc := range tests {
-		wdict := make(map[string]dicttypes.Word)
+		wdict := make(map[string]*dicttypes.Word)
 		r := strings.NewReader(tc.input)
 		err := loadDictReader(r, wdict, avoidSub)
 		if tc.expectError && (err == nil) {
@@ -198,7 +198,7 @@ func TestLoadDictReader(t *testing.T) {
 			t.Errorf("%s: expectPinyin %s != %s", tc.name, tc.expectPinyin, w.Pinyin)
 		}
 		if tc.expectNoSenses != len(w.Senses) {
-			t.Fatalf("%s: expectNoSenses %d != %d", tc.name, tc.expectNoSenses, len(w.Senses))
+			t.Fatalf("%s: expectNoSenses got %d, want %d", tc.name, len(w.Senses), tc.expectNoSenses)
 		}
 		s := w.Senses[0]
 		if tc.expectDomain != s.Domain {

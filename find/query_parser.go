@@ -39,7 +39,7 @@ type TextSegment struct {
 }
 
 // Creates a QueryParser
-func MakeQueryParser(dict map[string]dicttypes.Word) QueryParser {
+func MakeQueryParser(dict map[string]*dicttypes.Word) QueryParser {
 	tokenizer := tokenizer.DictTokenizer{
 		WDict: dict,
 	}

@@ -24,14 +24,14 @@ import (
 // Test simple query with one character
 func TestGreedyLtoR(t *testing.T) {
 	t.Log("TestGreedyLtoR: Begin unit tests")
-	dict := map[string]dicttypes.Word{}
+	dict := map[string]*dicttypes.Word{}
 	s1 := "你好"
 	w := dicttypes.Word{}
 	w.Simplified = s1
 	w.Traditional = "\\N"
 	w.Pinyin = "nǐhǎo"
 	w.HeadwordId = 42
-	dict["你好"] = w
+	dict["你好"] = &w
 	tokenizer := DictTokenizer{dict}
 	chunk := "你好"
 	tokens := tokenizer.greedyLtoR(chunk)
@@ -166,33 +166,33 @@ func TestTokenize(t *testing.T) {
 		HeadwordId: 57,
 		Senses: []dicttypes.WordSense{},
 	}	
-	wdict := map[string]dicttypes.Word{
-		quan.Simplified: quan,
-		changahan.Simplified: changahan,
-		changahan.Traditional: changahan,
-		xu.Simplified: xu,
-		konglong.Simplified: konglong,
-		konglong.Traditional: konglong,
-		kong.Simplified: kong,
-		kong.Traditional: kong,
-		longtou.Simplified: longtou,
-		longtou.Traditional: longtou,
-		mingyue.Simplified: mingyue,
-		qingfeng.Simplified: qingfeng,
-		qingfeng.Traditional: qingfeng,
-		liangwudi.Simplified: liangwudi,
-		wen.Simplified: wen,
-		wen.Traditional: wen,
-		damo.Simplified: damo,
-		damo.Traditional: damo,
-		yong.Simplified: yong,
-		gonglao.Simplified: gonglao,
-		gonglao.Traditional: gonglao,
-		lai.Simplified: lai,
-		lai.Traditional: lai,
-		dixiao.Simplified: dixiao,
-		zuiguo.Simplified: zuiguo,
-		zuiguo.Traditional: zuiguo,
+	wdict := map[string]*dicttypes.Word{
+		quan.Simplified: &quan,
+		changahan.Simplified: &changahan,
+		changahan.Traditional: &changahan,
+		xu.Simplified: &xu,
+		konglong.Simplified: &konglong,
+		konglong.Traditional: &konglong,
+		kong.Simplified: &kong,
+		kong.Traditional: &kong,
+		longtou.Simplified: &longtou,
+		longtou.Traditional: &longtou,
+		mingyue.Simplified: &mingyue,
+		qingfeng.Simplified: &qingfeng,
+		qingfeng.Traditional: &qingfeng,
+		liangwudi.Simplified: &liangwudi,
+		wen.Simplified: &wen,
+		wen.Traditional: &wen,
+		damo.Simplified: &damo,
+		damo.Traditional: &damo,
+		yong.Simplified: &yong,
+		gonglao.Simplified: &gonglao,
+		gonglao.Traditional: &gonglao,
+		lai.Simplified: &lai,
+		lai.Traditional: &lai,
+		dixiao.Simplified: &dixiao,
+		zuiguo.Simplified: &zuiguo,
+		zuiguo.Traditional: &zuiguo,
 	}
 	q := TextToken{
 		Token: "全",

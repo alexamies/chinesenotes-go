@@ -28,7 +28,7 @@ func initDBCon() (*sql.DB, error) {
 	return sql.Open("mysql", conString)
 }
 
-func mockDict() map[string]dicttypes.Word {
+func mockDict() map[string]*dicttypes.Word {
 	w1 := dicttypes.Word{
 		Simplified: "结实",
 		Traditional: "結實",
@@ -85,17 +85,17 @@ func mockDict() map[string]dicttypes.Word {
 		HeadwordId: 2000599,
 		Senses: []dicttypes.WordSense{},
 	}
-	wdict := make(map[string]dicttypes.Word)
-	wdict[w1.Traditional] = w1
-	wdict[w2.Traditional] = w2
-	wdict[w3.Traditional] = w3
-	wdict[w4.Traditional] = w4
-	wdict[w5.Traditional] = w5
-	wdict[w6.Traditional] = w6
-	wdict[w7.Simplified] = w7
-	wdict[w7.Traditional] = w7
-	wdict[w8.Simplified] = w8
-	wdict[w8.Traditional] = w8
+	wdict := make(map[string]*dicttypes.Word)
+	wdict[w1.Traditional] = &w1
+	wdict[w2.Traditional] = &w2
+	wdict[w3.Traditional] = &w3
+	wdict[w4.Traditional] = &w4
+	wdict[w5.Traditional] = &w5
+	wdict[w6.Traditional] = &w6
+	wdict[w7.Simplified] = &w7
+	wdict[w7.Traditional] = &w7
+	wdict[w8.Simplified] = &w8
+	wdict[w8.Traditional] = &w8
 	return wdict
 }
 
@@ -552,8 +552,8 @@ func TestSearch(t *testing.T) {
 		HeadwordId: 10778,
 		Senses: []dicttypes.WordSense{},
 	}
-	wdict := make(map[string]dicttypes.Word)
-	wdict[w1.Traditional] = w1
+	wdict := make(map[string]*dicttypes.Word)
+	wdict[w1.Traditional] = &w1
 	type test struct {
 		name string
 		query string

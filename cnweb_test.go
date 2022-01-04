@@ -31,7 +31,7 @@ import (
 	"github.com/alexamies/chinesenotes-go/transmemory"
 )
 
-func mockSmallDict() map[string]dicttypes.Word {
+func mockSmallDict() map[string]*dicttypes.Word {
 	s1 := "繁体中文"
 	t1 := "繁體中文"
 	hw1 := dicttypes.Word{
@@ -104,18 +104,18 @@ func mockSmallDict() map[string]dicttypes.Word {
 		Pinyin:      	"nǎishì",
 		Senses:  			[]dicttypes.WordSense{},
 	}
-	return map[string]dicttypes.Word {
-		s1: hw1,
-		t1: hw1,
-		s2: hw2,
-		s3: hw3,
-		t3: hw3,
-		s4: hw4,
-		s5: hw5,
-		s6: hw6,
-		t6: hw6,
-		s7: hw7,
-		s8: hw8,
+	return map[string]*dicttypes.Word {
+		s1: &hw1,
+		t1: &hw1,
+		s2: &hw2,
+		s3: &hw3,
+		t3: &hw3,
+		s4: &hw4,
+		s5: &hw5,
+		s6: &hw6,
+		t6: &hw6,
+		s7: &hw7,
+		s8: &hw8,
 	}
 }
 
@@ -831,7 +831,7 @@ func (s mocTMSearcher) Search(ctx context.Context,
 		query string,
 		domain string,
 		includeSubstrings bool,
-		wdict map[string]dicttypes.Word) (*transmemory.Results, error) {
+		wdict map[string]*dicttypes.Word) (*transmemory.Results, error) {
 	r := transmemory.Results{
 		Words: s.words,
 	}
@@ -948,8 +948,8 @@ func TestWordDetail(t *testing.T) {
 		Simplified:	s,
 		Senses:  		[]dicttypes.WordSense{ws},
 	}
-	dictWNotes := map[string]dicttypes.Word{
-		s: hw,
+	dictWNotes := map[string]*dicttypes.Word{
+		s: &hw,
 	}
 	webConfig = config.WebAppConfig{
 		ConfigVars: map[string]string{
@@ -960,14 +960,14 @@ func TestWordDetail(t *testing.T) {
 	type test struct {
 		name string
 		hwId int
-		wdict map[string]dicttypes.Word
+		wdict map[string]*dicttypes.Word
 		expectContains string
   }
   tests := []test{
 		{
 			name: "Not found",
 			hwId: 123,
-			wdict: map[string]dicttypes.Word{},
+			wdict: map[string]*dicttypes.Word{},
 			expectContains: "Not found: 123",
 		},
 		{
@@ -994,7 +994,6 @@ func TestWordDetail(t *testing.T) {
 			t.Errorf("TestWordDetail %s: got %q, want %q, ", tc.name, result,
 					tc.expectContains)
  		}
-		dict = dictionary.Dictionary{}
   }
  	templates = nil
  	webConfig = config.WebAppConfig{}

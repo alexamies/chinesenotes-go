@@ -57,7 +57,7 @@ var (
 	webConfig                                             config.WebAppConfig
 	database                                              *sql.DB
 	parser                                                find.QueryParser
-	dict                                                  dictionary.Dictionary
+	dict                                                  *dictionary.Dictionary
 	dictSearcher                                          *dictionary.Searcher
 	tmSearcher                                            transmemory.Searcher
 	df                                                    find.DocFinder
@@ -109,19 +109,19 @@ func initApp(ctx context.Context) error {
 	dictSearcher = dictionary.NewSearcher(ctx, database)
 	cnReaderHome := os.Getenv("CNREADER_HOME")
 	if len(cnReaderHome) > 0 {
-		wdict, err := dictionary.LoadDict(ctx, database, appConfig)
+		var err error
+		dict, err = dictionary.LoadDictFile(appConfig)
 		if err != nil {
 			return fmt.Errorf("main.initApp() unable to load dictionary locally: %v", err)
 		}
-		dict = dictionary.NewDictionary(wdict)
 	} else {
 		// Load from web for zero-config Quickstart
 		const url = "https://github.com/alexamies/chinesenotes.com/blob/master/data/cnotes_zh_en_dict.tsv?raw=true"
-		wdict, err := dictionary.LoadDictURL(appConfig, url)
+		var err error
+		dict, err = dictionary.LoadDictURL(appConfig, url)
 		if err != nil {
 			return fmt.Errorf("main.initApp() unable to load dictionary from net: %v", err)
 		}
-		dict = dictionary.NewDictionary(wdict)
 	}
 	parser = find.MakeQueryParser(dict.Wdict)
 	if database != nil {
@@ -1425,7 +1425,7 @@ func wordDetail(w http.ResponseWriter, r *http.Request) {
 		match := webConfig.GetVar("NotesReMatch")
 		replace := webConfig.GetVar("NotesReplace")
 		processor := dictionary.NewNotesProcessor(match, replace)
-		word := processor.Process(hw)
+		word := processor.Process(*hw)
 		content := htmlContent{
 			Title: title,
 			Data: struct {

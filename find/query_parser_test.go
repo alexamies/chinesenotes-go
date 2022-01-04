@@ -23,7 +23,7 @@ import (
 // Test trivial query with empty dictionary
 func TestParseChinese0(t *testing.T) {
 	t.Log("TestParseChinese: Begin unit tests\n")
-	dict := map[string]dicttypes.Word{}
+	dict := map[string]*dicttypes.Word{}
 	parser := MakeQueryParser(dict)
 	s1 := "小"
 	query := s1
@@ -39,7 +39,7 @@ func TestParseChinese0(t *testing.T) {
 // Test simple query with empty dictionary
 func TestParseChinese1(t *testing.T) {
 	t.Log("TestParseChinese: Begin unit tests")
-	dict := map[string]dicttypes.Word{}
+	dict := map[string]*dicttypes.Word{}
 	parser := MakeQueryParser(dict)
 	s1 := "小"
 	s2 := "王"
@@ -62,14 +62,14 @@ func TestParseChinese1(t *testing.T) {
 // Test simple query with non-empty dictionary
 func TestParseChinese2(t *testing.T) {
 	t.Log("TestParseChinese: Begin unit tests")
-	dict := map[string]dicttypes.Word{}
+	dict := map[string]*dicttypes.Word{}
 	s1 := "小"
 	w := dicttypes.Word{}
 	w.Simplified = s1
 	w.Traditional = "\\N"
 	w.Pinyin = "xiǎo"
 	w.HeadwordId = 42
-	dict["小"] = w
+	dict["小"] = &w
 	parser := MakeQueryParser(dict)
 	s2 := "王"
 	query := s1 + s2
@@ -88,14 +88,14 @@ func TestParseChinese2(t *testing.T) {
 // Test less simple query with non-empty dictionary
 func TestParseChinese3(t *testing.T) {
 	t.Log("TestParseChinese: Begin unit tests")
-	dict := map[string]dicttypes.Word{}
+	dict := map[string]*dicttypes.Word{}
 	s1 := "你好"
 	w := dicttypes.Word{}
 	w.Simplified = s1
 	w.Traditional = "\\N"
 	w.Pinyin = "nǐhǎo"
 	w.HeadwordId = 42
-	dict["你好"] = w
+	dict["你好"] = &w
 	parser := MakeQueryParser(dict)
 	s2 := "小"
 	s3 := "王"
@@ -118,14 +118,14 @@ func TestParseChinese3(t *testing.T) {
 // Test less simple query, including punctuation, with non-empty dictionary
 func TestParseChinese4(t *testing.T) {
 	t.Log("TestParseChinese: Begin unit tests")
-	dict := map[string]dicttypes.Word{}
+	dict := map[string]*dicttypes.Word{}
 	s1 := "你好"
 	w := dicttypes.Word{}
 	w.Simplified = s1
 	w.Traditional = "\\N"
 	w.Pinyin = "nǐhǎo"
 	w.HeadwordId = 42
-	dict["你好"] = w
+	dict["你好"] = &w
 	parser := MakeQueryParser(dict)
 	s2 := "，"
 	s3 := "小"
@@ -146,7 +146,7 @@ func TestParseChinese4(t *testing.T) {
 
 // Test empty query
 func TestParseQuery0(t *testing.T) {
-	dict := map[string]dicttypes.Word{}
+	dict := map[string]*dicttypes.Word{}
 	parser := MakeQueryParser(dict)
 	terms := parser.ParseQuery("")
 	if len(terms) != 0 {
@@ -157,7 +157,7 @@ func TestParseQuery0(t *testing.T) {
 // Test simple English query
 func TestParseQuery1(t *testing.T) {
 	query := "hello"
-	dict := map[string]dicttypes.Word{}
+	dict := map[string]*dicttypes.Word{}
 	parser := MakeQueryParser(dict)
 	terms := parser.ParseQuery(query)
 	if len(terms) != 1 {
@@ -173,7 +173,7 @@ func TestParseQuery2(t *testing.T) {
 	s1 := "Hello"
 	s2 := "王"
 	query := s1 + s2
-	dict := map[string]dicttypes.Word{}
+	dict := map[string]*dicttypes.Word{}
 	parser := MakeQueryParser(dict)
 	terms := parser.ParseQuery(query)
 	if len(terms) != 2 {
@@ -193,7 +193,7 @@ func TestParseQuery3(t *testing.T) {
 	s2 := "小"
 	s3 := "王"
 	query := s1 + s2 + s3
-	dict := map[string]dicttypes.Word{}
+	dict := map[string]*dicttypes.Word{}
 	parser := MakeQueryParser(dict)
 	terms := parser.ParseQuery(query)
 	if len(terms) != 3 {

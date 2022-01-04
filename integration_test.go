@@ -14,7 +14,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"os"
 	"testing"
@@ -36,12 +35,8 @@ func TestLoadDict(t *testing.T) {
 	appConfig := config.AppConfig{
 		LUFileNames: fnames,
 	}
-	ctx := context.Background()
-	database, err := initDBCon()
-	if err != nil {
-		t.Skipf("TestLoadDict: cannot connect to database: %v", err)
-	}
-	wdict, err := dictionary.LoadDict(ctx, database, appConfig)
+	dict, err := dictionary.LoadDictFile(appConfig)
+	wdict := dict.Wdict
 	if err != nil {
 		t.Fatalf("TestLoadDict: not able to load dictionary, skipping tests: %v\n", err)
 	}
@@ -89,10 +84,11 @@ func TestLoadDictFile(t *testing.T) {
 	appConfig := config.AppConfig{
 		LUFileNames: fnames,
 	}
-	dict, err := dictionary.LoadDictFile(appConfig)
+	d, err := dictionary.LoadDictFile(appConfig)
 	if err != nil {
 		t.Fatalf("TestLoadDictFile: Got an error: %v", err)
 	}
+	dict := d.Wdict
 	if len(dict) < 4 {
 		t.Fatalf("TestLoadDictFile: excpected at least 4, got %d", len(dict))
 	}

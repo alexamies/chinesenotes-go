@@ -29,7 +29,7 @@ type Tokenizer interface {
 
 // Tokenizes Chinese text using a dictionary
 type DictTokenizer struct{
-	WDict map[string]dicttypes.Word
+	WDict map[string]*dicttypes.Word
 }
 
 // A text token contains the results of tokenizing a string
@@ -81,7 +81,7 @@ func (tokenizer DictTokenizer) greedyLtoR(fragment string) []TextToken {
 			w := strings.Join(characters[i:j], "")
 			//log.Printf("greedyLtoR: w = %s\n", w)
 			if entry, ok := tokenizer.WDict[w]; ok {
-				token := TextToken{w, entry, []dicttypes.WordSense{}}
+				token := TextToken{w, *entry, []dicttypes.WordSense{}}
 				tokens = append(tokens, token)
 				i = j - 1
 				j = 0
@@ -110,7 +110,7 @@ func (tokenizer DictTokenizer) greedyRtoL(fragment string) []TextToken {
 			w := strings.Join(characters[j:i], "")
 			//log.Printf("greedyRtoL: i, j, w = %d, %d, %s\n", i, j, w)
 			if entry, ok := tokenizer.WDict[w]; ok {
-				token := TextToken{w, entry, []dicttypes.WordSense{}}
+				token := TextToken{w, *entry, []dicttypes.WordSense{}}
 				tokens = append([]TextToken{token}, tokens...)
 				i = j + 1
 				break
