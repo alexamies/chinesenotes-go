@@ -86,7 +86,7 @@ func (val validator) Validate(pos, domain string) error {
 
 
 // ValidateDict check the Chinese-English for errors
-func ValidateDict(wdict map[string]dicttypes.Word, validator Validator) error {
+func ValidateDict(wdict map[string]*dicttypes.Word, validator Validator) error {
 	for _, word := range wdict {
 		for _, ws := range word.Senses {
 			if err := validator.Validate(ws.Grammar, ws.Domain); err != nil {
