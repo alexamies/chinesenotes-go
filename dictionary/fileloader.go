@@ -144,7 +144,7 @@ func loadDictReader(r io.Reader, wdict map[string]*dicttypes.Word,
 			log.Printf("loadDictFile wrong number of columns %d: %v", id, err)
 		}
 		ws := dicttypes.WordSense{
-			Id: hwId,
+			Id: int(id),
 			Simplified: simp,
 			HeadwordId: hwId,
 			Traditional: trad,

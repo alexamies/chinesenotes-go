@@ -16,11 +16,18 @@ package dictionary
 
 import (
 	"strings"
+	"reflect"
 	"testing"
 
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
+
+const inputTrad2SimpleNot121 = `# comment
+393	了	\N	le	completion of an action	particle	动态助词	Aspectual Particle	现代汉语	Modern Chinese	虚词	Function Words	\N	le.mp3	In this usage 了 is an aspectual particle	393
+5630	了	瞭	liǎo	to understand; to know	verb	\N	\N	文言文	Literary Chinese	\N	\N	\N	liao3.mp3	Traditional: 瞭; in the sense of 明白 or 清楚; as in 了解 (Guoyu '瞭' v 1)	393
+16959	了	\N	le	modal particle	particle	语气助词	Modal Particle	现代汉语	Modern Chinese	虚词	Function Words	\N	le.mp3	In this use 了 appears at the end of a sentence as a modal particle	393
+`
 
 // TestLoadNoDictFile tests with no files
 func TestLoadNoDictFile(t *testing.T) {
@@ -57,11 +64,6 @@ func TestLoadDictReader(t *testing.T) {
 `
 	const inputTradDifferent = `# comment
 8422	汉语	漢語	hànyǔ	Chinese language	noun	\N	\N	现代汉语	Modern Chinese	\N	\N	\N	\N	\N	8422
-`
-	const inputTrad2SimpleNot121 = `# comment
-393	了	\N	le	completion of an action	particle	动态助词	Aspectual Particle	现代汉语	Modern Chinese	虚词	Function Words	\N	le.mp3	In this usage 了 is an aspectual particle	393
-5630	了	瞭	liǎo	to understand; to know	verb	\N	\N	文言文	Literary Chinese	\N	\N	\N	liao3.mp3	Traditional: 瞭; in the sense of 明白 or 清楚; as in 了解 (Guoyu '瞭' v 1)	393
-16959	了	\N	le	modal particle	particle	语气助词	Modal Particle	现代汉语	Modern Chinese	虚词	Function Words	\N	le.mp3	In this use 了 appears at the end of a sentence as a modal particle	393
 `
 
 	type test struct {
@@ -212,6 +214,98 @@ func TestLoadDictReader(t *testing.T) {
 		}
 		if tc.expectNotes != s.Notes {
 			t.Errorf("%s: Notes '%s' != %s", tc.name, tc.expectNotes, s.Notes)
+		}
+	}
+}
+
+
+// TestLoadDictReaderDomains tests that loadDictReader sets values correctly
+func TestLoadDictReaderValues(t *testing.T) {
+	t.Log("TestLoadDictReaderValues: Begin unit tests")
+	avoidSub := make( map[string]bool)
+	ws1 := dicttypes.WordSense{
+		Id: 393,
+		HeadwordId: 393,
+		Simplified: "了",
+		Traditional: "\\N",
+		Pinyin: "le",
+		English: "completion of an action",
+		Grammar: "particle",
+		ConceptCN: "动态助词",
+		Concept: "Aspectual Particle",
+		DomainCN: "现代汉语",
+		Domain: "Modern Chinese",
+		Subdomain: "Function Words",
+		Image: "\\N",
+		MP3: "le.mp3",
+		Notes: "In this usage 了 is an aspectual particle",
+	}
+	ws2 := dicttypes.WordSense{
+		Id: 5630,
+		HeadwordId: 393,
+		Simplified: "了",
+		Traditional: "瞭",
+		Pinyin: "liǎo",
+		English: "to understand; to know",
+		Grammar: "verb",
+		ConceptCN: "",
+		Concept: "",
+		DomainCN: "文言文",
+		Domain: "Literary Chinese",
+		Subdomain: "",
+		Image: "\\N",
+		MP3: "liao3.mp3",
+		Notes: "Traditional: 瞭; in the sense of 明白 or 清楚; as in 了解 (Guoyu '瞭' v 1)",
+	}
+	ws3 := dicttypes.WordSense{
+		Id: 16959,
+		HeadwordId: 393,
+		Simplified: "了",
+		Traditional: "\\N",
+		Pinyin: "le",
+		English: "modal particle",
+		Grammar: "particle",
+		ConceptCN: "语气助词",
+		Concept: "Modal Particle",
+		DomainCN: "现代汉语",
+		Domain: "Modern Chinese",
+		Subdomain: "Function Words",
+		Image: "\\N",
+		MP3: "le.mp3",
+		Notes: "In this use 了 appears at the end of a sentence as a modal particle",
+	}
+	hw1 := dicttypes.Word{
+		Simplified: "了", 
+		Traditional: "\\N",
+		Pinyin: "le",
+		Senses: []dicttypes.WordSense{ws1, ws2, ws3},
+	}
+
+	type test struct {
+		name string
+		input string
+		expectWord dicttypes.Word
+  }
+  tests := []test{
+		{
+			name: "Traditional to simplified not 1:1",
+			input: inputTrad2SimpleNot121,
+			expectWord: hw1,
+		},
+   }
+  for _, tc := range tests {
+		wdict := make(map[string]*dicttypes.Word)
+		r := strings.NewReader(tc.input)
+		err := loadDictReader(r, wdict, avoidSub)
+		if err != nil {
+			t.Fatalf("%s: unexpected an error %v", tc.name, err)
+		}
+		w, ok := wdict["了"]
+		if !ok {
+			t.Fatalf("%s: did not find expected term for '%s'", tc.name, "了")
+		}
+		if !reflect.DeepEqual(w.Senses, tc.expectWord.Senses) {
+			t.Fatalf("%s: got senses\n%v\nwant\n%v", tc.name, w.Senses, tc.expectWord.Senses)
 		}
 	}
 }
