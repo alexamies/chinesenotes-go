@@ -43,7 +43,7 @@ type Results struct {
 func loadData(f io.Reader) (*map[string]string, error) {
 	data := make(map[string]string)
 	r := csv.NewReader(f)
-	r.Comma = ';'
+	r.Comma = ','
 	r.Comment = '#'
 	rows, err := r.ReadAll()
 	if err != nil {
@@ -66,6 +66,10 @@ func (p *processor) loadExpectedData(r io.Reader) error {
 		return err
 	}
 	p.expectedData = *d
+	// Lower case the strings
+	for k, v := range p.expectedData {
+		p.expectedData[k] = strings.ToLower(v)
+	}
 	return nil
 }
 
@@ -99,11 +103,21 @@ func (p processor) Suggest(source, translation string) Results {
 	}
 	rLC := strings.ToLower(replacement)
 	for k, v := range p.expectedData {
-		// log.Printf("Check translation of string with %s to include %s", k, v)
-		if strings.Contains(source, k) && !strings.Contains(rLC, v) {
+		// Expected values is a comma separated list
+		exTokens := strings.Split(v, ",")
+		var gotOne bool
+		for _, e := range exTokens {
+			if strings.Contains(source, k) && strings.Contains(rLC, e) {
+				gotOne = true
+			}
+		}
+		if strings.Contains(source, k) && !gotOne && len(exTokens) == 1 {
 			note := fmt.Sprintf("Expect translation of phrase with %s to include '%s'", k, v)
 			notes = append(notes, note)
-		}
+		} else if strings.Contains(source, k) && !gotOne {
+			note := fmt.Sprintf("Expect translation of phrase with %s to include one of '%s'", k, v)
+			notes = append(notes, note)
+		} 
 	}
 	return Results{
 		Replacement: replacement,

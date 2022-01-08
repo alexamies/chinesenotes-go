@@ -19,12 +19,14 @@ import (
 	"testing"
 )
 
-const expected = `# Chinese term; expected term present
-綠色;green
+const expected = `# Chinese term,expected term present
+綠色,green
+頭髮,Hair
+莊嚴,"solemn,majestic"
 `
 
-const replacement = `# Target; replacement
-green color;green
+const replacement = `# Target,replacement
+green color,green
 `
 
 // TestCorpusDataDir is a trivial query with empty chunk
@@ -66,10 +68,19 @@ func TestSuggest(t *testing.T) {
 		},
 		{
 			name:        "Should be case insensitive",
-			source:      "綠色",
-			translation: "Green",
+			source:      "綠色頭髮",
+			translation: "green hair",
 			expected: Results{
-				Replacement: "Green",
+				Replacement: "green hair",
+				Notes:       []string{},
+			},
+		},
+		{
+			name:        "Expect one of",
+			source:      "莊嚴綠色頭髮",
+			translation: "majestic green hair",
+			expected: Results{
+				Replacement: "majestic green hair",
 				Notes:       []string{},
 			},
 		},
