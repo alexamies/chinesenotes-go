@@ -1316,9 +1316,9 @@ func translationHome(w http.ResponseWriter, r *http.Request) {
 		TranslatedText:  "",
 		Message:         "",
 		Title:           title,
-		DeepLChecked:    "checked",
+		DeepLChecked:    "",
 		GCPChecked:      "",
-		GlossaryChecked: "",
+		GlossaryChecked: "checked",
 		PostProcessing:  "checked",
 	}
 	showTranslationPage(w, r, p)
