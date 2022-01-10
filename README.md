@@ -479,8 +479,8 @@ to build the Docker image and upload it to the Google Container Registry:
 ```shell
 export PROJECT_ID=[Your project]
 BUILD_ID=[your build id]
-gcloud builds submit --config cloudbuild.yaml . \
-  --substitutions=_IMAGE_TAG="$BUILD_ID"
+nohup gcloud builds submit --config cloudbuild.yaml . \
+  --substitutions=_IMAGE_TAG="$BUILD_ID" &
 ```
 
 Then deploy to Cloud Run with the command
