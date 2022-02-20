@@ -32,6 +32,14 @@ green color,green
 // TestCorpusDataDir is a trivial query with empty chunk
 func TestSuggest(t *testing.T) {
 	t.Logf("TestSuggest: Begin unit tests\n")
+	green := Note{
+		FoundCN: "綠色",
+		ExpectedEN: []string{"green"},
+	}
+	rep := Note{
+		FoundEN: "green color",
+		Replacement: "green",
+	}
 	type test struct {
 		name        string
 		source      string
@@ -45,7 +53,7 @@ func TestSuggest(t *testing.T) {
 			translation: "green",
 			expected: Results{
 				Replacement: "green",
-				Notes:       []string{},
+				Notes:       []Note{},
 			},
 		},
 		{
@@ -54,7 +62,7 @@ func TestSuggest(t *testing.T) {
 			translation: "red",
 			expected: Results{
 				Replacement: "red",
-				Notes:       []string{"Expect translation of phrase with 綠色 to include 'green'"},
+				Notes:       []Note{green},
 			},
 		},
 		{
@@ -63,7 +71,7 @@ func TestSuggest(t *testing.T) {
 			translation: "green color",
 			expected: Results{
 				Replacement: "green",
-				Notes:       []string{"Replaced green color with green"},
+				Notes:       []Note{rep},
 			},
 		},
 		{
@@ -72,7 +80,7 @@ func TestSuggest(t *testing.T) {
 			translation: "green hair",
 			expected: Results{
 				Replacement: "green hair",
-				Notes:       []string{},
+				Notes:       []Note{},
 			},
 		},
 		{
@@ -81,7 +89,7 @@ func TestSuggest(t *testing.T) {
 			translation: "majestic green hair",
 			expected: Results{
 				Replacement: "majestic green hair",
-				Notes:       []string{},
+				Notes:       []Note{},
 			},
 		},
 	}

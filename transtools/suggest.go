@@ -14,7 +14,6 @@ package transtools
 
 import (
 	"encoding/csv"
-	"fmt"
 	"io"
 	"log"
 	"strings"
@@ -37,7 +36,13 @@ type processor struct {
 
 type Results struct {
 	Replacement string
-	Notes       []string
+	Notes       []Note
+}
+
+type Note struct {
+	FoundCN string
+	ExpectedEN []string
+	FoundEN, Replacement string
 }
 
 func loadData(f io.Reader) (*map[string]string, error) {
@@ -92,12 +97,16 @@ func NewProcessor(eReader, rReader io.Reader) Processor {
 func (p processor) Suggest(source, translation string) Results {
 	log.Printf("Suggest replacements with %d rows", len(p.replaceData))
 	replacement := translation
-	notes := []string{}
+	notes := []Note{}
 	for k, v := range p.replaceData {
 		if strings.Contains(replacement, k) {
 			log.Printf("Suggest replacing %s with %s", k, v)
 			replacement = strings.Replace(replacement, k, v, -1)
-			note := fmt.Sprintf("Replaced %s with %s", k, v)
+			// note := fmt.Sprintf("Replaced %s with %s", k, v)
+			note := Note{
+				FoundEN: k,
+				Replacement: v,
+			}
 			notes = append(notes, note)
 		}
 	}
@@ -112,10 +121,18 @@ func (p processor) Suggest(source, translation string) Results {
 			}
 		}
 		if strings.Contains(source, k) && !gotOne && len(exTokens) == 1 {
-			note := fmt.Sprintf("Expect translation of phrase with %s to include '%s'", k, v)
+			// note := fmt.Sprintf("Expect translation of phrase with %s to include '%s'", k, v)
+			note := Note{
+				FoundCN: k,
+				ExpectedEN: exTokens,
+			}
 			notes = append(notes, note)
 		} else if strings.Contains(source, k) && !gotOne {
-			note := fmt.Sprintf("Expect translation of phrase with %s to include one of '%s'", k, v)
+			// note := fmt.Sprintf("Expect translation of phrase with %s to include one of '%s'", k, v)
+			note := Note{
+				FoundCN: k,
+				ExpectedEN: exTokens,
+			}
 			notes = append(notes, note)
 		} 
 	}

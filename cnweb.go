@@ -91,7 +91,7 @@ type ChangePasswordHTML struct {
 // Data for displaying the translation page.
 type translationPage struct {
 	SourceText, TranslatedText, SuggestedText, Message, Title string
-	Notes                                                     []string
+	Notes                                                     []transtools.Note
 	DeepLChecked, GCPChecked, GlossaryChecked, PostProcessing string
 }
 
@@ -662,7 +662,7 @@ func processTranslation(w http.ResponseWriter, r *http.Request) {
 	source := r.FormValue("source")
 	translated := ""
 	message := ""
-	notes := []string{}
+	notes := []transtools.Note{}
 	deepLChecked := "checked"
 	gcpChecked := ""
 	glossaryChecked := ""
