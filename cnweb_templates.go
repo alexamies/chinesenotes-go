@@ -665,7 +665,6 @@ func newTemplateMap(webConfig config.WebAppConfig) map[string]*template.Template
 		"find_results.html":                findResultsTmpl,
 		"findtm.html":                      findTMTmpl,
 		"full_text_search.html":            fullTextSearchTmpl,
-    "help_translation.html":            notFoundTmpl,
 		"index.html":                       indexTmpl,
 		"index_auth.html":                  indexAuthTmpl,
 		"library.html":                     libraryTmpl,
