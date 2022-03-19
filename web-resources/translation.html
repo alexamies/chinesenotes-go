@@ -71,72 +71,119 @@
 
       <main class="main-content" id="main-content">
         <div class="mdc-top-app-bar--fixed-adjust">
-<h1>Computer Aided Translation Prototype</h1>
+<h1>Computer Aided Translation</h1>
+<p>
+  Machine translation of Modern Chinese to English with the Glossary
+  of Humanistic Buddhism
+</p>
 
 <form action='/translateprocess' method='POST'>
 
   <h2>Source Text</h2>
-  <p>
-    Enter source text in Chinese.
-  </p>
-  <textarea name='source' rows='10' cols='80'>{{.SourceText}}</textarea><br>
-  <p>
-    <button class="mdc-button mdc-button--raised" type="submit"
-      id="findSubmit">
-      <span class="mdc-button__label">Translate to English</span>
-    </button>
-    <span>
-      <input type="radio" id="deepL" name="platform" value="DeepL"
+  <div>
+    <label class="mdc-text-field mdc-text-field--outlined">
+      <span class="mdc-notched-outline">
+        <span class="mdc-notched-outline__leading"></span>
+        <span class="mdc-notched-outline__notch">
+        </span>
+        <span class="mdc-notched-outline__trailing"></span>
+      </span>
+      <input type="text" class="mdc-text-field__input chinese-input"
+             aria-labelledby="source-label-id"
+             value="{{.SourceText}}" size="80" required
+             name='source' id='source'>
+    </label>
+    <div class="mdc-text-field-helper-line helper-line">
+      Enter traditional characters
+    </div>
+  </div>
+  <div>
+    <p>
+      <button class="mdc-button mdc-button--raised" type="submit"
+        id="findSubmit">
+        <span class="mdc-button__label">
+          <i class="material-icons mdc-button__icon"
+             aria-hidden="true">arrow_forward</i>
+          Translate
+        </span>
+      </button>
+      &nbsp;
+      <a class='regular' href='/translate'>Clear</a>
+    </p>
+    <div>
+      <h2>Translated Text</h2>
+      <label class="mdc-text-field mdc-text-field--textarea">
+        <span class="mdc-notched-outline">
+          <span class="mdc-notched-outline__leading"></span>
+          <span class="mdc-notched-outline__notch">
+          </span>
+          <span class="mdc-notched-outline__trailing"></span>
+        </span>
+        <span class="mdc-text-field__resizer">
+          <textarea class="mdc-text-field__input"
+                    aria-labelledby="translated-label-id"
+                    rows="4" cols="100"
+                    name='translated' id="translated"
+                    >{{.TranslatedText}}</textarea>
+        </span>
+      </label>
+      <div class="mdc-text-field-helper-line helper-line">
+        Save the translated text to your document
+      </div>
+    </div>
+    <h2>Options</h2>
+    <div>
+      <span>
+        <input type="radio" id="withGlossary" name="platform"
+               value="withGlossary" {{.GlossaryChecked}}>
+        <label for="gcp">Google with HB Glossary (revised)</label>
+      </span>
+      <span>
+        <input type="radio" id="deepL" name="platform" value="DeepL"
              {{.DeepLChecked}}>
-      <label for="deepL">DeepL</label>
-    </span>
-    <span>
-      <input type="radio" id="gcp" name="platform" value="gcp"
-             {{.GCPChecked}}>
-      <label for="gcp">Google Translation API</label>
-    </span>
-    <span>
-      <input type="radio" id="withGlossary" name="platform" value="withGlossary"
-             {{.GlossaryChecked}}>
-      <label for="gcp">Google API with Glossary</label>
-    </span>
-  </p>
-  <p>
-    <span>
-      <input type="checkbox" id="processing" name="processing" {{.PostProcessing}}>
-      <label for="processing">Checking of Machine Translation*</label>
-    </span>
-  </p>
+        <label for="deepL">DeepL</label>
+      </span>
+      <span>
+        <input type="radio" id="gcp" name="platform" value="gcp"
+               {{.GCPChecked}}>
+        <label for="gcp">Google</label>
+      </span>
+    </div>
+  </div>
+  <input type="hidden" id="processing" name="processing"  {{.PostProcessing}}>
 
-  <h2>Translated Text</h2>
-  <textarea name='translated' rows='10' cols='80'>{{.TranslatedText}}</textarea><br>
 </form>
+
 <p>
   {{.Message}}
 </p>
+
+<h2>Translation Quality</h2>
 <p>
-  Notes:
+  Hints to check and improve translation:
   <ul>
-  {{range .Notes}}  
-    <li>{{.}}</li>
+  {{range .Notes}}
+      <li>
+        HB Glossary contains an entry for
+        <a href='https://hbreader.org/find.html#?text={{.FoundCN}}'
+        target='_blank' class='regular'>{{.FoundCN}}</a>
+        <span class="material-icons">open_in_new</span>
+        with English '{{.ExpectedEN}}'
+      </li>
   {{end}}
+    <li>
+      <a href='https://ckip.iis.sinica.edu.tw/service/corenlp/' 
+         target='_blank' 
+         class='regular'>Analyze linguistic structure</a>
+      <span class="material-icons">open_in_new</span>
+    </li>
   </ul>
-</p>
-<p>
-  * Enabling checking of machine translation will do basic processing of the
-  output text to check for ommissions and do automatic substitutions of known
-  errors for Buddhist terms and terms that do not agree with the FGS style.
-</p>
-<p>
-  <a class='regular'
-     href='/translate'
-     title='Clear the form to start again'>Start again</a>
 </p>
 </div>
 </main>
 <footer class="page-footer">
 <p>
-  Copyright Fo Guang Shan 佛光山 2021.
+  Copyright Fo Guang Shan 佛光山 2022.
   The Chinese-English dictionary is reproduced from the <a 
   href="http://ntireader.org/" target="_blank"
   > NTI Buddhist Text Reader</a> under the <a 
