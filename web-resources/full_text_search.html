@@ -22,12 +22,19 @@
               aria-hidden="true">home</i>
             <span class="mdc-deprecated-list-item__text">Home</span>
           </a>
+          <a class="mdc-deprecated-list-item"
+             href="/translate">
+            <i class="material-icons mdc-deprecated-list-item__graphic"
+              aria-hidden="true">translate</i>
+            <span class="mdc-deprecated-list-item__text">Machine Translation</span>
+          </a>
           <a class="mdc-deprecated-list-item" href="/findtm">
             <i class="material-icons mdc-deprecated-list-item__graphic"
               aria-hidden="true">bookmark</i>
             <span class="mdc-deprecated-list-item__text">Translation Memory</span>
           </a>
-          <a class="mdc-deprecated-list-item" href="/findadvanced/">
+          <a class="mdc-deprecated-list-item mdc-deprecated-list-item--activated"
+             href="/findadvanced/">
             <i class="material-icons mdc-deprecated-list-item__graphic"
               aria-hidden="true">search</i>
             <span class="mdc-deprecated-list-item__text">Full Text Search</span>
@@ -60,21 +67,28 @@
           {{if .ErrorMsg}}
             <p>Error: {{ .ErrorMsg }}</p>
           {{ else }}
-            <p>Enter Chinese text into to the most relevant documents</p>
-          <form name="findForm" method="post" action="/findadvanced/">
-            <div class="mdc-text-field">
-              <label class="mdc-floating-label" for="findInput">
-                Search for
+            <form name="findForm" method="post" action="/findadvanced/">
+              <div>Enter Chinese text</div>
+              <label class="mdc-text-field mdc-text-field--outlined mdc-text-field--no-label">
+                <span class="mdc-notched-outline">
+                  <span class="mdc-notched-outline__leading"></span>
+                  <span class="mdc-notched-outline__trailing"></span>
+                </span>
+                <input type="text" 
+                       class="mdc-text-field__input chinese-input"
+                       name="query"
+                       id="findInput"
+                       value="{{.Results.Query}}"
+                       size="40" required>
               </label>
-              <input class="mdc-text-field__input" type="text" name="query"
-                   id="findInput" size="40" value="{{.Results.Query}}" required/>
-              <div class="mdc-line-ripple"></div>
               <button class="mdc-button mdc-button--raised" type="submit"
-                    id="findSubmit">
-                <span class="mdc-button__label">Find</span>
+                      id="findSubmit">
+                 <span class="mdc-button__label">Find</span>
               </button>
-            </div>
-          </form>
+              <div class="mdc-text-field-helper-line helper-line">
+                Enter Chinese text to find the most relevant documents
+              </div>
+            </form>
           {{ end }}
           {{if .Results}}
           <h3>Results</h3>
@@ -95,7 +109,7 @@
       </main>
       <footer class="page-footer">
       <p>
-        Copyright Fo Guang Shan 佛光山 2020.
+        Copyright Fo Guang Shan 佛光山 2020-2022.
         The Chinese-English dictionary is reproduced from the <a 
         href="http://ntireader.org/" target="_blank"
         > NTI Buddhist Text Reader</a> under the <a 

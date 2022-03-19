@@ -36,6 +36,9 @@ export class CNotesMenu {
     const myDrawer = document.querySelector(".mdc-drawer");
     if (myDrawer && myDrawer instanceof Element) {
       const drawer = MDCDrawer.attachTo(myDrawer);
+      if (window.location.pathname === '' || window.location.pathname === '/') {
+        drawer.open = true;
+      }
       const listEl = document.querySelector('.mdc-drawer .mdc-list');
       if (listEl && listEl instanceof Element) {
         listEl.addEventListener('click', (event) => {

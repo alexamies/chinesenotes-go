@@ -17,10 +17,17 @@
     <aside class="mdc-drawer mdc-drawer--dismissible"> <!-- Menu drawer-->
       <div class="mdc-drawer__content">
         <nav class="mdc-deprecated-list">
-          <a class="mdc-deprecated-list-item" href="/">
+          <a class="mdc-deprecated-list-item mdc-deprecated-list-item--activated"
+             href="/">
             <i class="material-icons mdc-deprecated-list-item__graphic"
               aria-hidden="true">home</i>
             <span class="mdc-deprecated-list-item__text">Home</span>
+          </a>
+          <a class="mdc-deprecated-list-item"
+             href="/translate">
+            <i class="material-icons mdc-deprecated-list-item__graphic"
+              aria-hidden="true">translate</i>
+            <span class="mdc-deprecated-list-item__text">Machine Translation</span>
           </a>
           <a class="mdc-deprecated-list-item" href="/findtm">
             <i class="material-icons mdc-deprecated-list-item__graphic"
@@ -69,17 +76,29 @@
             English equivalent.
           </p>
           <form name="findForm" method="post" action="/find/">
-            <div>
-              <label for="findInput">Search for</label>
-              <input type="text" name="query" size="40" required/>
-              <button type="submit">Find</button>
-            </div>
+            <div>Search for</div>
+            <label class="mdc-text-field mdc-text-field--outlined mdc-text-field--no-label">
+              <span class="mdc-notched-outline">
+                <span class="mdc-notched-outline__leading"></span>
+                <span class="mdc-notched-outline__trailing"></span>
+              </span>
+              <input type="text" 
+                     class="mdc-text-field__input chinese-input"
+                     name="query"
+                     id="findInput"
+                     size="40" required>
+            </label>
+            <input type="hidden" name="title" value="title"/>
+            <button class="mdc-button mdc-button--raised" type="submit"
+                    id="findSubmit">
+               <span class="mdc-button__label">Find</span>
+            </button>
           </form>
         </div>
       </main>
       <footer class="page-footer">
       <p>
-        Copyright Fo Guang Shan 佛光山 2020-2021.
+        Copyright Fo Guang Shan 佛光山 2020-2022.
         The Chinese-English dictionary is reproduced from the <a 
         href="http://ntireader.org/" target="_blank"
         > NTI Buddhist Text Reader</a> under the <a 
