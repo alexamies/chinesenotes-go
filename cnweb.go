@@ -655,7 +655,7 @@ func processTranslation(w http.ResponseWriter, r *http.Request) {
 		p := &translationPage{
 			Message:        "Translation processor not initialized",
 			Title:          title,
-			PostProcessing: "checked",
+			PostProcessing: "on",
 		}
 		showTranslationPage(w, r, p)
 	}
@@ -1319,7 +1319,7 @@ func translationHome(w http.ResponseWriter, r *http.Request) {
 		DeepLChecked:    "",
 		GCPChecked:      "",
 		GlossaryChecked: "checked",
-		PostProcessing:  "checked",
+		PostProcessing:  "on",
 	}
 	showTranslationPage(w, r, p)
 }
