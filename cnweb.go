@@ -691,10 +691,10 @@ func processTranslation(w http.ResponseWriter, r *http.Request) {
 		message = "Please enter translated text or click Translate for a machine translation"
 	}
 	if len(translated) > 0 && processingChecked == "on" {
-		log.Printf("suggestion result: %s", translated)
 		result := translationProcessor.Suggest(source, translated)
 		translated = result.Replacement
 		notes = result.Notes
+		log.Printf("suggestion notes: %s, suggested translation: %s", notes, translated)
 	}
 	log.Printf("deepLChecked: %s, gcpChecked: %s, glossaryChecked: %s, processingChecked: %s",
 		deepLChecked, gcpChecked, glossaryChecked, processingChecked)
