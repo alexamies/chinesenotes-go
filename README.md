@@ -450,8 +450,8 @@ Create a Cloud SQL instance with the Cloud Console user interface. Then log into
 it in the Cloud Shell with the command
 
 ```shell
-DB_INSTANCE=[your instance]
-gcloud sql connect $DB_INSTANCE --user=root
+INSTANCE=[your instance]
+gcloud sql connect $INSTANCE --user=root
 ```
 
 In the MySQL client create a database and add an app user with the commands in
