@@ -554,6 +554,17 @@ gcloud compute url-maps create $URL_MAP \
     --default-backend-bucket $BACKEND_BUCKET
 ```
 
+Create a matcher for backend bucket holding cacheable content
+
+```shell
+BACKEND_CBUCKET=[your matcher name]
+CBUCKET=cnotes-cacheable
+gcloud compute backend-buckets create $BACKEND_CBUCKET \
+    --gcs-bucket-name=$CBUCKET \
+    --enable-cdn \
+    --cache-mode=CACHE_ALL_STATIC
+```
+
 Create a matcher for the NEG backend service
 
 ```shell
@@ -561,7 +572,7 @@ MATCHER_NAME=[your matcher name]
 gcloud compute url-maps add-path-matcher $URL_MAP \
     --default-backend-bucket $BACKEND_BUCKET \
     --path-matcher-name $MATCHER_NAME \
-    --path-rules="/find/*=$LB_SERVICE,/findadvanced/*=$LB_SERVICE,/findmedia/*=$LB_SERVICE,/findsubstring=$LB_SERVICE,/findtm=$LB_SERVICE"
+    --path-rules="/find/*=$LB_SERVICE,/findadvanced/*=$LB_SERVICE,/findmedia/*=$LB_SERVICE,/findsubstring=$LB_SERVICE,/findtm=$LB_SERVICE,/cached=$BACKEND_CBUCKET"
 ```
 
 Configure the target proxy
