@@ -558,7 +558,7 @@ Create a matcher for backend bucket holding cacheable content
 
 ```shell
 BACKEND_CBUCKET=[your matcher name]
-CBUCKET=cnotes-cacheable
+CBUCKET=[your bucket name]
 gcloud compute backend-buckets create $BACKEND_CBUCKET \
     --gcs-bucket-name=$CBUCKET \
     --enable-cdn \
@@ -573,6 +573,13 @@ gcloud compute url-maps add-path-matcher $URL_MAP \
     --default-backend-bucket $BACKEND_BUCKET \
     --path-matcher-name $MATCHER_NAME \
     --path-rules="/find/*=$LB_SERVICE,/findadvanced/*=$LB_SERVICE,/findmedia/*=$LB_SERVICE,/findsubstring=$LB_SERVICE,/findtm=$LB_SERVICE,/cached=$BACKEND_CBUCKET"
+```
+
+Enable compression for cached content:
+
+```shell
+gcloud beta compute backend-buckets update $BACKEND_CBUCKET \
+    --compression-mode=AUTOMATIC
 ```
 
 Configure the target proxy
