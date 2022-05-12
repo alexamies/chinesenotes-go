@@ -136,6 +136,7 @@ func initApp(ctx context.Context) error {
 			log.Printf("main.initApp() unable to load doc map: %v", err)
 		}
 	}
+	log.Printf("main.initApp() doc map loaded with %d items", len(docMap))
 	df = find.NewDocFinder(ctx, database, docMap)
 	if config.PasswordProtected() {
 		authenticator, err = identity.NewAuthenticator(ctx)
@@ -1123,8 +1124,13 @@ func portalLibraryHandler(w http.ResponseWriter, r *http.Request) {
 
 // Display form to request a password reset
 func requestResetFormHandler(w http.ResponseWriter, r *http.Request) {
-	data := identity.RequestResetResult{true, false, true,
-		identity.InvalidUser(), ""}
+	data := identity.RequestResetResult{
+		EmailValid:          true,
+		RequestResetSuccess: false,
+		ShowNewForm:         true,
+		User:                identity.InvalidUser(),
+		Token:               "",
+	}
 	title := webConfig.GetVarWithDefault("Title", defTitle)
 	content := htmlContent{
 		Title:     title,

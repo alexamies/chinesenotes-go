@@ -506,8 +506,15 @@ gcloud run deploy --platform=managed $SERVICE \
 --set-env-vars DBPASSWORD="$DBPASSWORD" \
 --set-env-vars DATABASE="$DATABASE" \
 --set-env-vars TEXT_BUCKET="$TEXT_BUCKET" \
---set-env-vars CNWEB_HOME="/" \
 --set-env-vars CNREADER_HOME="/"
+```
+
+If the traffic is not migrated to the latest version run the command
+
+```shell
+gcloud run services update-traffic --platform=managed $SERVICE \
+  --region=$REGION \
+  --to-revisions=LATEST=100
 ```
 
 ### Custom Domain and SSL
@@ -572,7 +579,7 @@ MATCHER_NAME=[your matcher name]
 gcloud compute url-maps add-path-matcher $URL_MAP \
     --default-backend-bucket $BACKEND_BUCKET \
     --path-matcher-name $MATCHER_NAME \
-    --path-rules="/find/*=$LB_SERVICE,/findadvanced/*=$LB_SERVICE,/findmedia/*=$LB_SERVICE,/findsubstring=$LB_SERVICE,/findtm=$LB_SERVICE,/cached=$BACKEND_CBUCKET"
+    --path-rules="/find/*=$LB_SERVICE,/findadvanced/*=$LB_SERVICE,/findmedia/*=$LB_SERVICE,/findsubstring=$LB_SERVICE,/findtm=$LB_SERVICE,/cached/*=$BACKEND_CBUCKET"
 ```
 
 Enable compression for cached content:

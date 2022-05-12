@@ -1,4 +1,4 @@
-FROM golang:1.17.3-buster
+FROM golang:1.18.2
 
 ENV GO111MODULE=on
 WORKDIR /app
