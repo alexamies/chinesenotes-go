@@ -59,7 +59,6 @@ var (
 	database                                              *sql.DB
 	authenticator                                         *identity.Authenticator
 	mediaSearcher                                         *media.MediaSearcher
-	templates                                             map[string]*template.Template
 	docTitleFinder                                        find.DocTitleFinder
 	docMap                                                map[string]find.DocInfo
 	translationProcessor                                  transtools.Processor
@@ -68,12 +67,13 @@ var (
 
 // backends holds dependencies that access remote resources
 type backends struct {
-	reverseIndex dictionary.ReverseIndex
-	substrIndex  dictionary.SubstringIndex
 	df           find.DocFinder
-	tmSearcher   transmemory.Searcher
 	dict         *dictionary.Dictionary
 	parser       find.QueryParser
+	reverseIndex dictionary.ReverseIndex
+	substrIndex  dictionary.SubstringIndex
+	templates			map[string]*template.Template
+	tmSearcher   transmemory.Searcher
 }
 
 // htmlContent holds content for HTML template
@@ -114,7 +114,7 @@ func initApp(ctx context.Context) (*backends, error) {
 	}
 	substrIndex, err := dictionary.NewSubstringIndexDB(ctx, database)
 	if err != nil {
-		return nil, fmt.Errorf("initApp unable to initialize substrIndex: %v", err)
+		log.Printf("initApp, non-fatal error, unable to initialize substrIndex: %v", err)
 	}
 	cnReaderHome := os.Getenv("CNREADER_HOME")
 	var dict *dictionary.Dictionary
@@ -149,12 +149,13 @@ func initApp(ctx context.Context) (*backends, error) {
 	}
 	log.Printf("main.initApp() doc map loaded with %d items", len(docMap))
 	bends := &backends{
-		reverseIndex: dictionary.NewDBSearcher(ctx, database),
-		substrIndex:  substrIndex,
 		df:           find.NewDocFinder(ctx, database, docMap),
-		tmSearcher:   tms,
 		dict:         dict,
 		parser:       parser,
+		reverseIndex: dictionary.NewDBSearcher(ctx, database),
+		substrIndex:  substrIndex,
+		templates: newTemplateMap(webConfig),
+		tmSearcher:   tms,
 	}
 	if config.PasswordProtected() {
 		authenticator, err = identity.NewAuthenticator(ctx)
@@ -162,7 +163,6 @@ func initApp(ctx context.Context) (*backends, error) {
 			return nil, fmt.Errorf("initApp authenticator not initialized, %v", err)
 		}
 	}
-	templates = newTemplateMap(webConfig)
 	return bends, nil
 }
 
@@ -262,7 +262,7 @@ func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
 				ChangeSuccessful: result.ChangeSuccessful,
 				ShowNewForm:      result.ShowNewForm,
 			}
-			displayPage(w, "change_password_form.html", content)
+			displayPage(w, b, "change_password_form.html", content)
 		}
 	}
 }
@@ -284,18 +284,18 @@ func changePasswordFormHandler(w http.ResponseWriter, r *http.Request) {
 			ChangeSuccessful: false,
 			ShowNewForm:      true,
 		}
-		displayPage(w, "change_password_form.html", result)
+		displayPage(w, b, "change_password_form.html", result)
 	}
 }
 
 // Custom 404 page handler
 func custom404(w http.ResponseWriter, r *http.Request, url string) {
 	log.Printf("custom404: sending 404 for %s", url)
-	displayPage(w, "404.html", nil)
+	displayPage(w, b, "404.html", nil)
 }
 
-func displayPage(w http.ResponseWriter, templateName string, content interface{}) {
-	tmpl, ok := templates[templateName]
+func displayPage(w http.ResponseWriter, b *backends, templateName string, content interface{}) {
+	tmpl, ok := b.templates[templateName]
 	if !ok {
 		log.Printf("displayPage: template not found %s", templateName)
 		http.Error(w, "Server Error", http.StatusInternalServerError)
@@ -340,19 +340,19 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 			sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
 		} else {
 			log.Printf("displayHome error getting cookie: %v", err)
-			displayPage(w, "login_form.html", content)
+			displayPage(w, b, "login_form.html", content)
 			return
 		}
 		if !sessionInfo.Valid {
-			displayPage(w, "login_form.html", content)
+			displayPage(w, b, "login_form.html", content)
 			return
 		} else {
-			displayPage(w, "index_auth.html", content)
+			displayPage(w, b, "index_auth.html", content)
 			return
 		}
 	}
 
-	displayPage(w, "index.html", content)
+	displayPage(w, b, "index.html", content)
 }
 
 // Process a change password request
@@ -372,7 +372,7 @@ func enforceValidSession(w http.ResponseWriter, r *http.Request) identity.Sessio
 		sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
 		if sessionInfo.Authenticated != 1 {
 			if acceptHTML(r) {
-				displayPage(w, "login_form.html", nil)
+				displayPage(w, b, "login_form.html", nil)
 			} else {
 				http.Error(w, "Not authorized", http.StatusForbidden)
 			}
@@ -399,7 +399,7 @@ func findFullText(response http.ResponseWriter, request *http.Request) {
 			content := htmlContent{
 				Title: title,
 			}
-			displayPage(response, "full_text_search.html", content)
+			displayPage(response, b, "full_text_search.html", content)
 			return
 		}
 	}
@@ -439,7 +439,7 @@ func findDocs(ctx context.Context, response http.ResponseWriter, request *http.R
 		if fullText {
 			templateFile = "full_text_search.html"
 		}
-		err = showQueryResults(response, find.QueryResults{}, templateFile)
+		err = showQueryResults(response, b, find.QueryResults{}, templateFile)
 		if err != nil {
 			log.Printf("main.findDocs error displaying empty results %v", err)
 			http.Error(response, "Internal error", http.StatusInternalServerError)
@@ -532,7 +532,7 @@ func findDocs(ctx context.Context, response http.ResponseWriter, request *http.R
 			}
 			results.Terms = terms
 		}
-		err = showQueryResults(response, *results, templateFile)
+		err = showQueryResults(response, b, *results, templateFile)
 		if err != nil {
 			log.Printf("main.findDocs Error displaying results: %v", err)
 			http.Error(response, "Internal error", http.StatusInternalServerError)
@@ -739,8 +739,7 @@ func processTranslation(w http.ResponseWriter, r *http.Request) {
 }
 
 // showQueryResults displays query results on a HTML page
-func showQueryResults(w io.Writer, results find.QueryResults,
-	templateFile string) error {
+func showQueryResults(w io.Writer, b *backends, results find.QueryResults, templateFile string) error {
 	res := results
 	staticDir := appConfig.GetVar("GoStaticDir")
 	if len(staticDir) > 0 && len(results.Documents) > 0 {
@@ -784,7 +783,7 @@ func showQueryResults(w io.Writer, results find.QueryResults,
 	}
 	var tmpl *template.Template
 	var err error
-	tmpl = templates[templateFile]
+	tmpl = b.templates[templateFile]
 	if err != nil {
 		return fmt.Errorf("showQueryResults: error parsing template %v", err)
 	}
@@ -800,7 +799,7 @@ func showQueryResults(w io.Writer, results find.QueryResults,
 
 // Displays the translation page.
 func showTranslationPage(w http.ResponseWriter, r *http.Request, p *translationPage) {
-	displayPage(w, "translation.html", p)
+	displayPage(w, b, "translation.html", p)
 }
 
 // findHandler finds documents matching the given query.
@@ -892,24 +891,24 @@ func library(w http.ResponseWriter, r *http.Request) {
 			sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
 		} else {
 			log.Printf("displayHome error getting cookie: %v", err)
-			displayPage(w, "login_form.html", content)
+			displayPage(w, b, "login_form.html", content)
 			return
 		}
 		if !sessionInfo.Valid {
-			displayPage(w, "login_form.html", content)
+			displayPage(w, b, "login_form.html", content)
 			return
 		} else {
-			displayPage(w, "library.html", content)
+			displayPage(w, b, "library.html", content)
 			return
 		}
 	}
 
-	displayPage(w, "library.html", content)
+	displayPage(w, b, "library.html", content)
 }
 
 // Display login form for the Translation Portal
 func loginFormHandler(w http.ResponseWriter, r *http.Request) {
-	displayPage(w, "login_form.html", nil)
+	displayPage(w, b, "login_form.html", nil)
 }
 
 // Process a login request
@@ -971,7 +970,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			content := htmlContent{
 				Title: title,
 			}
-			displayPage(w, "index.html", content)
+			displayPage(w, b, "index.html", content)
 		} else {
 			loginFormHandler(w, r)
 		}
@@ -985,7 +984,7 @@ func logoutForm(w http.ResponseWriter, r *http.Request) {
 	content := htmlContent{
 		Title: title,
 	}
-	displayPage(w, "logout.html", content)
+	displayPage(w, b, "logout.html", content)
 }
 
 // logoutHandler logs the user out of their session
@@ -1016,7 +1015,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		content := htmlContent{
 			Title: title,
 		}
-		displayPage(w, "logged_out.html", content)
+		displayPage(w, b, "logged_out.html", content)
 		return
 	}
 
@@ -1154,7 +1153,7 @@ func requestResetFormHandler(w http.ResponseWriter, r *http.Request) {
 		TMResults: nil,
 		Data:      data,
 	}
-	displayPage(w, "request_reset_form.html", content)
+	displayPage(w, b, "request_reset_form.html", content)
 }
 
 // requestResetHandler processes requests for password reset
@@ -1187,7 +1186,7 @@ func requestResetHandler(w http.ResponseWriter, r *http.Request) {
 			TMResults: nil,
 			Data:      result,
 		}
-		displayPage(w, "request_reset_form.html", content)
+		displayPage(w, b, "request_reset_form.html", content)
 	}
 }
 
@@ -1200,7 +1199,7 @@ func resetPasswordFormHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		content["Token"] = ""
 	}
-	displayPage(w, "reset_password_form.html", content)
+	displayPage(w, b, "reset_password_form.html", content)
 }
 
 func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
@@ -1224,7 +1223,7 @@ func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(r.Header.Get("Accept"), "application/json") {
 		sendJSON(w, result)
 	} else {
-		displayPage(w, "reset_password_confirmation.html", content)
+		displayPage(w, b, "reset_password_confirmation.html", content)
 	}
 }
 
@@ -1366,7 +1365,7 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 				log.Println("translationMemory database is needed for this feature")
 				content.ErrorMsg = "Translation memory not configured"
 			}
-			displayPage(w, "findtm.html", content)
+			displayPage(w, b, "findtm.html", content)
 			return
 		}
 		log.Println("translationMemory Search query string is empty")
@@ -1402,7 +1401,7 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 			Query:     q,
 			TMResults: results,
 		}
-		displayPage(w, "findtm.html", content)
+		displayPage(w, b, "findtm.html", content)
 		return
 	}
 	resultsJson, err := json.Marshal(results)
@@ -1462,7 +1461,7 @@ func wordDetail(w http.ResponseWriter, r *http.Request) {
 				Word: word,
 			},
 		}
-		displayPage(w, "word_detail.html", content)
+		displayPage(w, b, "word_detail.html", content)
 		return
 	}
 
