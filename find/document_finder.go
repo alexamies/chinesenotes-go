@@ -41,9 +41,9 @@ var WEIGHT = []float64{0.080, 2.327, 3.040} // [BM25 words, BM25 bigrams, bit ve
 
 // DocFinder finds documents.
 type DocFinder interface {
-	FindDocuments(ctx context.Context, dictSearcher *dictionary.Searcher,
+	FindDocuments(ctx context.Context, dictSearcher dictionary.ReverseIndex,
 		parser QueryParser, query string, advanced bool) (*QueryResults, error)
-	FindDocumentsInCol(ctx context.Context, dictSearcher *dictionary.Searcher,
+	FindDocumentsInCol(ctx context.Context, dictSearcher dictionary.ReverseIndex,
 		parser QueryParser, query, col_gloss_file string) (*QueryResults, error)
 	GetColMap() map[string]string
 	Inititialized() bool
@@ -548,23 +548,22 @@ func (df databaseDocFinder) findDocumentsInCol(ctx context.Context, query string
 // Chinese words in the dictionary. If there are no Chinese words in the query
 // then the Chinese word senses matching the English or Pinyin will be included
 // in the TextSegment.Senses field.
-func (df databaseDocFinder) FindDocuments(ctx context.Context,
-	dictSearcher *dictionary.Searcher,
+func (df databaseDocFinder) FindDocuments(ctx context.Context, dictSearcher dictionary.ReverseIndex,
 	parser QueryParser, query string,
 	advanced bool) (*QueryResults, error) {
 	if query == "" {
 		return nil, fmt.Errorf("FindDocuments, Empty query string")
 	}
 	terms := parser.ParseQuery(query)
+	log.Printf("FindDocuments, got: %d terms", len(terms))
 	if (len(terms) == 1) && (terms[0].DictEntry.HeadwordId == 0) {
-		log.Printf("FindDocuments,Query does not contain Chinese, look for "+
-			"English and Pinyin matches: %s", query)
+		log.Printf("FindDocuments, no Chinese in query, look for English and Pinyin matches: %s", query)
 		senses, err := dictSearcher.FindWordsByEnglish(ctx, terms[0].QueryText)
+		log.Printf("FindDocuments, found senses %v matching reverse query: %s", senses, query)
 		if err != nil {
 			return nil, err
-		} else {
-			terms[0].Senses = senses
 		}
+		terms[0].Senses = senses
 	}
 
 	if df.database == nil {
@@ -613,7 +612,7 @@ func (df databaseDocFinder) FindDocuments(ctx context.Context,
 // then the Chinese word senses matching the English or Pinyin will be included
 // in the TextSegment.Senses field.
 func (df databaseDocFinder) FindDocumentsInCol(ctx context.Context,
-	dictSearcher *dictionary.Searcher, parser QueryParser, query,
+	dictSearcher dictionary.ReverseIndex, parser QueryParser, query,
 	col_gloss_file string) (*QueryResults, error) {
 	if query == "" {
 		return nil, fmt.Errorf("FindDocumentsInCol, Empty query string")

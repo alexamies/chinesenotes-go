@@ -55,12 +55,8 @@ const (
 var (
 	appConfig                                             config.AppConfig
 	webConfig                                             config.WebAppConfig
+	b                                                     *backends
 	database                                              *sql.DB
-	parser                                                find.QueryParser
-	dict                                                  *dictionary.Dictionary
-	dictSearcher                                          *dictionary.Searcher
-	tmSearcher                                            transmemory.Searcher
-	df                                                    find.DocFinder
 	authenticator                                         *identity.Authenticator
 	mediaSearcher                                         *media.MediaSearcher
 	templates                                             map[string]*template.Template
@@ -70,7 +66,17 @@ var (
 	deepLApiClient, translateApiClient, glossaryApiClient transtools.ApiClient
 )
 
-// Content for HTML template
+// backends holds dependencies that access remote resources
+type backends struct {
+	reverseIndex dictionary.ReverseIndex
+	substrIndex  dictionary.SubstringIndex
+	df           find.DocFinder
+	tmSearcher   transmemory.Searcher
+	dict         *dictionary.Dictionary
+	parser       find.QueryParser
+}
+
+// htmlContent holds content for HTML template
 type htmlContent struct {
 	Title     string
 	Query     string
@@ -95,7 +101,7 @@ type translationPage struct {
 	DeepLChecked, GCPChecked, GlossaryChecked, PostProcessing string
 }
 
-func initApp(ctx context.Context) error {
+func initApp(ctx context.Context) (*backends, error) {
 	log.Println("initApp Initializing cnweb")
 	appConfig = config.InitConfig()
 	webConfig = config.InitWeb()
@@ -103,16 +109,20 @@ func initApp(ctx context.Context) error {
 	if config.UseDatabase() {
 		database, err = initDBCon()
 		if err != nil {
-			return fmt.Errorf("initApp unable to connect to database: %v", err)
+			return nil, fmt.Errorf("initApp unable to connect to database: %v", err)
 		}
 	}
-	dictSearcher = dictionary.NewSearcher(ctx, database)
+	substrIndex, err := dictionary.NewSubstringIndexDB(ctx, database)
+	if err != nil {
+		return nil, fmt.Errorf("initApp unable to initialize substrIndex: %v", err)
+	}
 	cnReaderHome := os.Getenv("CNREADER_HOME")
+	var dict *dictionary.Dictionary
 	if len(cnReaderHome) > 0 {
 		var err error
 		dict, err = dictionary.LoadDictFile(appConfig)
 		if err != nil {
-			return fmt.Errorf("main.initApp() unable to load dictionary locally: %v", err)
+			return nil, fmt.Errorf("main.initApp() unable to load dictionary locally: %v", err)
 		}
 	} else {
 		// Load from web for zero-config Quickstart
@@ -120,14 +130,15 @@ func initApp(ctx context.Context) error {
 		var err error
 		dict, err = dictionary.LoadDictURL(appConfig, url)
 		if err != nil {
-			return fmt.Errorf("main.initApp() unable to load dictionary from net: %v", err)
+			return nil, fmt.Errorf("main.initApp() unable to load dictionary from net: %v", err)
 		}
 	}
-	parser = find.MakeQueryParser(dict.Wdict)
+	parser := find.MakeQueryParser(dict.Wdict)
+	var tms transmemory.Searcher
 	if database != nil {
-		tmSearcher, err = transmemory.NewSearcher(ctx, database)
+		tms, err = transmemory.NewSearcher(ctx, database)
 		if err != nil {
-			return fmt.Errorf("main.initApp() unable to create new TM searcher: %v", err)
+			return nil, fmt.Errorf("main.initApp() unable to create new TM searcher: %v", err)
 		}
 	}
 	if len(docMap) == 0 {
@@ -137,15 +148,22 @@ func initApp(ctx context.Context) error {
 		}
 	}
 	log.Printf("main.initApp() doc map loaded with %d items", len(docMap))
-	df = find.NewDocFinder(ctx, database, docMap)
+	bends := &backends{
+		reverseIndex: dictionary.NewDBSearcher(ctx, database),
+		substrIndex:  substrIndex,
+		df:           find.NewDocFinder(ctx, database, docMap),
+		tmSearcher:   tms,
+		dict:         dict,
+		parser:       parser,
+	}
 	if config.PasswordProtected() {
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
-			return fmt.Errorf("initApp authenticator not initialized, %v", err)
+			return nil, fmt.Errorf("initApp authenticator not initialized, %v", err)
 		}
 	}
 	templates = newTemplateMap(webConfig)
-	return nil
+	return bends, nil
 }
 
 // Initialize the document title finder
@@ -170,7 +188,7 @@ func initDocTitleFinder() (find.DocTitleFinder, error) {
 func adminHandler(w http.ResponseWriter, r *http.Request) {
 	d := os.Getenv("DATABASE")
 	if len(d) == 0 {
-		log.Print("adminHandler databsae not initialized")
+		log.Print("adminHandler database not initialized")
 		http.Error(w, "Not authorized", http.StatusForbidden)
 		return
 	}
@@ -215,7 +233,7 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
 	d := os.Getenv("DATABASE")
 	if len(d) == 0 {
-		log.Print("changePasswordHandler databsae not initialized")
+		log.Print("changePasswordHandler database not initialized")
 		http.Error(w, "Not authorized", http.StatusForbidden)
 		return
 	}
@@ -253,7 +271,7 @@ func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
 func changePasswordFormHandler(w http.ResponseWriter, r *http.Request) {
 	d := os.Getenv("DATABASE")
 	if len(d) == 0 {
-		log.Print("changePasswordFormHandler databsae not initialized")
+		log.Print("changePasswordFormHandler database not initialized")
 		http.Error(w, "Not authorized", http.StatusForbidden)
 		return
 	}
@@ -381,21 +399,26 @@ func findFullText(response http.ResponseWriter, request *http.Request) {
 			content := htmlContent{
 				Title: title,
 			}
-			if df == nil || !df.Inititialized() {
-				log.Printf("findFullText is not configured: %v", df)
-				content.ErrorMsg = "Full text search is not configured"
-			}
 			displayPage(response, "full_text_search.html", content)
 			return
 		}
 	}
-	findDocs(response, request, true)
+	ctx := context.Background()
+	if b == nil {
+		log.Println("main.findFullText re-initializing app")
+		var err error
+		b, err = initApp(ctx)
+		if err != nil {
+			log.Printf("main.findFullText error initializing app: %v", err)
+			http.Error(response, "Internal error", http.StatusInternalServerError)
+			return
+		}
+	}
+	findDocs(ctx, response, request, b, true)
 }
 
 // findDocs finds documents matching the given query.
-func findDocs(response http.ResponseWriter,
-	request *http.Request,
-	fullText bool) {
+func findDocs(ctx context.Context, response http.ResponseWriter, request *http.Request, b *backends, fullText bool) {
 
 	if config.PasswordProtected() {
 		sessionInfo := enforceValidSession(response, request)
@@ -430,18 +453,8 @@ func findDocs(response http.ResponseWriter,
 
 	var results *find.QueryResults
 	c := getSingleValue(request, "collection")
-	ctx := context.Background()
-	if df == nil || !df.Inititialized() || dictSearcher == nil || !dictSearcher.Initialized() {
-		log.Println("main.findDocs re-initializing app")
-		err := initApp(ctx)
-		if err != nil {
-			log.Printf("findDocs error: %v", err)
-			http.Error(response, "Internal error", http.StatusInternalServerError)
-			return
-		}
-	}
 	if len(c) > 0 {
-		results, err = df.FindDocumentsInCol(ctx, dictSearcher, parser, q, c)
+		results, err = b.df.FindDocumentsInCol(ctx, b.reverseIndex, b.parser, q, c)
 	} else if len(findTitle) > 0 {
 		docTitleFinder, err := initDocTitleFinder()
 		if err == nil {
@@ -453,7 +466,8 @@ func findDocs(response http.ResponseWriter,
 			return
 		}
 	} else {
-		results, err = df.FindDocuments(ctx, dictSearcher, parser, q, fullText)
+		results, err = b.df.FindDocuments(ctx, b.reverseIndex, b.parser, q, fullText)
+		log.Printf("main.findDocs got %d terms from FindDocuments", len(results.Terms))
 	}
 
 	if err != nil {
@@ -465,9 +479,9 @@ func findDocs(response http.ResponseWriter,
 	// Add similar results from translation memory, only do this when more than
 	// one term is found and when the query string is between 2 and 8 characters
 	// in length
-	if !fullText && (tmSearcher != nil) && (len([]rune(q)) > 1) &&
-		(len([]rune(q)) < 9) && (len(results.Terms) > 1) {
-		tmResults, err := tmSearcher.Search(ctx, q, "", false, dict.Wdict)
+	if !fullText && (b != nil) && (len([]rune(q)) > 1) && (len([]rune(q)) < 9) && (len(results.Terms) > 1) {
+		log.Println("main.findDocs similar results from translation memory")
+		tmResults, err := b.tmSearcher.Search(ctx, q, "", false, b.dict.Wdict)
 		if err != nil {
 			// Not essential to the main request
 			log.Printf("main.findDocs translation memory error, ignoring: %v", err)
@@ -502,6 +516,7 @@ func findDocs(response http.ResponseWriter,
 
 			// Transform notes field with regular expressions
 		} else if len(results.Terms) > 0 {
+			log.Println("main.findDocs, processing notes")
 			match := webConfig.GetVar("NotesReMatch")
 			replace := webConfig.GetVar("NotesReplace")
 			processor := dictionary.NewNotesProcessor(match, replace)
@@ -791,7 +806,8 @@ func showTranslationPage(w http.ResponseWriter, r *http.Request, p *translationP
 // findHandler finds documents matching the given query.
 func findHandler(response http.ResponseWriter, request *http.Request) {
 	log.Printf("findHandler: url %s", request.URL.Path)
-	findDocs(response, request, false)
+	ctx := context.Background()
+	findDocs(ctx, response, request, b, false)
 }
 
 // findSubstring finds terms matching the given query with a substring match.
@@ -816,12 +832,12 @@ func findSubstring(response http.ResponseWriter, request *http.Request) {
 	}
 	d := os.Getenv("DATABASE")
 	if len(d) == 0 {
-		log.Print("findSubstring databsae not initialized")
+		log.Print("findSubstring database not initialized")
 		http.Error(response, "Server not configured", http.StatusInternalServerError)
 		return
 	}
 	ctx := context.Background()
-	results, err := dictSearcher.LookupSubstr(ctx, q, t, st)
+	results, err := b.substrIndex.LookupSubstr(ctx, q, t, st)
 	if err != nil {
 		log.Printf("main.findSubstring Error looking up term, %v", err)
 		http.Error(response, "Error looking up term",
@@ -1360,15 +1376,21 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 	d := getSingleValue(r, "domain")
 	log.Printf("main.translationMemory Query: %s, domain: %s", q, d)
 	ctx := context.Background()
-	if tmSearcher == nil {
-		err := initApp(ctx)
+	if b == nil {
+		var err error
+		b, err = initApp(ctx)
 		if err != nil {
-			log.Printf("findDocs error: %v", err)
+			log.Printf("translationMemory initalizing app, error: %v", err)
 			http.Error(w, "Internal error", http.StatusInternalServerError)
 			return
 		}
 	}
-	results, err := tmSearcher.Search(ctx, q, d, true, dict.Wdict)
+	if b.tmSearcher == nil || b.dict == nil {
+		log.Printf("main.translationMemory b.tmSearcher == nil || dict == nil: %v, %v", b.tmSearcher, b.dict)
+		http.Error(w, "Internal Error", http.StatusInternalServerError)
+		return
+	}
+	results, err := b.tmSearcher.Search(ctx, q, d, true, b.dict.Wdict)
 	if err != nil {
 		log.Printf("main.translationMemory error searching, %v", err)
 		http.Error(w, "Internal Error", http.StatusInternalServerError)
@@ -1426,7 +1448,7 @@ func wordDetail(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
-	if hw, ok := dict.HeadwordIds[hwId]; ok {
+	if hw, ok := b.dict.HeadwordIds[hwId]; ok {
 		title := webConfig.GetVarWithDefault("Title", defTitle)
 		match := webConfig.GetVar("NotesReMatch")
 		replace := webConfig.GetVar("NotesReplace")
@@ -1452,9 +1474,10 @@ func wordDetail(w http.ResponseWriter, r *http.Request) {
 func main() {
 	log.Println("cnweb.main Iniitalizing cnweb")
 	ctx := context.Background()
-	err := initApp(ctx)
+	var err error
+	b, err = initApp(ctx)
 	if err != nil {
-		log.Printf("main() error for initApp: %v", err)
+		log.Printf("main() error for initApp, will retry on subsequent HTTP requests: %v", err)
 	}
 
 	http.HandleFunc("/", displayHome)

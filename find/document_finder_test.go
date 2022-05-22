@@ -107,7 +107,7 @@ func TestFindDocuments(t *testing.T) {
 		t.Errorf("TestFindDocuments, Error: %v", err)
 		return
 	}
-	dictSearcher := dictionary.NewSearcher(ctx, database)
+	dictSearcher := dictionary.NewDBSearcher(ctx, database)
 	if !dictSearcher.Initialized() {
 		t.Skipf("TestFindDocuments: cannot create dictSearcher: %v", err)
 	}
@@ -247,7 +247,7 @@ func TestFindDocumentsInCol(t *testing.T) {
 		t.Errorf("TestFindDocumentsInCol, Error: %v", err)
 		return
 	}
-	dictSearcher := dictionary.NewSearcher(ctx, database)
+	dictSearcher := dictionary.NewDBSearcher(ctx, database)
 	if !dictSearcher.Initialized() {
 		t.Skipf("TestFindDocumentsInCol: cannot create dictSearcher: %v", err)
 	}

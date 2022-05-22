@@ -197,6 +197,8 @@ const findResultsTmpl = `
               <ol>
               {{ range $ws := $term.DictEntry.Senses }}
                 <li>
+                {{if ne $ws.Simplified "\\N"}}<span class="dict-entry-headword">{{ $ws.Simplified }}</span>{{end}}
+                {{if ne $ws.Traditional "\\N"}}<span class="dict-entry-headword">( {{ $ws.Traditional }} )</span>{{end}}
                 {{if ne $ws.Pinyin "\\N"}}<span class="dict-entry-pinyin">{{ $ws.Pinyin }}</span>{{end}}
                 {{if ne $ws.Grammar "\\N"}}<span class="dict-entry-grammar">{{ $ws.Grammar }}</span>{{end}}
                 {{if ne $ws.English "\\N"}}<span class="dict-entry-definition">{{ $ws.English }}</span>{{end}}

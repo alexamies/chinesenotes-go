@@ -46,7 +46,6 @@ type TextToken struct{
 // Long text is handled by breaking the string into segments delimited by
 // punctuation or non-Chinese characters.
 func (tokenizer DictTokenizer) Tokenize(text string) []TextToken {
-	//log.Printf("Tokenize: text = '%s'\n", text)
 	tokens := []TextToken{}
 	segments := Segment(text)
 	for _, segment := range segments {
