@@ -164,11 +164,10 @@ func (m mockReverseIndex) FindWordsByEnglish(ctx context.Context, query string) 
 	return results, nil
 }
 
-
 // mockDocFinder imitates DocFinder interface for full text search tests
 type mockDocFinder struct {
 	reverseIndex dictionary.ReverseIndex
-	documents []find.Document
+	documents    []find.Document
 }
 
 func (m mockDocFinder) FindDocuments(ctx context.Context, dictSearcher dictionary.ReverseIndex,
@@ -220,7 +219,9 @@ func TestMain(m *testing.M) {
 
 // TestDisplayHome tests the default HTTP handler.
 func TestDisplayHome(t *testing.T) {
-	templates = newTemplateMap(webConfig)
+	b = &backends{
+		templates: newTemplateMap(webConfig),
+	}
 	t.Logf("TestDisplayHome: Begin unit tests\n")
 	type test struct {
 		name           string
@@ -251,7 +252,7 @@ func TestDisplayHome(t *testing.T) {
 				tc.expectContains, result)
 		}
 	}
-	templates = nil
+	b = nil
 }
 
 func TestInitDocTitleFinder(t *testing.T) {
@@ -347,7 +348,9 @@ func TestChangePasswordFormHandler(t *testing.T) {
 }
 
 func TestCustom404(t *testing.T) {
-	templates = newTemplateMap(webConfig)
+	b = &backends{
+		templates: newTemplateMap(webConfig),
+	}
 	type test struct {
 		name           string
 		expectContains string
@@ -368,11 +371,13 @@ func TestCustom404(t *testing.T) {
 				tc.name, tc.expectContains, result)
 		}
 	}
-	templates = nil
+	b = nil
 }
 
 func TestDisplayPage(t *testing.T) {
-	templates = newTemplateMap(webConfig)
+	b := &backends{
+		templates: newTemplateMap(webConfig),
+	}
 	const query = "邃古"
 	tMContent := htmlContent{
 		Title: "XYZ",
@@ -396,14 +401,13 @@ func TestDisplayPage(t *testing.T) {
 	}
 	for _, tc := range tests {
 		w := httptest.NewRecorder()
-		displayPage(w, tc.template, tc.content)
+		displayPage(w, b, tc.template, tc.content)
 		result := w.Body.String()
 		if !strings.Contains(result, tc.expectContains) {
 			t.Errorf("TestDisplayPage %s: got %q, want contains %q, ", tc.name,
 				result, tc.expectContains)
 		}
 	}
-	templates = nil
 }
 
 func TestEnforceValidSession(t *testing.T) {
@@ -448,7 +452,6 @@ func (f mockDocTitleFinder) FindDocuments(ctx context.Context,
 }
 
 func TestFindDocs(t *testing.T) {
-	templates = newTemplateMap(webConfig)
 	const query = "蓮花寺"
 	d := find.Document{
 		GlossFile:       "lianhuachi.html",
@@ -565,12 +568,13 @@ func TestFindDocs(t *testing.T) {
 		reverseIndex := mockReverseIndex{}
 		b := &backends{
 			reverseIndex: &reverseIndex,
-			df:           mockDocFinder{
+			df: mockDocFinder{
 				reverseIndex: reverseIndex,
 			},
-			tmSearcher:   mockTMSearcher{},
-			dict:         dict,
-			parser:       find.MakeQueryParser(dict.Wdict),
+			tmSearcher: mockTMSearcher{},
+			dict:       dict,
+			parser:     find.MakeQueryParser(dict.Wdict),
+			templates:  newTemplateMap(webConfig),
 		}
 		r := httptest.NewRequest(http.MethodGet, u, nil)
 		r.Header.Add("Accept", tc.acceptHeader)
@@ -581,7 +585,6 @@ func TestFindDocs(t *testing.T) {
 			t.Errorf("TestFindDocs %s: got %q but want contains %q", tc.name, result, tc.expectContains)
 		}
 	}
-	templates = nil
 	docTitleFinder = nil
 }
 
@@ -622,7 +625,6 @@ func TestHighlightMatches(t *testing.T) {
 }
 
 func TestFindFullText(t *testing.T) {
-	templates = newTemplateMap(webConfig)
 	type test struct {
 		name           string
 		u              string
@@ -672,6 +674,7 @@ func TestFindFullText(t *testing.T) {
 			tmSearcher: mockTMSearcher{},
 			dict:       dictionary.NewDictionary(wdict),
 			parser:     find.MakeQueryParser(wdict),
+			templates:  newTemplateMap(webConfig),
 		}
 		r := httptest.NewRequest(http.MethodGet, u, nil)
 		r.Header.Add("Accept", tc.acceptHeader)
@@ -683,7 +686,6 @@ func TestFindFullText(t *testing.T) {
 				result, tc.expectContains)
 		}
 	}
-	templates = nil
 	b = nil
 }
 
@@ -810,7 +812,9 @@ func TestHealthcheck(t *testing.T) {
 }
 
 func TestLibrary(t *testing.T) {
-	templates = newTemplateMap(webConfig)
+	b = &backends{
+		templates: newTemplateMap(webConfig),
+	}
 	type test struct {
 		name           string
 		expectContains string
@@ -832,11 +836,13 @@ func TestLibrary(t *testing.T) {
 				tc.expectContains)
 		}
 	}
-	templates = nil
+	b = nil
 }
 
 func TestLoginFormHandler(t *testing.T) {
-	templates = newTemplateMap(webConfig)
+	b = &backends{
+		templates: newTemplateMap(webConfig),
+	}
 	type test struct {
 		name           string
 		expectContains string
@@ -858,11 +864,13 @@ func TestLoginFormHandler(t *testing.T) {
 				tc.expectContains)
 		}
 	}
-	templates = nil
+	b = nil
 }
 
 func TestLoginHandler(t *testing.T) {
-	templates = newTemplateMap(webConfig)
+	b = &backends{
+		templates: newTemplateMap(webConfig),
+	}
 	authenticator = &identity.Authenticator{}
 	type test struct {
 		name           string
@@ -885,12 +893,14 @@ func TestLoginHandler(t *testing.T) {
 				tc.expectContains)
 		}
 	}
-	templates = nil
+	b = nil
 	authenticator = nil
 }
 
 func TestShowQueryResults(t *testing.T) {
-	templates = newTemplateMap(webConfig)
+	b := &backends{
+		templates: newTemplateMap(webConfig),
+	}
 	type test struct {
 		name           string
 		query          string
@@ -916,14 +926,13 @@ func TestShowQueryResults(t *testing.T) {
 		results := find.QueryResults{
 			Query: tc.query,
 		}
-		showQueryResults(w, results, tc.template)
+		showQueryResults(w, b, results, tc.template)
 		result := w.Body.String()
 		if !strings.Contains(result, tc.expectContains) {
 			t.Errorf("TestShowQueryResults %s: got %q, want %q, ", tc.name, result,
 				tc.expectContains)
 		}
 	}
-	templates = nil
 }
 
 func TestGetStaticFileName(t *testing.T) {
@@ -1070,7 +1079,9 @@ func TestGetHeadwordId(t *testing.T) {
 }
 
 func TestWordDetail(t *testing.T) {
-	templates = newTemplateMap(webConfig)
+	b = &backends{
+		templates: newTemplateMap(webConfig),
+	}
 	smallDict := mockSmallDict()
 	s := "一時三相"
 	ws := dicttypes.WordSense{
@@ -1136,6 +1147,6 @@ func TestWordDetail(t *testing.T) {
 				tc.expectContains)
 		}
 	}
-	templates = nil
+	b = nil
 	webConfig = config.WebAppConfig{}
 }
