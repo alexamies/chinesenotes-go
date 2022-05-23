@@ -113,7 +113,7 @@ func mockSmallDict() map[string]*dicttypes.Word {
 		Traditional: t9,
 		Pinyin:      "liánhuā",
 		Senses: []dicttypes.WordSense{
-			dicttypes.WordSense{
+			{
 				HeadwordId:  9,
 				Simplified:  s9,
 				Traditional: t9,
@@ -482,16 +482,16 @@ func TestFindDocs(t *testing.T) {
 			name:           "Reflect original query",
 			u:              "/find/",
 			acceptHeader:   "text/html",
-			query:          map[string]string{"query": "蓮花寺"},
+			query:          map[string]string{"query": query},
 			docs:           []find.Document{},
-			expectContains: "蓮花寺",
+			expectContains: query,
 			fullText:       false,
 		},
 		{
 			name:           "Return query HTML",
 			u:              "/find/",
 			acceptHeader:   "text/html",
-			query:          map[string]string{"query": "蓮花寺"},
+			query:          map[string]string{"query": query},
 			docs:           []find.Document{},
 			expectContains: `value="蓮花寺"`,
 			fullText:       false,
@@ -500,7 +500,7 @@ func TestFindDocs(t *testing.T) {
 			name:           "Simple query - HTML",
 			u:              "/find/",
 			acceptHeader:   "text/html",
-			query:          map[string]string{"query": "蓮花寺"},
+			query:          map[string]string{"query": query},
 			docs:           []find.Document{},
 			expectContains: "lotus",
 			fullText:       false,
@@ -509,7 +509,7 @@ func TestFindDocs(t *testing.T) {
 			name:           "Return JSON",
 			u:              "/find/",
 			acceptHeader:   "application/json",
-			query:          map[string]string{"query": "蓮花寺"},
+			query:          map[string]string{"query": query},
 			docs:           []find.Document{},
 			expectContains: `"Query":"蓮花寺"`,
 			fullText:       false,
@@ -518,7 +518,7 @@ func TestFindDocs(t *testing.T) {
 			name:           "Search for title, no match",
 			u:              "/find/",
 			acceptHeader:   "text/html",
-			query:          map[string]string{"query": "蓮花寺", "title": "true"},
+			query:          map[string]string{"query": query, "title": "true"},
 			docs:           []find.Document{},
 			expectContains: `No results`,
 			fullText:       false,
@@ -527,7 +527,7 @@ func TestFindDocs(t *testing.T) {
 			name:           "Search for title, one match",
 			u:              "/find/",
 			acceptHeader:   "text/html",
-			query:          map[string]string{"query": "蓮花寺", "title": "true"},
+			query:          map[string]string{"query": query, "title": "true"},
 			docs:           []find.Document{d},
 			expectContains: `lianhuachi.html`,
 			fullText:       false,
@@ -698,7 +698,7 @@ func TestFindHandler(t *testing.T) {
 		Simplified: s,
 		Pinyin:     "suìgǔ",
 		Senses: []dicttypes.WordSense{
-			dicttypes.WordSense{
+			{
 				Simplified: s,
 				English:    e,
 			},
@@ -1079,9 +1079,6 @@ func TestGetHeadwordId(t *testing.T) {
 }
 
 func TestWordDetail(t *testing.T) {
-	b = &backends{
-		templates: newTemplateMap(webConfig),
-	}
 	smallDict := mockSmallDict()
 	s := "一時三相"
 	ws := dicttypes.WordSense{
@@ -1137,6 +1134,7 @@ func TestWordDetail(t *testing.T) {
 			tmSearcher:   mockTMSearcher{},
 			dict:         dictionary.NewDictionary(tc.wdict),
 			parser:       find.MakeQueryParser(tc.wdict),
+			templates:    newTemplateMap(webConfig),
 		}
 		r := httptest.NewRequest(http.MethodGet, u, nil)
 		w := httptest.NewRecorder()
