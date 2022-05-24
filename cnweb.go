@@ -72,7 +72,7 @@ type backends struct {
 	parser       find.QueryParser
 	reverseIndex dictionary.ReverseIndex
 	substrIndex  dictionary.SubstringIndex
-	templates			map[string]*template.Template
+	templates    map[string]*template.Template
 	tmSearcher   transmemory.Searcher
 }
 
@@ -147,14 +147,18 @@ func initApp(ctx context.Context) (*backends, error) {
 			log.Printf("main.initApp() unable to load doc map: %v", err)
 		}
 	}
+	reverseIndex, err := dictionary.NewDBSearcher(ctx, database)
+	if err != nil {
+		log.Printf("initApp, non-fatal error, unable to initialize reverseIndex: %v", err)
+	}
 	log.Printf("main.initApp() doc map loaded with %d items", len(docMap))
 	bends := &backends{
 		df:           find.NewDocFinder(ctx, database, docMap),
 		dict:         dict,
 		parser:       parser,
-		reverseIndex: dictionary.NewDBSearcher(ctx, database),
+		reverseIndex: reverseIndex,
 		substrIndex:  substrIndex,
-		templates: newTemplateMap(webConfig),
+		templates:    newTemplateMap(webConfig),
 		tmSearcher:   tms,
 	}
 	if config.PasswordProtected() {

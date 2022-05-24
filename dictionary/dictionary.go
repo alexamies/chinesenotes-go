@@ -16,6 +16,7 @@ package dictionary
 
 import (
 	"context"
+	"strings"
 
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
@@ -23,7 +24,7 @@ import (
 // Dictionary is a struct to hold word dictionary indexes
 type Dictionary struct {
 	// Forward dictionary, lookup by Chinese word
-	Wdict map[string]*dicttypes.Word
+	Wdict       map[string]*dicttypes.Word
 	HeadwordIds map[int]*dicttypes.Word
 }
 
@@ -33,17 +34,64 @@ func NewDictionary(wdict map[string]*dicttypes.Word) *Dictionary {
 		hwIdMap[w.HeadwordId] = w
 	}
 	return &Dictionary{
-		Wdict: wdict,
+		Wdict:       wdict,
 		HeadwordIds: hwIdMap,
 	}
 }
 
 // ReverseIndex searches the dictionary by reverse lookup, eg from English to Chinese
 type ReverseIndex interface {
-	Initialized() bool
 	FindWordsByEnglish(ctx context.Context, query string) ([]dicttypes.WordSense, error)
 }
 
-type SubstringIndex interface{
+type SubstringIndex interface {
 	LookupSubstr(ctx context.Context, query, topic_en, subtopic_en string) (*Results, error)
+}
+
+type reverseIndexMem struct {
+	revIndex map[string][]dicttypes.WordSense
+}
+
+func NewReverseIndex(dict *Dictionary) ReverseIndex {
+	revIndex := map[string][]dicttypes.WordSense{}
+	for _, v := range dict.HeadwordIds {
+		for _, s := range v.Senses {
+			tokens := splitEnglish(s.English)
+			for _, eng := range tokens {
+				if senses, ok := revIndex[eng]; ok {
+					senses = append(senses, s)
+					revIndex[eng] = senses
+				} else {
+					revIndex[eng] = []dicttypes.WordSense{s}
+				}
+			}
+		}
+	}
+	return reverseIndexMem{
+		revIndex: revIndex,
+	}
+}
+
+func (r reverseIndexMem) FindWordsByEnglish(ctx context.Context, query string) ([]dicttypes.WordSense, error) {
+	return r.revIndex[query], nil
+}
+
+func splitEnglish(eng string) []string {
+	tokens := strings.Split(eng, "; ")
+	results := []string{}
+	for _, t := range tokens {
+		if strings.HasPrefix(t, "a ") {
+			r := strings.Replace(t, "a ", "", 1)
+			results = append(results, r)
+		} else if strings.HasPrefix(t, "an ") {
+			r := strings.Replace(t, "an ", "", 1)
+			results = append(results, r)
+		} else if strings.HasPrefix(t, "to ") {
+			r := strings.Replace(t, "an ", "", 1)
+			results = append(results, r)
+		} else {
+			results = append(results, t)
+		}
+	}
+	return results
 }

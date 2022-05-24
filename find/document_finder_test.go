@@ -17,13 +17,22 @@ package find
 import (
 	"context"
 	"database/sql"
+	"log"
 	"testing"
 
 	"github.com/alexamies/chinesenotes-go/config"
-	"github.com/alexamies/chinesenotes-go/dictionary"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/fulltext"
 )
+
+type mockReverseIndex struct {
+}
+
+func (m mockReverseIndex) FindWordsByEnglish(ctx context.Context, query string) ([]dicttypes.WordSense, error) {
+	results := []dicttypes.WordSense{}
+	log.Printf("mockReverseIndex.FindWordsByEnglish: query: %s, results: %v", query, results)
+	return results, nil
+}
 
 func initDBCon() (*sql.DB, error) {
 	if !config.UseDatabase() {
@@ -107,10 +116,7 @@ func TestFindDocuments(t *testing.T) {
 		t.Errorf("TestFindDocuments, Error: %v", err)
 		return
 	}
-	dictSearcher := dictionary.NewDBSearcher(ctx, database)
-	if !dictSearcher.Initialized() {
-		t.Skipf("TestFindDocuments: cannot create dictSearcher: %v", err)
-	}
+	dictSearcher := mockReverseIndex{}
 	dict := map[string]*dicttypes.Word{}
 	parser := MakeQueryParser(dict)
 
@@ -247,10 +253,7 @@ func TestFindDocumentsInCol(t *testing.T) {
 		t.Errorf("TestFindDocumentsInCol, Error: %v", err)
 		return
 	}
-	dictSearcher := dictionary.NewDBSearcher(ctx, database)
-	if !dictSearcher.Initialized() {
-		t.Skipf("TestFindDocumentsInCol: cannot create dictSearcher: %v", err)
-	}
+	dictSearcher := mockReverseIndex{}
 	dict := map[string]*dicttypes.Word{}
 	parser := MakeQueryParser(dict)
 

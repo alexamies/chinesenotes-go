@@ -5,40 +5,35 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	
-	_ "github.com/go-sql-driver/mysql"
+
 	"github.com/alexamies/chinesenotes-go/dicttypes"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 // DBSearcher looks up Chinese words by either Chinese or English.
-// 
-// If the dictionary searcher cannot connect to the database then
-// it will run in degraded mode by looking up Chinese words form dictionary
-// file.
 type DBSearcher struct {
-	database *sql.DB
+	database        *sql.DB
 	findEnglishStmt *sql.Stmt
-	initialized bool
 }
 
 // NewSearcher initialize SQL statements
-func NewDBSearcher(ctx context.Context, database *sql.DB) ReverseIndex {
-	s := DBSearcher{}
-	if database != nil {
-		var err error
-		s.findEnglishStmt, err = initEnglishQuery(ctx, database)
-		if err != nil {
-			log.Printf("NewSearcher, database statement initializaton error %v", err)
-			return &s
-		}
+func NewDBSearcher(ctx context.Context, database *sql.DB) (ReverseIndex, error) {
+	if database == nil {
+		return nil, fmt.Errorf("unable to initialize DBSearcher, database == nil")
 	}
-	s.initialized = true
-	return &s
+	findEnglishStmt, err := initEnglishQuery(ctx, database)
+	if err != nil {
+		return nil, fmt.Errorf("NewSearcher, database statement initializaton error %v", err)
+	}
+	return &DBSearcher{
+		database:        database,
+		findEnglishStmt: findEnglishStmt,
+	}, nil
 }
 
 // SubstringIndexDB looks up Chinese words by substring.
 type SubstringIndexDB struct {
-	database *sql.DB
+	database       *sql.DB
 	findSubstrStmt *sql.Stmt
 }
 
@@ -47,10 +42,10 @@ func NewSubstringIndexDB(ctx context.Context, database *sql.DB) (SubstringIndex,
 	if database != nil {
 		findSubstrStmt, err := initSubtrQuery(ctx, database)
 		if err != nil {
-			return nil, fmt.Errorf("NewSearcher, substr query initializaton error \n%v\n", err)
+			return nil, fmt.Errorf("NewSearcher, substr query initializaton error %v", err)
 		}
 		return &SubstringIndexDB{
-			database: database,
+			database:       database,
 			findSubstrStmt: findSubstrStmt,
 		}, nil
 	}
@@ -58,21 +53,16 @@ func NewSubstringIndexDB(ctx context.Context, database *sql.DB) (SubstringIndex,
 }
 
 func initEnglishQuery(ctx context.Context, database *sql.DB) (*sql.Stmt, error) {
-	return database.PrepareContext(ctx, 
-`SELECT simplified, traditional, pinyin, english, notes, headword
+	return database.PrepareContext(ctx,
+		`SELECT simplified, traditional, pinyin, english, notes, headword
 FROM words
 WHERE pinyin = ? OR english LIKE ?
 LIMIT 20`)
 }
 
-// Initialized returns true if there were no error in initialization.
-func (s *DBSearcher) Initialized() bool {
-	return s.initialized
-}
-
 // FindWordsByEnglish returns the word senses with English approximate or Pinyin exact match
 func (searcher *DBSearcher) FindWordsByEnglish(ctx context.Context,
-		query string) ([]dicttypes.WordSense, error) {
+	query string) ([]dicttypes.WordSense, error) {
 	log.Printf("findWordsByEnglish, query = %s", query)
 	likeEnglish := "%" + query + "%"
 	if searcher.findEnglishStmt == nil {
@@ -159,8 +149,8 @@ func (searcher SubstringIndexDB) LookupSubstr(ctx context.Context, query, topic_
 }
 
 func initSubtrQuery(ctx context.Context, database *sql.DB) (*sql.Stmt, error) {
-	return database.PrepareContext(ctx, 
-`SELECT simplified, traditional, pinyin, english, notes, headword 
+	return database.PrepareContext(ctx,
+		`SELECT simplified, traditional, pinyin, english, notes, headword 
 FROM words 
 WHERE
   (simplified LIKE ? OR traditional LIKE ?)

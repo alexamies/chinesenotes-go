@@ -142,10 +142,6 @@ func mockSmallDict() map[string]*dicttypes.Word {
 type mockReverseIndex struct {
 }
 
-func (m mockReverseIndex) Initialized() bool {
-	return true
-}
-
 func (m mockReverseIndex) FindWordsByEnglish(ctx context.Context, query string) ([]dicttypes.WordSense, error) {
 	results := []dicttypes.WordSense{}
 	if query == "lotus" {

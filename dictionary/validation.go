@@ -19,7 +19,7 @@ type Validator interface {
 // Performs validation of dictionary entries.
 // Use NewValidator to create a Validator.
 type validator struct {
-	validPos map[string]bool
+	validPos     map[string]bool
 	validDomains map[string]bool
 }
 
@@ -37,7 +37,7 @@ func NewValidator(posReader io.Reader, domainReader io.Reader) (Validator, error
 		validPos[pos] = true
 	}
 	if err := posFScanner.Err(); err != nil {
-		return nil, fmt.Errorf("Could not read list of valid parts of speech: %v", err)
+		return nil, fmt.Errorf("could not read list of valid parts of speech: %v", err)
 	}
 	validDomains := make(map[string]bool)
 	dFScanner := bufio.NewScanner(domainReader)
@@ -45,15 +45,15 @@ func NewValidator(posReader io.Reader, domainReader io.Reader) (Validator, error
 		line := dFScanner.Text()
 		parts := strings.Split(line, "\t")
 		if len(parts) != 4 {
-			return nil, fmt.Errorf("Could not parse list of valid domains: %s", line)
+			return nil, fmt.Errorf("could not parse list of valid domains: %s", line)
 		}
 		validDomains[parts[1]] = true
 	}
 	if err := dFScanner.Err(); err != nil {
-		return nil, fmt.Errorf("Could not read list of valid domains: %v", err)
+		return nil, fmt.Errorf("could not read list of valid domains: %v", err)
 	}
 	return validator{
-		validPos: validPos,
+		validPos:     validPos,
 		validDomains: validDomains,
 	}, nil
 }
@@ -69,7 +69,6 @@ func (val validator) Validate(pos, domain string) error {
 	}
 	return nil
 }
-
 
 // ValidateDict check the Chinese-English for errors
 func ValidateDict(wdict map[string]*dicttypes.Word, validator Validator) error {

@@ -26,13 +26,13 @@ func LoadDictFile(appConfig config.AppConfig) (*Dictionary, error) {
 		wsfile, err := os.Open(fName)
 		if err != nil {
 			return nil, fmt.Errorf("fileloader.LoadDictFile, error opening %s: %v",
-					fName, err)
+				fName, err)
 		}
 		defer wsfile.Close()
 		err = loadDictReader(wsfile, wdict, avoidSub)
 		if err != nil {
 			return nil, fmt.Errorf("fileloader.LoadDictFile, error reading from %s: %v",
-					fName, err)
+				fName, err)
 		}
 	}
 	log.Printf("LoadDictFile, loaded %d entries", len(wdict))
@@ -45,29 +45,29 @@ func LoadDictURL(appConfig config.AppConfig, url string) (*Dictionary, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("fileloader.LoadDictURL, error GET from %v: %v",
-				url, err)
+			url, err)
 	}
 	defer resp.Body.Close()
 	wdict := make(map[string]*dicttypes.Word)
 	avoidSub := appConfig.AvoidSubDomains()
 	err = loadDictReader(resp.Body, wdict, avoidSub)
-		if err != nil {
-			return nil, fmt.Errorf("fileloader.LoadDictFile, error reading from %s: %v",
-					url, err)
+	if err != nil {
+		return nil, fmt.Errorf("fileloader.LoadDictFile, error reading from %s: %v",
+			url, err)
 	}
 	return NewDictionary(wdict), nil
 }
 
 // loadDictReader ads words from an io.Reader to the given dictionary
 func loadDictReader(r io.Reader, wdict map[string]*dicttypes.Word,
-		avoidSub map[string]bool) error {
+	avoidSub map[string]bool) error {
 	reader := csv.NewReader(r)
 	reader.FieldsPerRecord = -1
 	reader.Comma = rune('\t')
 	reader.Comment = '#'
 	rawCSVdata, err := reader.ReadAll()
 	if err != nil {
-		return fmt.Errorf("Could not parse lexical units file: %v", err)
+		return fmt.Errorf("could not parse lexical units file: %v", err)
 	}
 	for i, row := range rawCSVdata {
 		if len(row) < 15 {
@@ -92,8 +92,8 @@ func loadDictReader(r io.Reader, wdict map[string]*dicttypes.Word,
 			concept = ""
 		}
 		domainCN := row[8]
-		domain :=  row[9]
-		subdomain :=  row[11]
+		domain := row[9]
+		subdomain := row[11]
 		if subdomain == "\\N" {
 			subdomain = ""
 		}
@@ -101,7 +101,7 @@ func loadDictReader(r io.Reader, wdict map[string]*dicttypes.Word,
 		if _, ok := avoidSub[subdomain]; ok {
 			continue
 		}
-		subdomainCN :=  row[12]
+		subdomainCN := row[12]
 		if subdomainCN == "\\N" {
 			subdomainCN = ""
 		}
@@ -116,48 +116,48 @@ func loadDictReader(r io.Reader, wdict map[string]*dicttypes.Word,
 			}
 			hwIdInt, err := strconv.ParseInt(row[15], 10, 0)
 			if err != nil {
-				log.Printf("loadDictFile, id: %d, simp: %s, trad: %s, " + 
+				log.Printf("loadDictFile, id: %d, simp: %s, trad: %s, "+
 					"pinyin: %s, english: %s, grammar: %s\n",
-					id, simp, trad, pinyin, english, grammar,)
+					id, simp, trad, pinyin, english, grammar)
 				log.Printf("loadDictFile: Could not parse headword id for word %d: %v",
 					id, err)
 			}
 			hwId = int(hwIdInt)
 		} else {
-			log.Printf("loadDictFile, No. cols: %d",len(row))
-			log.Printf("loadDictFile, id: %d, simp: %s, trad: %s, pinyin: %s, " +
+			log.Printf("loadDictFile, No. cols: %d", len(row))
+			log.Printf("loadDictFile, id: %d, simp: %s, trad: %s, pinyin: %s, "+
 				"english: %s, grammar: %s\n",
 				id, simp, trad, pinyin, english, grammar)
 			log.Printf("loadDictFile wrong number of columns %d: %v", id, err)
 		}
 		ws := dicttypes.WordSense{
-			Id: int(id),
-			Simplified: simp,
-			HeadwordId: hwId,
+			Id:          int(id),
+			Simplified:  simp,
+			HeadwordId:  hwId,
 			Traditional: trad,
-			Pinyin: pinyin,
-			English: english,
-			Grammar: grammar,
-			ConceptCN: conceptCN,
-			Concept: concept,
-			DomainCN: domainCN,
-			Domain: domain,
-			Subdomain: subdomain,
+			Pinyin:      pinyin,
+			English:     english,
+			Grammar:     grammar,
+			ConceptCN:   conceptCN,
+			Concept:     concept,
+			DomainCN:    domainCN,
+			Domain:      domain,
+			Subdomain:   subdomain,
 			SubdomainCN: subdomainCN,
-			Image: image,
-			MP3: mp3,
-			Notes: notes,
+			Image:       image,
+			MP3:         mp3,
+			Notes:       notes,
 		}
 		word, ok := wdict[simp]
 		if ok {
 			word.Senses = append(word.Senses, ws)
 		} else {
 			wdict[simp] = &dicttypes.Word{
-				Simplified: ws.Simplified,
+				Simplified:  ws.Simplified,
 				Traditional: ws.Traditional,
-				Pinyin: ws.Pinyin,
-				HeadwordId: ws.HeadwordId,
-				Senses: []dicttypes.WordSense{ws},
+				Pinyin:      ws.Pinyin,
+				HeadwordId:  ws.HeadwordId,
+				Senses:      []dicttypes.WordSense{ws},
 			}
 		}
 		if trad != "\\N" {
@@ -165,11 +165,11 @@ func loadDictReader(r io.Reader, wdict map[string]*dicttypes.Word,
 				wdict[trad] = word
 			} else {
 				wdict[trad] = &dicttypes.Word{
-					Simplified: ws.Simplified,
+					Simplified:  ws.Simplified,
 					Traditional: ws.Traditional,
-					Pinyin: ws.Pinyin,
-					HeadwordId: ws.HeadwordId,
-					Senses: []dicttypes.WordSense{ws},
+					Pinyin:      ws.Pinyin,
+					HeadwordId:  ws.HeadwordId,
+					Senses:      []dicttypes.WordSense{ws},
 				}
 			}
 		}
