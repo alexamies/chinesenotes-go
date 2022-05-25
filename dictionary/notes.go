@@ -1,6 +1,7 @@
 package dictionary
 
 import (
+	"fmt"
 	"log"
 	"regexp"
 	"strings"
@@ -8,7 +9,38 @@ import (
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
 
-// Processes notes with a regular expression
+// NotesExtractor is an interface for extracting multilingual equivalents using
+// regular expressions in the notes.
+type NotesExtractor struct {
+	pattern *regexp.Regexp
+}
+
+// NewNotesExtractor creates a new NotesExtractor.
+func NewNotesExtractor(patternStr string) (*NotesExtractor, error) {
+	log.Printf("dictionary.NewNotesExtractor: patternStr: %s", patternStr)
+	pattern, err := regexp.Compile(patternStr)
+	if err != nil {
+		return nil, fmt.Errorf("could not compile notes extractor regex %s: %v", patternStr, err)
+	}
+	return &NotesExtractor{
+		pattern: pattern,
+	}, nil
+}
+
+// Extract extracts multilingual equivalents from the given note
+func (n NotesExtractor) Extract(notes string) []string {
+	extracted := []string{}
+	g := n.pattern.FindStringSubmatch(notes)
+	log.Printf("NotesExtractor.Extract: notes: %s, %d groups: %v", notes, len(g), g)
+	if len(g) > 0 {
+		for _, t := range g[1:] {
+			extracted = append(extracted, strings.Trim(t, " "))
+		}
+	}
+	return extracted
+}
+
+// NotesProcessor processes notes with a regular expression
 type NotesProcessor struct {
 	patterns []*regexp.Regexp
 	replaces []string
@@ -18,26 +50,26 @@ type NotesProcessor struct {
 // Param
 //   patternList a list of patterns to match regular expressions, quoted and delimited by commas
 //   replaceList a list of replacement regular expressions, same cardinality
-func NewNotesProcessor(patternList, replaceList string) NotesProcessor{
-	log.Printf("analysis.NewNotesProcessor: patternList: %s replaceList: %s",
-			patternList, replaceList)
+func NewNotesProcessor(patternList, replaceList string) NotesProcessor {
+	log.Printf("dictionary.NewNotesProcessor: patternList: %s replaceList: %s",
+		patternList, replaceList)
 	p := strings.Split(patternList, `","`)
 	patterns := []*regexp.Regexp{}
 	for _, t := range p {
 		pattern := strings.Trim(t, ` "`)
 		log.Printf("notes.newNotesProcessor: compiling %s ", pattern)
 		re := regexp.MustCompile(pattern)
-		patterns =  append(patterns, re)
+		patterns = append(patterns, re)
 	}
 	r := strings.Split(replaceList, ",")
 	replaces := []string{}
 	for _, t := range r {
 		replace := strings.Trim(t, ` "`)
 		log.Printf("notes.newNotesProcessor: adding replacement %s ", replace)
-		replaces =  append(replaces, replace)
+		replaces = append(replaces, replace)
 	}
-	log.Printf("analysis.newNotesProcessor: got %d patterns ", len(patterns))
-	return NotesProcessor {
+	log.Printf("dictionary.newNotesProcessor: got %d patterns ", len(patterns))
+	return NotesProcessor{
 		patterns: patterns,
 		replaces: replaces,
 	}
@@ -64,30 +96,30 @@ func (p NotesProcessor) Process(w dicttypes.Word) dicttypes.Word {
 			continue
 		}
 		s := dicttypes.WordSense{
-			Id: ws.Id,
-			HeadwordId: ws.HeadwordId,
-			Simplified: ws.Simplified,
+			Id:          ws.Id,
+			HeadwordId:  ws.HeadwordId,
+			Simplified:  ws.Simplified,
 			Traditional: ws.Traditional,
-			Pinyin: ws.Pinyin,
-			English: ws.English,
-			Grammar: ws.Grammar,
-			Concept: ws.Concept,
-			ConceptCN: ws.ConceptCN,
-			Domain: ws.Domain,
-			DomainCN: ws.DomainCN,
-			Subdomain: ws.Subdomain,
+			Pinyin:      ws.Pinyin,
+			English:     ws.English,
+			Grammar:     ws.Grammar,
+			Concept:     ws.Concept,
+			ConceptCN:   ws.ConceptCN,
+			Domain:      ws.Domain,
+			DomainCN:    ws.DomainCN,
+			Subdomain:   ws.Subdomain,
 			SubdomainCN: ws.SubdomainCN,
-			Image: ws.Image,
-			MP3: ws.MP3,
-			Notes: n,
+			Image:       ws.Image,
+			MP3:         ws.MP3,
+			Notes:       n,
 		}
 		senses = append(senses, s)
 	}
 	return dicttypes.Word{
-		Simplified: w.Simplified,
+		Simplified:  w.Simplified,
 		Traditional: w.Traditional,
-		Pinyin: w.Pinyin,
-		HeadwordId: w.HeadwordId,
-		Senses: senses,
+		Pinyin:      w.Pinyin,
+		HeadwordId:  w.HeadwordId,
+		Senses:      senses,
 	}
 }
