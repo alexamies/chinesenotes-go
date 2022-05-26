@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 package main
 
 import (
@@ -98,7 +97,7 @@ func TestLoadDictFile(t *testing.T) {
 		t.Fatalf("TestLoadDictFile: could not find word %s", chinese)
 	}
 	senses := word.Senses
-	if len(senses) ==0 {
+	if len(senses) == 0 {
 		t.Fatalf("TestLoadDictFile: expected > 0 senses, got %d", len(senses))
 	}
 	expectedDom := "Modern Chinese"
@@ -116,23 +115,15 @@ func TestSendPasswordReset(t *testing.T) {
 		t.Skip("TestSendPasswordReset: skipping, CNREADER_HOME not defined")
 	}
 	userInfo := identity.UserInfo{
-		UserID: 100,
+		UserID:   100,
 		UserName: "test",
-		Email: "alex@chinesenotes.com",
+		Email:    "alex@chinesenotes.com",
 		FullName: "Alex Test",
-		Role: "tester",
+		Role:     "tester",
 	}
 	c := config.InitWeb()
 	err := identity.SendPasswordReset(userInfo, "", c)
 	if err != nil {
 		t.Fatalf("TestSendPasswordReset: Error, %v", err)
-	}
-}
-
-// TestWebconfigInit test config initialization
-func TestWebconfigInit(t *testing.T) {
-	c := config.InitWeb()
-	if c.ConfigVars == nil {
-		t.Error("c.ConfigVars == nil")
 	}
 }

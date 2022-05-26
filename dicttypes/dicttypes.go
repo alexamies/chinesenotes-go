@@ -21,15 +21,15 @@ import (
 // A top level word structure that may include multiple word senses
 type Word struct {
 	Simplified, Traditional, Pinyin string
-	HeadwordId int
-	Senses []WordSense
+	HeadwordId                      int
+	Senses                          []WordSense
 }
 
 // Defines a single sense of a Chinese word
 type WordSense struct {
 	Id, HeadwordId int
 	Simplified, Traditional, Pinyin, English, Grammar, Concept, ConceptCN, Domain,
-			DomainCN, Subdomain, SubdomainCN, Image, MP3, Notes string
+	DomainCN, Subdomain, SubdomainCN, Image, MP3, Notes string
 }
 
 // May be sorted into descending order with most frequent bigram first
@@ -41,17 +41,17 @@ type WordSenses []WordSense
 // DictionaryConfig encapsulates parameters for dictionary configuration
 type DictionaryConfig struct {
 	AvoidSubDomains map[string]bool
-	DictionaryDir string
+	DictionaryDir   string
 }
 
 // Clones the headword definition without the attached array of word senses
 func CloneWord(w Word) Word {
 	return Word{
-		HeadwordId: w.HeadwordId,
-		Simplified: w.Simplified,
+		HeadwordId:  w.HeadwordId,
+		Simplified:  w.Simplified,
 		Traditional: w.Traditional,
-		Pinyin: w.Pinyin,
-		Senses: w.Senses,
+		Pinyin:      w.Pinyin,
+		Senses:      w.Senses,
 	}
 }
 
@@ -62,21 +62,20 @@ func IsCJKChar(character string) bool {
 	return unicode.Is(unicode.Han, r[0]) && !unicode.IsPunct(r[0])
 }
 
-
 // Tests whether the word is a function word
 func (ws *WordSense) IsFunctionWord() bool {
 	functionPOS := map[string]bool{
-		"adverb": true,
-		"conjunction": true,
-		"interjection": true,
+		"adverb":                true,
+		"conjunction":           true,
+		"interjection":          true,
 		"interrogative pronoun": true,
-		"measure word": true,
-		"particle": true,
-		"prefix": true,
-		"preposition": true,
-		"pronoun": true,
-		"suffix": true,
-	}	
+		"measure word":          true,
+		"particle":              true,
+		"prefix":                true,
+		"preposition":           true,
+		"pronoun":               true,
+		"suffix":                true,
+	}
 	functionalWords := map[string]bool{
 		"有": true,
 		"是": true,
@@ -100,11 +99,11 @@ func (w Word) IsProperNoun() bool {
 			count++
 		}
 	}
-	return float64(count) / float64(len(w.Senses)) > 0.5
+	return float64(count)/float64(len(w.Senses)) > 0.5
 }
 
 // IsQuote tests whether the term is a quotation.
-// Note for quotations are prefixed by Quote: 
+// Note for quotations are prefixed by Quote:
 func (w Word) IsQuote() bool {
 	if len(w.Senses) == 1 {
 		return strings.HasPrefix(w.Senses[0].Notes, "Quote:")
@@ -131,8 +130,8 @@ func (hwArr Words) Swap(i, j int) {
 }
 
 func (hwArr Words) Less(i, j int) bool {
-	noTones1 := normalizePinyin(hwArr[i].Pinyin)
-	noTones2 := normalizePinyin(hwArr[j].Pinyin)
+	noTones1 := NormalizePinyin(hwArr[i].Pinyin)
+	noTones2 := NormalizePinyin(hwArr[j].Pinyin)
 	return noTones1 < noTones2
 }
 
@@ -145,13 +144,13 @@ func (senses WordSenses) Swap(i, j int) {
 }
 
 func (senses WordSenses) Less(i, j int) bool {
-	noTones1 := normalizePinyin(senses[i].Pinyin)
-	noTones2 := normalizePinyin(senses[j].Pinyin)
+	noTones1 := NormalizePinyin(senses[i].Pinyin)
+	noTones2 := NormalizePinyin(senses[j].Pinyin)
 	return noTones1 < noTones2
 }
 
 // Removes the tone diacritics from a Pinyin string
-func normalizePinyin(pinyin string) string {
+func NormalizePinyin(pinyin string) string {
 	runes := []rune{}
 	for _, r := range pinyin {
 		n, ok := normal[r]

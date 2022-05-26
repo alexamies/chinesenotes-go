@@ -54,7 +54,6 @@ const (
 
 var (
 	appConfig                                             config.AppConfig
-	webConfig                                             config.WebAppConfig
 	b                                                     *backends
 	database                                              *sql.DB
 	authenticator                                         *identity.Authenticator
@@ -74,6 +73,7 @@ type backends struct {
 	substrIndex  dictionary.SubstringIndex
 	templates    map[string]*template.Template
 	tmSearcher   transmemory.Searcher
+	webConfig    config.WebAppConfig
 }
 
 // htmlContent holds content for HTML template
@@ -104,7 +104,7 @@ type translationPage struct {
 func initApp(ctx context.Context) (*backends, error) {
 	log.Println("initApp Initializing cnweb")
 	appConfig = config.InitConfig()
-	webConfig = config.InitWeb()
+	webConfig := config.InitWeb()
 	var err error
 	if config.UseDatabase() {
 		database, err = initDBCon()
@@ -147,10 +147,11 @@ func initApp(ctx context.Context) (*backends, error) {
 			log.Printf("main.initApp() unable to load doc map: %v", err)
 		}
 	}
-	reverseIndex, err := dictionary.NewDBSearcher(ctx, database)
+	extractor, err := dictionary.NewNotesExtractor(webConfig.NotesExtractorPattern())
 	if err != nil {
-		log.Printf("initApp, non-fatal error, unable to initialize reverseIndex: %v", err)
+		log.Printf("initApp, non-fatal error, unable to initialize NotesExtractor: %v", err)
 	}
+	reverseIndex := dictionary.NewReverseIndex(dict, extractor)
 	log.Printf("main.initApp() doc map loaded with %d items", len(docMap))
 	bends := &backends{
 		df:           find.NewDocFinder(ctx, database, docMap),
@@ -160,6 +161,7 @@ func initApp(ctx context.Context) (*backends, error) {
 		substrIndex:  substrIndex,
 		templates:    newTemplateMap(webConfig),
 		tmSearcher:   tms,
+		webConfig:    webConfig,
 	}
 	if config.PasswordProtected() {
 		authenticator, err = identity.NewAuthenticator(ctx)
@@ -212,7 +214,7 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 		sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
 	}
 	if identity.IsAuthorized(sessionInfo.User, "admin_portal") {
-		vars := webConfig.GetAll()
+		vars := b.webConfig.GetAll()
 		tmpl, err := template.New("admin_portal.html").ParseFiles("templates/admin_portal.html")
 		if err != nil {
 			log.Printf("main.adminHandler: error parsing template %v", err)
@@ -259,7 +261,7 @@ func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.Header.Get("Accept"), "application/json") {
 			sendJSON(w, result)
 		} else {
-			title := webConfig.GetVarWithDefault("Title", defTitle)
+			title := b.webConfig.GetVarWithDefault("Title", defTitle)
 			content := ChangePasswordHTML{
 				Title:            title,
 				OldPasswordValid: result.OldPasswordValid,
@@ -281,7 +283,7 @@ func changePasswordFormHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	sessionInfo := enforceValidSession(w, r)
 	if sessionInfo.Authenticated == 1 {
-		title := webConfig.GetVarWithDefault("Title", defTitle)
+		title := b.webConfig.GetVarWithDefault("Title", defTitle)
 		result := ChangePasswordHTML{
 			Title:            title,
 			OldPasswordValid: false,
@@ -323,7 +325,7 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	title := webConfig.GetVarWithDefault("Title", defTitle)
+	title := b.webConfig.GetVarWithDefault("Title", defTitle)
 	content := htmlContent{
 		Title: title,
 	}
@@ -399,7 +401,7 @@ func findFullText(response http.ResponseWriter, request *http.Request) {
 	}
 	if len(q) == 0 {
 		if acceptHTML(request) {
-			title := webConfig.GetVarWithDefault("Title", defTitle)
+			title := b.webConfig.GetVarWithDefault("Title", defTitle)
 			content := htmlContent{
 				Title: title,
 			}
@@ -521,8 +523,8 @@ func findDocs(ctx context.Context, response http.ResponseWriter, request *http.R
 			// Transform notes field with regular expressions
 		} else if len(results.Terms) > 0 {
 			log.Println("main.findDocs, processing notes")
-			match := webConfig.GetVar("NotesReMatch")
-			replace := webConfig.GetVar("NotesReplace")
+			match := b.webConfig.GetVar("NotesReMatch")
+			replace := b.webConfig.GetVar("NotesReplace")
 			processor := dictionary.NewNotesProcessor(match, replace)
 			terms := []find.TextSegment{}
 			for _, t := range results.Terms {
@@ -670,7 +672,7 @@ func initTranslationClients() {
 
 // Performs translation and post processing of source text.
 func processTranslation(w http.ResponseWriter, r *http.Request) {
-	title := webConfig.GetVarWithDefault("Title", defTitle)
+	title := b.webConfig.GetVarWithDefault("Title", defTitle)
 	if translationProcessor == nil {
 		p := &translationPage{
 			Message:        "Translation processor not initialized",
@@ -780,7 +782,7 @@ func showQueryResults(w io.Writer, b *backends, results find.QueryResults, templ
 			SimilarTerms:   results.SimilarTerms,
 		}
 	}
-	title := webConfig.GetVarWithDefault("Title", defTitle)
+	title := b.webConfig.GetVarWithDefault("Title", defTitle)
 	content := htmlContent{
 		Title:   title,
 		Results: res,
@@ -874,7 +876,7 @@ func initDBCon() (*sql.DB, error) {
 func library(w http.ResponseWriter, r *http.Request) {
 	log.Printf("library: url %s", r.URL.Path)
 
-	title := webConfig.GetVarWithDefault("Title", defTitle)
+	title := b.webConfig.GetVarWithDefault("Title", defTitle)
 	content := htmlContent{
 		Title: title,
 	}
@@ -970,7 +972,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		sendJSON(w, sessionInfo)
 	} else {
 		if sessionInfo.Authenticated == 1 {
-			title := webConfig.GetVarWithDefault("Title", defTitle)
+			title := b.webConfig.GetVarWithDefault("Title", defTitle)
 			content := htmlContent{
 				Title: title,
 			}
@@ -984,7 +986,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 // logoutForm displays a form button to logout the user
 func logoutForm(w http.ResponseWriter, r *http.Request) {
 	log.Print("logoutForm: display form")
-	title := webConfig.GetVarWithDefault("Title", defTitle)
+	title := b.webConfig.GetVarWithDefault("Title", defTitle)
 	content := htmlContent{
 		Title: title,
 	}
@@ -1015,7 +1017,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Return HTML if method is post
 	if acceptHTML(r) {
-		title := webConfig.GetVarWithDefault("Title", defTitle)
+		title := b.webConfig.GetVarWithDefault("Title", defTitle)
 		content := htmlContent{
 			Title: title,
 		}
@@ -1150,7 +1152,7 @@ func requestResetFormHandler(w http.ResponseWriter, r *http.Request) {
 		User:                identity.InvalidUser(),
 		Token:               "",
 	}
-	title := webConfig.GetVarWithDefault("Title", defTitle)
+	title := b.webConfig.GetVarWithDefault("Title", defTitle)
 	content := htmlContent{
 		Title:     title,
 		ErrorMsg:  "",
@@ -1174,7 +1176,7 @@ func requestResetHandler(w http.ResponseWriter, r *http.Request) {
 	email := r.PostFormValue("Email")
 	result := authenticator.RequestPasswordReset(ctx, email)
 	if result.RequestResetSuccess {
-		err := identity.SendPasswordReset(result.User, result.Token, webConfig)
+		err := identity.SendPasswordReset(result.User, result.Token, b.webConfig)
 		if err != nil {
 			log.Printf("requestResetHandler: could not send password reset: %v", err)
 			result.RequestResetSuccess = false
@@ -1183,7 +1185,7 @@ func requestResetHandler(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(r.Header.Get("Accept"), "application/json") {
 		sendJSON(w, result)
 	} else {
-		title := webConfig.GetVarWithDefault("Title", defTitle)
+		title := b.webConfig.GetVarWithDefault("Title", defTitle)
 		content := htmlContent{
 			Title:     title,
 			ErrorMsg:  "",
@@ -1335,7 +1337,7 @@ func translationHome(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	title := webConfig.GetVarWithDefault("Title", defTitle)
+	title := b.webConfig.GetVarWithDefault("Title", defTitle)
 	p := &translationPage{
 		SourceText:      "",
 		TranslatedText:  "",
@@ -1359,7 +1361,7 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	q := getSingleValue(r, "query")
-	title := webConfig.GetVarWithDefault("Title", defTitle)
+	title := b.webConfig.GetVarWithDefault("Title", defTitle)
 	if len(q) == 0 {
 		if acceptHTML(r) {
 			content := htmlContent{
@@ -1452,9 +1454,9 @@ func wordDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if hw, ok := b.dict.HeadwordIds[hwId]; ok {
-		title := webConfig.GetVarWithDefault("Title", defTitle)
-		match := webConfig.GetVar("NotesReMatch")
-		replace := webConfig.GetVar("NotesReplace")
+		title := b.webConfig.GetVarWithDefault("Title", defTitle)
+		match := b.webConfig.GetVar("NotesReMatch")
+		replace := b.webConfig.GetVar("NotesReplace")
 		processor := dictionary.NewNotesProcessor(match, replace)
 		word := processor.Process(*hw)
 		content := htmlContent{

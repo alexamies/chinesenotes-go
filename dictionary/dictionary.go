@@ -39,9 +39,10 @@ func NewDictionary(wdict map[string]*dicttypes.Word) *Dictionary {
 	}
 }
 
-// ReverseIndex searches the dictionary by reverse lookup, eg from English to Chinese
+// ReverseIndex searches the dictionary by reverse lookup, eg to Chinese
 type ReverseIndex interface {
-	FindWordsByEnglish(ctx context.Context, query string) ([]dicttypes.WordSense, error)
+	// Find searches from English, pinyin, or multilingual equivalents contained in notes to Chinese
+	Find(ctx context.Context, query string) ([]dicttypes.WordSense, error)
 }
 
 type SubstringIndex interface {
@@ -52,7 +53,7 @@ type reverseIndexMem struct {
 	revIndex map[string][]dicttypes.WordSense
 }
 
-func NewReverseIndex(dict *Dictionary) ReverseIndex {
+func NewReverseIndex(dict *Dictionary, nExtractor *NotesExtractor) ReverseIndex {
 	revIndex := map[string][]dicttypes.WordSense{}
 	for _, v := range dict.HeadwordIds {
 		for _, s := range v.Senses {
@@ -65,6 +66,16 @@ func NewReverseIndex(dict *Dictionary) ReverseIndex {
 					revIndex[eng] = []dicttypes.WordSense{s}
 				}
 			}
+			if len(s.Pinyin) > 0 {
+				p := dicttypes.NormalizePinyin(s.Pinyin)
+				revIndex[p] = []dicttypes.WordSense{s}
+			}
+			if len(s.Notes) > 0 {
+				equivalents := nExtractor.Extract(s.Notes)
+				for _, eq := range equivalents {
+					revIndex[eq] = []dicttypes.WordSense{s}
+				}
+			}
 		}
 	}
 	return reverseIndexMem{
@@ -72,7 +83,7 @@ func NewReverseIndex(dict *Dictionary) ReverseIndex {
 	}
 }
 
-func (r reverseIndexMem) FindWordsByEnglish(ctx context.Context, query string) ([]dicttypes.WordSense, error) {
+func (r reverseIndexMem) Find(ctx context.Context, query string) ([]dicttypes.WordSense, error) {
 	return r.revIndex[query], nil
 }
 
@@ -80,18 +91,18 @@ func splitEnglish(eng string) []string {
 	tokens := strings.Split(eng, "; ")
 	results := []string{}
 	for _, t := range tokens {
-		if strings.HasPrefix(t, "a ") {
-			r := strings.Replace(t, "a ", "", 1)
-			results = append(results, r)
-		} else if strings.HasPrefix(t, "an ") {
-			r := strings.Replace(t, "an ", "", 1)
-			results = append(results, r)
-		} else if strings.HasPrefix(t, "to ") {
-			r := strings.Replace(t, "an ", "", 1)
-			results = append(results, r)
-		} else {
-			results = append(results, t)
-		}
+		results = append(results, stripStopWords(t))
 	}
 	return results
+}
+
+func stripStopWords(t string) string {
+	if strings.HasPrefix(t, "a ") {
+		return strings.Replace(t, "a ", "", 1)
+	} else if strings.HasPrefix(t, "an ") {
+		return strings.Replace(t, "an ", "", 1)
+	} else if strings.HasPrefix(t, "to ") {
+		return strings.Replace(t, "an ", "", 1)
+	}
+	return t
 }

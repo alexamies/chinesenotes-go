@@ -142,7 +142,7 @@ func mockSmallDict() map[string]*dicttypes.Word {
 type mockReverseIndex struct {
 }
 
-func (m mockReverseIndex) FindWordsByEnglish(ctx context.Context, query string) ([]dicttypes.WordSense, error) {
+func (m mockReverseIndex) Find(ctx context.Context, query string) ([]dicttypes.WordSense, error) {
 	results := []dicttypes.WordSense{}
 	if query == "lotus" {
 		s1 := "莲花"
@@ -171,7 +171,7 @@ func (m mockDocFinder) FindDocuments(ctx context.Context, dictSearcher dictionar
 	terms := parser.ParseQuery(query)
 	log.Printf("mockDocFinder.FindDocuments, query %s, nTerms %d, ", query, len(terms))
 	if m.reverseIndex != nil && !dicttypes.IsCJKChar(query) {
-		senses, err := m.reverseIndex.FindWordsByEnglish(ctx, query)
+		senses, err := m.reverseIndex.Find(ctx, query)
 		if err != nil {
 			return nil, err
 		}
@@ -216,7 +216,7 @@ func TestMain(m *testing.M) {
 // TestDisplayHome tests the default HTTP handler.
 func TestDisplayHome(t *testing.T) {
 	b = &backends{
-		templates: newTemplateMap(webConfig),
+		templates: newTemplateMap(config.WebAppConfig{}),
 	}
 	t.Logf("TestDisplayHome: Begin unit tests\n")
 	type test struct {
@@ -345,7 +345,7 @@ func TestChangePasswordFormHandler(t *testing.T) {
 
 func TestCustom404(t *testing.T) {
 	b = &backends{
-		templates: newTemplateMap(webConfig),
+		templates: newTemplateMap(config.WebAppConfig{}),
 	}
 	type test struct {
 		name           string
@@ -372,7 +372,7 @@ func TestCustom404(t *testing.T) {
 
 func TestDisplayPage(t *testing.T) {
 	b := &backends{
-		templates: newTemplateMap(webConfig),
+		templates: newTemplateMap(config.WebAppConfig{}),
 	}
 	const query = "邃古"
 	tMContent := htmlContent{
@@ -570,7 +570,7 @@ func TestFindDocs(t *testing.T) {
 			tmSearcher: mockTMSearcher{},
 			dict:       dict,
 			parser:     find.MakeQueryParser(dict.Wdict),
-			templates:  newTemplateMap(webConfig),
+			templates:  newTemplateMap(config.WebAppConfig{}),
 		}
 		r := httptest.NewRequest(http.MethodGet, u, nil)
 		r.Header.Add("Accept", tc.acceptHeader)
@@ -670,7 +670,7 @@ func TestFindFullText(t *testing.T) {
 			tmSearcher: mockTMSearcher{},
 			dict:       dictionary.NewDictionary(wdict),
 			parser:     find.MakeQueryParser(wdict),
-			templates:  newTemplateMap(webConfig),
+			templates:  newTemplateMap(config.WebAppConfig{}),
 		}
 		r := httptest.NewRequest(http.MethodGet, u, nil)
 		r.Header.Add("Accept", tc.acceptHeader)
@@ -809,7 +809,7 @@ func TestHealthcheck(t *testing.T) {
 
 func TestLibrary(t *testing.T) {
 	b = &backends{
-		templates: newTemplateMap(webConfig),
+		templates: newTemplateMap(config.WebAppConfig{}),
 	}
 	type test struct {
 		name           string
@@ -837,7 +837,7 @@ func TestLibrary(t *testing.T) {
 
 func TestLoginFormHandler(t *testing.T) {
 	b = &backends{
-		templates: newTemplateMap(webConfig),
+		templates: newTemplateMap(config.WebAppConfig{}),
 	}
 	type test struct {
 		name           string
@@ -865,7 +865,7 @@ func TestLoginFormHandler(t *testing.T) {
 
 func TestLoginHandler(t *testing.T) {
 	b = &backends{
-		templates: newTemplateMap(webConfig),
+		templates: newTemplateMap(config.WebAppConfig{}),
 	}
 	authenticator = &identity.Authenticator{}
 	type test struct {
@@ -895,7 +895,7 @@ func TestLoginHandler(t *testing.T) {
 
 func TestShowQueryResults(t *testing.T) {
 	b := &backends{
-		templates: newTemplateMap(webConfig),
+		templates: newTemplateMap(config.WebAppConfig{}),
 	}
 	type test struct {
 		name           string
@@ -1090,7 +1090,7 @@ func TestWordDetail(t *testing.T) {
 	dictWNotes := map[string]*dicttypes.Word{
 		s: &hw,
 	}
-	webConfig = config.WebAppConfig{
+	webConfig := config.WebAppConfig{
 		ConfigVars: map[string]string{
 			"NotesReMatch": `FGDB entry ([0-9]*)`,
 			"NotesReplace": `<a href="/web/${1}.html">FGDB entry</a>`,

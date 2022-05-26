@@ -1,15 +1,3 @@
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//    http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package config
 
 import (
@@ -32,13 +20,26 @@ type WebAppConfig struct {
 // InitWeb loads the WebAppConfig data. If an error occurs, default values are used
 func InitWeb() WebAppConfig {
 	log.Println("webconfig.init Initializing webconfig")
-	c := WebAppConfig {}
-	configVarsPtr, err := readWebConfig()
+	c := WebAppConfig{}
+	cnwebHome := GetCnWebHome()
+	fileName := fmt.Sprintf("%s/webconfig.yaml", cnwebHome)
+	configFile, err := os.Open(fileName)
+	if err != nil {
+		path, er := os.Getwd()
+		if er != nil {
+			log.Printf("cannot find cwd: %v", er)
+			path = ""
+		}
+		log.Printf("InitWeb error loading file '%s' (%s): %v", fileName, path, err)
+		return c
+	}
+	defer configFile.Close()
+	configVarsPtr, err := readWebConfig(configFile)
 	if err != nil {
 		log.Printf("webconfig.init error initializing webconfig: %v", err)
 		c.ConfigVars = make(map[string]string)
 	} else {
-		c.ConfigVars =  *configVarsPtr
+		c.ConfigVars = *configVarsPtr
 	}
 	return c
 }
@@ -57,13 +58,24 @@ func (c WebAppConfig) GetFromEmail() string {
 	return fromEmail
 }
 
-// GetPasswordResetURL get the password reset URL for inclusion in email
+// GetPasswordResetURL gets the password reset URL for inclusion in email
 func (c WebAppConfig) GetPasswordResetURL() string {
 	passwordResetURL := os.Getenv("PASSWORD_RESET_URL")
 	if len(passwordResetURL) == 0 {
 		passwordResetURL = c.GetVar("PasswordResetURL")
 	}
 	return passwordResetURL
+}
+
+// NotesExtractorPattern gets regular expression for extracting multilingual equivalents in the notes
+func (c WebAppConfig) NotesExtractorPattern() string {
+	val, ok := c.ConfigVars["NotesExtractorPattern"]
+	if !ok {
+		log.Println("WebAppConfig.GetVar: could not find NotesExtractorPattern")
+		val = ""
+	}
+	val = strings.Trim(val, "\"")
+	return val
 }
 
 // GetVar gets a configuration variable value, default empty string
@@ -144,14 +156,14 @@ func GetCnWebHome() string {
 
 // GetEnvIntValue gets a value from the environment
 func GetEnvIntValue(key string, defValue int) int {
-    if val, ok := os.LookupEnv(key); ok {
-    	value, err := strconv.Atoi(val)
+	if val, ok := os.LookupEnv(key); ok {
+		value, err := strconv.Atoi(val)
 		if err != nil {
 			return defValue
 		}
-        return value
-    }
-    return defValue
+		return value
+	}
+	return defValue
 }
 
 // GetPort get environment variable for serving port
@@ -178,31 +190,18 @@ func GetSiteDomain() string {
 }
 
 // Reads the configuration file with project variables
-func readWebConfig() (*map[string]string, error) {
+func readWebConfig(r io.Reader) (*map[string]string, error) {
+	reader := bufio.NewReader(r)
 	vars := make(map[string]string)
-	cnwebHome := GetCnWebHome()
-	fileName := fmt.Sprintf("%s/webconfig.yaml", cnwebHome)
-	configFile, err := os.Open(fileName)
-	if err != nil {
-		path, er := os.Getwd()
-		if er != nil {
-    	log.Printf("cannot find cwd: %v", er)
-			path = ""
-		}
-		return nil, fmt.Errorf("readWebConfig error loading file '%s' (%s): %v",
-				fileName, path, err)
-	}
-	defer configFile.Close()
-	reader := bufio.NewReader(configFile)
 	eof := false
 	for !eof {
-		var line string
-		line, err = reader.ReadString('\n')
+		line, err := reader.ReadString('\n')
 		if err == io.EOF {
 			err = nil
 			eof = true
 		} else if err != nil {
-			return nil, fmt.Errorf("readWebConfig: error reading file: %v", err)		}
+			return nil, fmt.Errorf("readWebConfig: error reading file: %v", err)
+		}
 		// Ignore comments
 		if strings.HasPrefix(line, "#") {
 			continue

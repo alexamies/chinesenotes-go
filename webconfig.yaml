@@ -13,3 +13,6 @@ FromEmail: do_not_reply@example.com
 
 # The URL for a password reset
 PasswordResetURL: http://localhost:8080/loggedin/reset_password
+
+ # Regular expression for extracting multilingual equivalents in the notes.
+NotesExtractorPattern: "Scientific name: (.*?)[\(,\,,\;] aka: (.*?)[\(,\,,\;]"

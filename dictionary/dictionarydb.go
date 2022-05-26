@@ -61,21 +61,21 @@ LIMIT 20`)
 }
 
 // FindWordsByEnglish returns the word senses with English approximate or Pinyin exact match
-func (searcher *DBSearcher) FindWordsByEnglish(ctx context.Context,
+func (searcher *DBSearcher) Find(ctx context.Context,
 	query string) ([]dicttypes.WordSense, error) {
-	log.Printf("findWordsByEnglish, query = %s", query)
+	log.Printf("Find, query = %s", query)
 	likeEnglish := "%" + query + "%"
 	if searcher.findEnglishStmt == nil {
-		return nil, fmt.Errorf("FindWordsByEnglish,findEnglishStmt is nil query = %s",
+		return nil, fmt.Errorf("Find,findEnglishStmt is nil query = %s",
 			query)
 	}
 	results, err := searcher.findEnglishStmt.QueryContext(ctx, query, likeEnglish)
 	if err != nil {
-		log.Printf("FindWordsByEnglish, Error for query: %s, error %v", query, err)
+		log.Printf("Find, Error for query: %s, error %v", query, err)
 		// Retry
 		results, err = searcher.findEnglishStmt.QueryContext(ctx, query, query)
 		if err != nil {
-			log.Printf("FindWordsByEnglish, Give up after retry: %s, error: %v", query, err)
+			log.Printf("Find, Give up after retry: %s, error: %v", query, err)
 			return nil, err
 		}
 	}
@@ -85,7 +85,7 @@ func (searcher *DBSearcher) FindWordsByEnglish(ctx context.Context,
 		var hw sql.NullInt64
 		var trad, pinyin, english, notes sql.NullString
 		results.Scan(&ws.Simplified, &trad, &pinyin, &english, &notes, &hw)
-		log.Printf("FindWordsByEnglish, simplified, headword = %s, %v",
+		log.Printf("Find, simplified, headword = %s, %v",
 			ws.Simplified, hw)
 		if trad.Valid {
 			ws.Traditional = trad.String
@@ -104,7 +104,7 @@ func (searcher *DBSearcher) FindWordsByEnglish(ctx context.Context,
 		}
 		senses = append(senses, ws)
 	}
-	log.Printf("FindWordsByEnglish, len(senses): %d", len(senses))
+	log.Printf("Find, len(senses): %d", len(senses))
 	return senses, nil
 }
 

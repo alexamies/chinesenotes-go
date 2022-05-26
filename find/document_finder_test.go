@@ -28,9 +28,9 @@ import (
 type mockReverseIndex struct {
 }
 
-func (m mockReverseIndex) FindWordsByEnglish(ctx context.Context, query string) ([]dicttypes.WordSense, error) {
+func (m mockReverseIndex) Find(ctx context.Context, query string) ([]dicttypes.WordSense, error) {
 	results := []dicttypes.WordSense{}
-	log.Printf("mockReverseIndex.FindWordsByEnglish: query: %s, results: %v", query, results)
+	log.Printf("Find.FindWordsByEnglish: query: %s, results: %v", query, results)
 	return results, nil
 }
 
@@ -116,7 +116,7 @@ func TestFindDocuments(t *testing.T) {
 		t.Errorf("TestFindDocuments, Error: %v", err)
 		return
 	}
-	dictSearcher := mockReverseIndex{}
+	reverseIndex := mockReverseIndex{}
 	dict := map[string]*dicttypes.Word{}
 	parser := MakeQueryParser(dict)
 
@@ -153,7 +153,7 @@ func TestFindDocuments(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		qr, err := df.FindDocuments(ctx, dictSearcher, parser, tc.query, false)
+		qr, err := df.FindDocuments(ctx, reverseIndex, parser, tc.query, false)
 		gotError := (err != nil)
 		if tc.expectError != gotError {
 			t.Errorf("TestFindDocuments, %s: expectError: %t vs got %t",
@@ -253,7 +253,7 @@ func TestFindDocumentsInCol(t *testing.T) {
 		t.Errorf("TestFindDocumentsInCol, Error: %v", err)
 		return
 	}
-	dictSearcher := mockReverseIndex{}
+	reverseIndex := mockReverseIndex{}
 	dict := map[string]*dicttypes.Word{}
 	parser := MakeQueryParser(dict)
 
@@ -318,7 +318,7 @@ func TestFindDocumentsInCol(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		qr, err := df.FindDocumentsInCol(ctx, dictSearcher, parser, tc.query, tc.collection)
+		qr, err := df.FindDocumentsInCol(ctx, reverseIndex, parser, tc.query, tc.collection)
 		gotError := (err == nil)
 		if tc.expectError != gotError {
 			t.Errorf("TestFindDocumentsInCol, %s: expected error %t vs got error: %t",
@@ -334,56 +334,6 @@ func TestFindDocumentsInCol(t *testing.T) {
 		if tc.expectNumTerms != len(qr.Terms) {
 			t.Errorf("TestFindDocumentsInCol %s:  expected num terms %d vs got %d",
 				tc.name, tc.expectNumTerms, len(qr.Terms))
-		}
-	}
-}
-
-func TestFindWords(t *testing.T) {
-	database, err := initDBCon()
-	if err != nil {
-		t.Errorf("TestFindWords, Error: %v", err)
-		return
-	}
-	if database == nil {
-		t.Skip("TestFindWords, no database skipping")
-	}
-	df := databaseDocFinder{
-		database: database,
-	}
-	ctx := context.Background()
-	err = df.initFind(ctx)
-	if err != nil {
-		t.Errorf("TestFindWords, Error: %v", err)
-		return
-	}
-
-	// Test data
-	type test struct {
-		name           string
-		query          string
-		expectNumWords int
-	}
-	tests := []test{
-		{
-			name:           "Basic query",
-			query:          "Assembly",
-			expectNumWords: 1,
-		},
-		{
-			name:           "Simple query",
-			query:          "金剛",
-			expectNumWords: 1,
-		},
-	}
-
-	for _, tc := range tests {
-		words, err := df.findWords(ctx, tc.query)
-		if err != nil {
-			t.Errorf("TestFindWords, %s: got error, %v", tc.name, err)
-		}
-		if tc.expectNumWords != len(words) {
-			t.Errorf("TestFindWords %s: tc.expectNumWords %d vs got %d",
-				tc.name, tc.expectNumWords, len(words))
 		}
 	}
 }

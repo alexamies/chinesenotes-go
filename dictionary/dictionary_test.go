@@ -17,6 +17,11 @@ func mockSmallDict() map[string]*dicttypes.Word {
 	t2 := "\\N"
 	p2 := "yù"
 	e2 := "district; region"
+	s3 := "喜马拉雅雪松"
+	t3 := "喜馬拉雅雪松"
+	p3 := "xǐmǎlāyǎ xuěsōng"
+	e3 := "deodar cedar"
+	n3 := "Scientific name: Cedrus deodara, aka: Himalayan cedar; a native to the Himalayas (Wikipedia '喜马拉雅雪松')"
 	hw1 := dicttypes.Word{
 		HeadwordId:  1,
 		Simplified:  s1,
@@ -47,27 +52,60 @@ func mockSmallDict() map[string]*dicttypes.Word {
 			},
 		},
 	}
+	hw3 := dicttypes.Word{
+		HeadwordId:  3,
+		Simplified:  s3,
+		Traditional: t3,
+		Pinyin:      p3,
+		Senses: []dicttypes.WordSense{
+			{
+				HeadwordId:  3,
+				Simplified:  s3,
+				Traditional: t3,
+				Pinyin:      p3,
+				English:     e3,
+				Notes:       n3,
+			},
+		},
+	}
 	return map[string]*dicttypes.Word{
 		s1: &hw1,
 		t1: &hw1,
 		s2: &hw2,
+		s3: &hw3,
+		t3: &hw3,
 	}
 }
 
-func TestFindWordsByEnglish(t *testing.T) {
+func TestFind(t *testing.T) {
 	type test struct {
 		name        string
+		extractRe   string
 		query       string
 		expectCount int
 	}
 	tests := []test{
 		{
 			name:        "Simple single word",
+			extractRe:   "",
 			query:       "lotus",
 			expectCount: 1,
 		},
 		{
 			name:        "With delimiter",
+			extractRe:   `Scientific name: (.*?)[\(,\,,\;] aka: (.*?)[\(,\,,\;]`,
+			query:       "region",
+			expectCount: 1,
+		},
+		{
+			name:        "From pinyin",
+			extractRe:   "",
+			query:       "lianhua",
+			expectCount: 1,
+		},
+		{
+			name:        "Equivalent from notes",
+			extractRe:   `Scientific name: (.*?)[\(,\,,\;] aka: (.*?)[\(,\,,\;]`,
 			query:       "region",
 			expectCount: 1,
 		},
@@ -76,8 +114,12 @@ func TestFindWordsByEnglish(t *testing.T) {
 		ctx := context.Background()
 		wdict := mockSmallDict()
 		dict := NewDictionary(wdict)
-		dictSearcher := NewReverseIndex(dict)
-		senses, err := dictSearcher.FindWordsByEnglish(ctx, tc.query)
+		extractor, err := NewNotesExtractor(tc.extractRe)
+		if err != nil {
+			t.Errorf("TestFindWordsByEnglish %s: could not create extractor: %v", tc.name, err)
+		}
+		dictSearcher := NewReverseIndex(dict, extractor)
+		senses, err := dictSearcher.Find(ctx, tc.query)
 		if err != nil {
 			t.Errorf("%s: unexpected error finding by English: %v", tc.name, err)
 		}

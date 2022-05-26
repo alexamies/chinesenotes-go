@@ -25,7 +25,6 @@ import (
 
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dictionary"
-	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/fulltext"
 )
 
@@ -548,7 +547,7 @@ func (df databaseDocFinder) findDocumentsInCol(ctx context.Context, query string
 // Chinese words in the dictionary. If there are no Chinese words in the query
 // then the Chinese word senses matching the English or Pinyin will be included
 // in the TextSegment.Senses field.
-func (df databaseDocFinder) FindDocuments(ctx context.Context, dictSearcher dictionary.ReverseIndex,
+func (df databaseDocFinder) FindDocuments(ctx context.Context, reverseIndex dictionary.ReverseIndex,
 	parser QueryParser, query string,
 	advanced bool) (*QueryResults, error) {
 	if query == "" {
@@ -558,7 +557,7 @@ func (df databaseDocFinder) FindDocuments(ctx context.Context, dictSearcher dict
 	log.Printf("FindDocuments, got: %d terms", len(terms))
 	if (len(terms) == 1) && (terms[0].DictEntry.HeadwordId == 0) {
 		log.Printf("FindDocuments, no Chinese in query, look for English and Pinyin matches: %s", query)
-		senses, err := dictSearcher.FindWordsByEnglish(ctx, terms[0].QueryText)
+		senses, err := reverseIndex.Find(ctx, terms[0].QueryText)
 		log.Printf("FindDocuments, found senses %v matching reverse query: %s", senses, query)
 		if err != nil {
 			return nil, err
@@ -612,7 +611,7 @@ func (df databaseDocFinder) FindDocuments(ctx context.Context, dictSearcher dict
 // then the Chinese word senses matching the English or Pinyin will be included
 // in the TextSegment.Senses field.
 func (df databaseDocFinder) FindDocumentsInCol(ctx context.Context,
-	dictSearcher dictionary.ReverseIndex, parser QueryParser, query,
+	reverseIndex dictionary.ReverseIndex, parser QueryParser, query,
 	col_gloss_file string) (*QueryResults, error) {
 	if query == "" {
 		return nil, fmt.Errorf("FindDocumentsInCol, Empty query string")
@@ -621,7 +620,7 @@ func (df databaseDocFinder) FindDocumentsInCol(ctx context.Context,
 	if (len(terms) == 1) && (terms[0].DictEntry.HeadwordId == 0) {
 		log.Printf("FindDocumentsInCol, Query does not contain Chinese, "+
 			"look for English and Pinyin matches query: %s", query)
-		senses, err := dictSearcher.FindWordsByEnglish(ctx, terms[0].QueryText)
+		senses, err := reverseIndex.Find(ctx, terms[0].QueryText)
 		if err != nil {
 			return nil, err
 		} else {
@@ -645,31 +644,6 @@ func (df databaseDocFinder) FindDocumentsInCol(ctx context.Context,
 		Terms:          terms,
 		SimilarTerms:   nil,
 	}, err
-}
-
-// Returns the headword words in the query (only a single word based on Chinese
-// query)
-func (df databaseDocFinder) findWords(ctx context.Context, query string) ([]dicttypes.Word, error) {
-	results, err := df.findWordStmt.QueryContext(ctx, query, query)
-	if err != nil {
-		return []dicttypes.Word{}, err
-	}
-	words := []dicttypes.Word{}
-	for results.Next() {
-		word := dicttypes.Word{}
-		var hw sql.NullInt64
-		var trad sql.NullString
-		results.Scan(&word.Simplified, &trad, &word.Pinyin, &hw)
-		log.Println("findWords, simplified, headword = ", word.Simplified, hw)
-		if trad.Valid {
-			word.Traditional = trad.String
-		}
-		if hw.Valid {
-			word.HeadwordId = int(hw.Int64)
-		}
-		words = append(words, word)
-	}
-	return words, nil
 }
 
 // Open database connection and prepare statements. Allows for re-initialization

@@ -9,14 +9,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+//
 // Package for configuration of command line tool and web apps.
 package config
 
 import (
 	"bufio"
-	"io"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -24,7 +24,7 @@ import (
 
 // AppConfig holds application configuration data that is general to the API
 //
-// These variables are common to API and web app usage, especially loading 
+// These variables are common to API and web app usage, especially loading
 // dictionary files.
 type AppConfig struct {
 
@@ -65,7 +65,7 @@ func InitConfig() AppConfig {
 
 // Default: empty
 func (c AppConfig) AvoidSubDomains() map[string]bool {
-  avoidSub := make(map[string]bool)
+	avoidSub := make(map[string]bool)
 	if val, ok := c.ConfigVars["AvoidSubDomains"]; ok {
 		values := strings.Split(",", val)
 		for _, value := range values {
@@ -120,7 +120,7 @@ func readLUFileNames(configVars map[string]string, dictionaryDir string) []strin
 		tokens := strings.Split(val, ",")
 		fileNames = []string{}
 		for _, token := range tokens {
-			fileNames = append(fileNames, dictionaryDir + "/" + token)
+			fileNames = append(fileNames, dictionaryDir+"/"+token)
 		}
 	}
 	return fileNames
@@ -142,7 +142,7 @@ func readConfig(projectHome string) (map[string]string, error) {
 		fileName = projectHome + "/config.yaml"
 		configFile, err = os.Open(fileName)
 		if err != nil {
-			err := fmt.Errorf("error opening config.yaml: %v",err)
+			err := fmt.Errorf("error opening config.yaml: %v", err)
 			return map[string]string{}, err
 		}
 	}

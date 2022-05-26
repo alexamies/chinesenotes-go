@@ -44,11 +44,11 @@ func TestExtract(t *testing.T) {
 	for _, tc := range testCases {
 		extractor, err := NewNotesExtractor(tc.extractRe)
 		if err != nil {
-			t.Errorf("TestProcess %s: could not create extractor: %v", tc.name, err)
+			t.Errorf("TestExtract %s: could not create extractor: %v", tc.name, err)
 		}
 		got := extractor.Extract(tc.note)
 		if !reflect.DeepEqual(got, tc.want) {
-			t.Errorf("TestProcess %s: got %s, want %s", tc.name, got, tc.want)
+			t.Errorf("TestExtract %s: got %s, want %s", tc.name, got, tc.want)
 		}
 	}
 }
