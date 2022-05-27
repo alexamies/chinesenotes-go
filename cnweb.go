@@ -104,8 +104,21 @@ type translationPage struct {
 func initApp(ctx context.Context) (*backends, error) {
 	log.Println("initApp Initializing cnweb")
 	appConfig = config.InitConfig()
-	webConfig := config.InitWeb()
-	var err error
+	cnwebHome := config.GetCnWebHome()
+	fileName := fmt.Sprintf("%s/webconfig.yaml", cnwebHome)
+	webConfig := config.WebAppConfig{}
+	configFile, err := os.Open(fileName)
+	if err != nil {
+		path, er := os.Getwd()
+		if er != nil {
+			log.Printf("cannot find cwd: %v", er)
+			path = ""
+		}
+		log.Printf("initApp error loading file '%s' (%s): %v", fileName, path, err)
+	} else {
+		defer configFile.Close()
+		webConfig = config.InitWeb(configFile)
+	}
 	if config.UseDatabase() {
 		database, err = initDBCon()
 		if err != nil {

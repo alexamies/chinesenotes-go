@@ -49,7 +49,7 @@ func InitConfig() AppConfig {
 	c := AppConfig{
 		ProjectHome: projectHome,
 	}
-	// log.Printf("config.init projectHome = %s\n", projectHome)
+	log.Printf("config.init projectHome = %s\n", projectHome)
 	var err error
 	configVars, err := readConfig(projectHome)
 	if err != nil {
@@ -156,7 +156,7 @@ func readConfig(projectHome string) (map[string]string, error) {
 			err = nil
 			eof = true
 		} else if err != nil {
-			err := fmt.Errorf("error reading config file: %v\n", err)
+			err := fmt.Errorf("error reading config file: %v", err)
 			return map[string]string{}, err
 		}
 		// Ignore comments

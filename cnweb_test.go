@@ -1131,16 +1131,15 @@ func TestWordDetail(t *testing.T) {
 			dict:         dictionary.NewDictionary(tc.wdict),
 			parser:       find.MakeQueryParser(tc.wdict),
 			templates:    newTemplateMap(webConfig),
+			webConfig:    webConfig,
 		}
 		r := httptest.NewRequest(http.MethodGet, u, nil)
 		w := httptest.NewRecorder()
 		wordDetail(w, r)
 		result := w.Body.String()
 		if !strings.Contains(result, tc.expectContains) {
-			t.Errorf("TestWordDetail %s: got %q, want %q, ", tc.name, result,
-				tc.expectContains)
+			t.Errorf("TestWordDetail %s: got %q, want contains %q, ", tc.name, result, tc.expectContains)
 		}
 	}
 	b = nil
-	webConfig = config.WebAppConfig{}
 }

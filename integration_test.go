@@ -13,16 +13,14 @@
 package main
 
 import (
-	"flag"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dictionary"
 	"github.com/alexamies/chinesenotes-go/identity"
 )
-
-var integration = flag.Bool("integration", false, "run an integration test")
 
 // Test trivial query with empty dictionary
 func TestLoadDict(t *testing.T) {
@@ -121,7 +119,8 @@ func TestSendPasswordReset(t *testing.T) {
 		FullName: "Alex Test",
 		Role:     "tester",
 	}
-	c := config.InitWeb()
+	r := strings.NewReader("")
+	c := config.InitWeb(r)
 	err := identity.SendPasswordReset(userInfo, "", c)
 	if err != nil {
 		t.Fatalf("TestSendPasswordReset: Error, %v", err)

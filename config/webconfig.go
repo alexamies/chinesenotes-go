@@ -18,22 +18,9 @@ type WebAppConfig struct {
 }
 
 // InitWeb loads the WebAppConfig data. If an error occurs, default values are used
-func InitWeb() WebAppConfig {
+func InitWeb(configFile io.Reader) WebAppConfig {
 	log.Println("webconfig.init Initializing webconfig")
 	c := WebAppConfig{}
-	cnwebHome := GetCnWebHome()
-	fileName := fmt.Sprintf("%s/webconfig.yaml", cnwebHome)
-	configFile, err := os.Open(fileName)
-	if err != nil {
-		path, er := os.Getwd()
-		if er != nil {
-			log.Printf("cannot find cwd: %v", er)
-			path = ""
-		}
-		log.Printf("InitWeb error loading file '%s' (%s): %v", fileName, path, err)
-		return c
-	}
-	defer configFile.Close()
 	configVarsPtr, err := readWebConfig(configFile)
 	if err != nil {
 		log.Printf("webconfig.init error initializing webconfig: %v", err)
@@ -228,8 +215,5 @@ func PasswordProtected() bool {
 // PasswordProtected gets whether the web site is password projected.
 func UseDatabase() bool {
 	database := os.Getenv("DATABASE")
-	if len(database) > 0 {
-		return true
-	}
-	return false
+	return len(database) > 0
 }

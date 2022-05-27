@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -29,5 +30,14 @@ func TestNotesExtractorPattern(t *testing.T) {
 	got := c.NotesExtractorPattern()
 	if got != want {
 		t.Errorf("TestNotesExtractorPattern: got %s vs want %s", got, want)
+	}
+}
+
+// TestWebconfigInit test config initialization
+func TestWebconfigInit(t *testing.T) {
+	r := strings.NewReader("")
+	c := InitWeb(r)
+	if c.ConfigVars == nil {
+		t.Error("TestWebconfigInit: c.ConfigVars == nil")
 	}
 }
