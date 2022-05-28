@@ -139,27 +139,6 @@ func mockSmallDict() map[string]*dicttypes.Word {
 	}
 }
 
-type mockReverseIndex struct {
-}
-
-func (m mockReverseIndex) Find(ctx context.Context, query string) ([]dicttypes.WordSense, error) {
-	results := []dicttypes.WordSense{}
-	if query == "lotus" {
-		s1 := "莲花"
-		t1 := "蓮花"
-		ws := dicttypes.WordSense{
-			HeadwordId:  1,
-			Simplified:  s1,
-			Traditional: t1,
-			Pinyin:      "liánhuā",
-			English:     "lotus",
-		}
-		results = append(results, ws)
-	}
-	log.Printf("mockReverseIndex.FindWordsByEnglish: query: %s, results: %v", query, results)
-	return results, nil
-}
-
 // mockDocFinder imitates DocFinder interface for full text search tests
 type mockDocFinder struct {
 	reverseIndex dictionary.ReverseIndex
@@ -537,7 +516,7 @@ func TestFindDocs(t *testing.T) {
 			expectContains: "蓮花",
 			fullText:       false,
 		},
-		/*{
+		{
 			name: "Reverse lookup by English - HTML",
 			u: "/find/",
 			acceptHeader: "text/html",
@@ -545,7 +524,7 @@ func TestFindDocs(t *testing.T) {
 			docs: []find.Document{},
 			expectContains: "蓮花",
 			fullText: false,
-		},*/
+		},
 	}
 	ctx := context.Background()
 	for _, tc := range tests {
@@ -561,9 +540,13 @@ func TestFindDocs(t *testing.T) {
 			Documents: tc.docs,
 		}
 		dict := dictionary.NewDictionary(mockSmallDict())
-		reverseIndex := mockReverseIndex{}
+		extractor, err := dictionary.NewNotesExtractor("")
+		if err != nil {
+			t.Fatalf("TestFindDocs %s: not able to create extractor: %v", tc.name, err)
+		}
+		reverseIndex := dictionary.NewReverseIndex(dict, extractor)
 		b := &backends{
-			reverseIndex: &reverseIndex,
+			reverseIndex: reverseIndex,
 			df: mockDocFinder{
 				reverseIndex: reverseIndex,
 			},
@@ -662,8 +645,14 @@ func TestFindFullText(t *testing.T) {
 	for _, tc := range tests {
 		u := tc.u + "?query=" + tc.query
 		wdict := map[string]*dicttypes.Word{}
+		dict := dictionary.NewDictionary(wdict)
+		extractor, err := dictionary.NewNotesExtractor("")
+		if err != nil {
+			t.Fatalf("TestFindFullText %s: not able to create extractor: %v", tc.name, err)
+		}
+		reverseIndex := dictionary.NewReverseIndex(dict, extractor)
 		b = &backends{
-			reverseIndex: &mockReverseIndex{},
+			reverseIndex: reverseIndex,
 			df: mockDocFinder{
 				documents: tc.documents,
 			},
@@ -703,8 +692,14 @@ func TestFindHandler(t *testing.T) {
 	wdict := map[string]*dicttypes.Word{
 		s: &hw,
 	}
+	dict := dictionary.NewDictionary(wdict)
+	extractor, err := dictionary.NewNotesExtractor("")
+	if err != nil {
+		t.Fatalf("TestFindHandler: not able to create extractor: %v", err)
+	}
+	reverseIndex := dictionary.NewReverseIndex(dict, extractor)
 	b = &backends{
-		reverseIndex: &mockReverseIndex{},
+		reverseIndex: reverseIndex,
 		df:           mockDocFinder{},
 		tmSearcher:   mockTMSearcher{},
 		dict:         dictionary.NewDictionary(wdict),
@@ -1018,8 +1013,14 @@ func TestTranslationMemory(t *testing.T) {
 	}
 	for _, tc := range tests {
 		wdict := map[string]*dicttypes.Word{}
+		dict := dictionary.NewDictionary(wdict)
+		extractor, err := dictionary.NewNotesExtractor("")
+		if err != nil {
+			t.Fatalf("TestTranslationMemory %s: not able to create extractor: %v", tc.name, err)
+		}
+		reverseIndex := dictionary.NewReverseIndex(dict, extractor)
 		b = &backends{
-			reverseIndex: &mockReverseIndex{},
+			reverseIndex: reverseIndex,
 			df:           mockDocFinder{},
 			tmSearcher:   mockTMSearcher{tc.words},
 			dict:         dictionary.NewDictionary(wdict),
@@ -1124,8 +1125,14 @@ func TestWordDetail(t *testing.T) {
 	}
 	for _, tc := range tests {
 		u := fmt.Sprintf("/words/%d.html", tc.hwId)
+		dict := dictionary.NewDictionary(tc.wdict)
+		extractor, err := dictionary.NewNotesExtractor("")
+		if err != nil {
+			t.Fatalf("TestWordDetail %s: not able to create extractor: %v", tc.name, err)
+		}
+		reverseIndex := dictionary.NewReverseIndex(dict, extractor)
 		b = &backends{
-			reverseIndex: &mockReverseIndex{},
+			reverseIndex: reverseIndex,
 			df:           mockDocFinder{},
 			tmSearcher:   mockTMSearcher{},
 			dict:         dictionary.NewDictionary(tc.wdict),

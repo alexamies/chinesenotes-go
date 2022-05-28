@@ -207,6 +207,21 @@ const findResultsTmpl = `
                 </li>
               {{ end }}
               </ol>
+              {{if $term.Senses }}
+                <ol>
+                {{ range $ws := $term.Senses }}
+                  <li>
+                  {{if ne $ws.Simplified "\\N"}}<span class="dict-entry-headword">{{ $ws.Simplified }}</span>{{end}}
+                  {{if ne $ws.Traditional "\\N"}}<span class="dict-entry-headword">( {{ $ws.Traditional }} )</span>{{end}}
+                  {{if ne $ws.Pinyin "\\N"}}<span class="dict-entry-pinyin">{{ $ws.Pinyin }}</span>{{end}}
+                  {{if ne $ws.Grammar "\\N"}}<span class="dict-entry-grammar">{{ $ws.Grammar }}</span>{{end}}
+                  {{if ne $ws.English "\\N"}}<span class="dict-entry-definition">{{ $ws.English }}</span>{{end}}
+                  {{if ne $ws.Domain "\\N"}}<div class="dict-entry-domain">Domain: {{ $ws.Domain }}</div>{{end}}
+                  {{if ne $ws.Notes "\\N"}}<div class="dict-entry-notes">Notes: {{ $ws.Notes }}</div>{{end}}
+                  </li>
+                {{ end }}
+                </ol>
+              {{ end }}
             </details>
           </div>
           {{ end }}

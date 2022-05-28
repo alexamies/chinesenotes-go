@@ -10,27 +10,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-// DBSearcher looks up Chinese words by either Chinese or English.
-type DBSearcher struct {
-	database        *sql.DB
-	findEnglishStmt *sql.Stmt
-}
-
-// NewSearcher initialize SQL statements
-func NewDBSearcher(ctx context.Context, database *sql.DB) (ReverseIndex, error) {
-	if database == nil {
-		return nil, fmt.Errorf("unable to initialize DBSearcher, database == nil")
-	}
-	findEnglishStmt, err := initEnglishQuery(ctx, database)
-	if err != nil {
-		return nil, fmt.Errorf("NewSearcher, database statement initializaton error %v", err)
-	}
-	return &DBSearcher{
-		database:        database,
-		findEnglishStmt: findEnglishStmt,
-	}, nil
-}
-
 // SubstringIndexDB looks up Chinese words by substring.
 type SubstringIndexDB struct {
 	database       *sql.DB
@@ -50,62 +29,6 @@ func NewSubstringIndexDB(ctx context.Context, database *sql.DB) (SubstringIndex,
 		}, nil
 	}
 	return nil, fmt.Errorf("could not initialize SubstringIndex, database = nil")
-}
-
-func initEnglishQuery(ctx context.Context, database *sql.DB) (*sql.Stmt, error) {
-	return database.PrepareContext(ctx,
-		`SELECT simplified, traditional, pinyin, english, notes, headword
-FROM words
-WHERE pinyin = ? OR english LIKE ?
-LIMIT 20`)
-}
-
-// FindWordsByEnglish returns the word senses with English approximate or Pinyin exact match
-func (searcher *DBSearcher) Find(ctx context.Context,
-	query string) ([]dicttypes.WordSense, error) {
-	log.Printf("Find, query = %s", query)
-	likeEnglish := "%" + query + "%"
-	if searcher.findEnglishStmt == nil {
-		return nil, fmt.Errorf("Find,findEnglishStmt is nil query = %s",
-			query)
-	}
-	results, err := searcher.findEnglishStmt.QueryContext(ctx, query, likeEnglish)
-	if err != nil {
-		log.Printf("Find, Error for query: %s, error %v", query, err)
-		// Retry
-		results, err = searcher.findEnglishStmt.QueryContext(ctx, query, query)
-		if err != nil {
-			log.Printf("Find, Give up after retry: %s, error: %v", query, err)
-			return nil, err
-		}
-	}
-	senses := []dicttypes.WordSense{}
-	for results.Next() {
-		ws := dicttypes.WordSense{}
-		var hw sql.NullInt64
-		var trad, pinyin, english, notes sql.NullString
-		results.Scan(&ws.Simplified, &trad, &pinyin, &english, &notes, &hw)
-		log.Printf("Find, simplified, headword = %s, %v",
-			ws.Simplified, hw)
-		if trad.Valid {
-			ws.Traditional = trad.String
-		}
-		if pinyin.Valid {
-			ws.Pinyin = pinyin.String
-		}
-		if english.Valid {
-			ws.English = english.String
-		}
-		if notes.Valid {
-			ws.Notes = notes.String
-		}
-		if hw.Valid {
-			ws.HeadwordId = int(hw.Int64)
-		}
-		senses = append(senses, ws)
-	}
-	log.Printf("Find, len(senses): %d", len(senses))
-	return senses, nil
 }
 
 // Lookup a term based on a substring and a topic
