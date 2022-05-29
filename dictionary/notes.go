@@ -31,7 +31,7 @@ func NewNotesExtractor(patternStr string) (*NotesExtractor, error) {
 func (n NotesExtractor) Extract(notes string) []string {
 	extracted := []string{}
 	g := n.pattern.FindStringSubmatch(notes)
-	log.Printf("NotesExtractor.Extract: notes: %s, %d groups: %v", notes, len(g), g)
+	// log.Printf("NotesExtractor.Extract: notes: %s, %d groups: %v", notes, len(g), g)
 	if len(g) > 0 {
 		for _, t := range g[1:] {
 			extracted = append(extracted, strings.Trim(t, " "))

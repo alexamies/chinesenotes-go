@@ -83,6 +83,8 @@ func TestFind(t *testing.T) {
 		extractRe   string
 		query       string
 		expectCount int
+		expectTrad string
+		expectHwId int
 	}
 	tests := []test{
 		{
@@ -90,24 +92,32 @@ func TestFind(t *testing.T) {
 			extractRe:   "",
 			query:       "lotus",
 			expectCount: 1,
+			expectTrad: "蓮花",
+			expectHwId: 1,
 		},
 		{
 			name:        "With delimiter",
 			extractRe:   `Scientific name: (.*?)[\(,\,,\;] aka: (.*?)[\(,\,,\;]`,
 			query:       "region",
 			expectCount: 1,
+			expectTrad: "\\N",
+			expectHwId: 2,
 		},
 		{
 			name:        "From pinyin",
 			extractRe:   "",
 			query:       "lianhua",
 			expectCount: 1,
+			expectTrad: "蓮花",
+			expectHwId: 1,
 		},
 		{
 			name:        "Equivalent from notes",
 			extractRe:   `Scientific name: (.*?)[\(,\,,\;] aka: (.*?)[\(,\,,\;]`,
 			query:       "region",
 			expectCount: 1,
+			expectTrad: "\\N",
+			expectHwId: 2,
 		},
 	}
 	for _, tc := range tests {
@@ -116,7 +126,7 @@ func TestFind(t *testing.T) {
 		dict := NewDictionary(wdict)
 		extractor, err := NewNotesExtractor(tc.extractRe)
 		if err != nil {
-			t.Errorf("TestFindWordsByEnglish %s: could not create extractor: %v", tc.name, err)
+			t.Errorf("TestFind %s: could not create extractor: %v", tc.name, err)
 		}
 		dictSearcher := NewReverseIndex(dict, extractor)
 		senses, err := dictSearcher.Find(ctx, tc.query)
@@ -124,7 +134,13 @@ func TestFind(t *testing.T) {
 			t.Errorf("%s: unexpected error finding by English: %v", tc.name, err)
 		}
 		if len(senses) != tc.expectCount {
-			t.Errorf("%s: got no results: got %d, want %d - %v", tc.name, len(senses), tc.expectCount, senses)
+			t.Errorf("TestFind %s: got no results: got %d, want %d - %v", tc.name, len(senses), tc.expectCount, senses)
+		}
+		if len(senses) > 0 && senses[0].Traditional != tc.expectTrad {
+			t.Errorf("TestFind %s: got traditional %s, want %s", tc.name, senses[0].Traditional, tc.expectTrad)
+		}
+		if len(senses) > 0 && senses[0].HeadwordId != tc.expectHwId {
+			t.Errorf("TestFind %s: got Headword Id %d, want %d", tc.name, senses[0].HeadwordId, tc.expectHwId)
 		}
 	}
 }
