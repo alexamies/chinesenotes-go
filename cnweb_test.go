@@ -122,6 +122,23 @@ func mockSmallDict() map[string]*dicttypes.Word {
 			},
 		},
 	}
+	s10 := "北京"
+	t10 := "\\N"
+	hw10 := dicttypes.Word{
+		HeadwordId:  10,
+		Simplified:  s10,
+		Traditional: t10,
+		Pinyin:      "běijīng",
+		Senses: []dicttypes.WordSense{
+			{
+				HeadwordId:  10,
+				Simplified:  s10,
+				Traditional: t10,
+				Pinyin:      "běijīng",
+				English:     "Beijing",
+			},
+		},
+	}
 	return map[string]*dicttypes.Word{
 		s1: &hw1,
 		t1: &hw1,
@@ -136,6 +153,7 @@ func mockSmallDict() map[string]*dicttypes.Word {
 		s8: &hw8,
 		s9: &hw9,
 		t9: &hw9,
+		s10: &hw10,
 	}
 }
 
@@ -150,7 +168,8 @@ func (m mockDocFinder) FindDocuments(ctx context.Context, dictSearcher dictionar
 	terms := parser.ParseQuery(query)
 	log.Printf("mockDocFinder.FindDocuments, query %s, nTerms %d, ", query, len(terms))
 	if m.reverseIndex != nil && !dicttypes.IsCJKChar(query) {
-		senses, err := m.reverseIndex.Find(ctx, query)
+		q := strings.ToLower(query)
+		senses, err := m.reverseIndex.Find(ctx, q)
 		if err != nil {
 			return nil, err
 		}
@@ -524,6 +543,15 @@ func TestFindDocs(t *testing.T) {
 			docs: []find.Document{},
 			expectContains: "蓮花",
 			fullText: false,
+		},
+		{
+			name:           "Reverse lookup by English equivalent - Upper case",
+			u:              "/find/",
+			acceptHeader:   "application/json",
+			query:          map[string]string{"query": "Beijing"},
+			docs:           []find.Document{},
+			expectContains: "北京",
+			fullText:       false,
 		},
 	}
 	ctx := context.Background()

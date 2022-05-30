@@ -556,12 +556,13 @@ func (df databaseDocFinder) FindDocuments(ctx context.Context, reverseIndex dict
 	terms := parser.ParseQuery(query)
 	log.Printf("FindDocuments, got: %d terms", len(terms))
 	if (len(terms) == 1) && (terms[0].DictEntry.HeadwordId == 0) {
-		log.Printf("FindDocuments, no Chinese in query, look for English and Pinyin matches: %s", query)
-		senses, err := reverseIndex.Find(ctx, terms[0].QueryText)
-		log.Printf("FindDocuments, found senses %v matching reverse query: %s", senses, query)
+		q := strings.ToLower(query)
+		log.Printf("FindDocuments, no Chinese in query, look for English and Pinyin matches: %s", q)
+		senses, err := reverseIndex.Find(ctx, q)
 		if err != nil {
 			return nil, err
 		}
+		log.Printf("FindDocuments, found senses %v matching reverse query: %s", senses, query)
 		terms[0].Senses = senses
 	}
 

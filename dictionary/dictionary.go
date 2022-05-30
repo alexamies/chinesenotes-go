@@ -59,20 +59,33 @@ func NewReverseIndex(dict *Dictionary, nExtractor *NotesExtractor) ReverseIndex 
 		for _, s := range v.Senses {
 			tokens := splitEnglish(s.English)
 			for _, eng := range tokens {
-				if senses, ok := revIndex[eng]; ok {
+				e := strings.ToLower(eng)
+				if senses, ok := revIndex[e]; ok {
+					if s.Traditional == "\\N" {
+						s.Traditional = ""
+					}
 					senses = append(senses, s)
-					revIndex[eng] = senses
+					revIndex[e] = senses
 				} else {
-					revIndex[eng] = []dicttypes.WordSense{s}
+					if s.Traditional == "\\N" {
+						s.Traditional = ""
+					}
+					revIndex[e] = []dicttypes.WordSense{s}
 				}
 			}
 			if len(s.Pinyin) > 0 {
 				p := dicttypes.NormalizePinyin(s.Pinyin)
+				if s.Traditional == "\\N" {
+					s.Traditional = ""
+				}
 				revIndex[p] = []dicttypes.WordSense{s}
 			}
 			if len(s.Notes) > 0 {
 				equivalents := nExtractor.Extract(s.Notes)
 				for _, eq := range equivalents {
+					if s.Traditional == "\\N" {
+						s.Traditional = ""
+					}
 					revIndex[eq] = []dicttypes.WordSense{s}
 				}
 			}

@@ -22,6 +22,10 @@ func mockSmallDict() map[string]*dicttypes.Word {
 	p3 := "xǐmǎlāyǎ xuěsōng"
 	e3 := "deodar cedar"
 	n3 := "Scientific name: Cedrus deodara, aka: Himalayan cedar; a native to the Himalayas (Wikipedia '喜马拉雅雪松')"
+	s4 := "北京"
+	t4 := "\\N"
+	p4 := "běijīng"
+	e4 := "Beijing"
 	hw1 := dicttypes.Word{
 		HeadwordId:  1,
 		Simplified:  s1,
@@ -68,12 +72,28 @@ func mockSmallDict() map[string]*dicttypes.Word {
 			},
 		},
 	}
+	hw4 := dicttypes.Word{
+		HeadwordId:  4,
+		Simplified:  s4,
+		Traditional: t4,
+		Pinyin:      p4,
+		Senses: []dicttypes.WordSense{
+			{
+				HeadwordId:  4,
+				Simplified:  s4,
+				Traditional: t4,
+				Pinyin:      p4,
+				English:     e4,
+			},
+		},
+	}
 	return map[string]*dicttypes.Word{
 		s1: &hw1,
 		t1: &hw1,
 		s2: &hw2,
 		s3: &hw3,
 		t3: &hw3,
+		s4: &hw4,
 	}
 }
 
@@ -100,7 +120,7 @@ func TestFind(t *testing.T) {
 			extractRe:   `Scientific name: (.*?)[\(,\,,\;] aka: (.*?)[\(,\,,\;]`,
 			query:       "region",
 			expectCount: 1,
-			expectTrad: "\\N",
+			expectTrad: "",
 			expectHwId: 2,
 		},
 		{
@@ -116,8 +136,16 @@ func TestFind(t *testing.T) {
 			extractRe:   `Scientific name: (.*?)[\(,\,,\;] aka: (.*?)[\(,\,,\;]`,
 			query:       "region",
 			expectCount: 1,
-			expectTrad: "\\N",
+			expectTrad: "",
 			expectHwId: 2,
+		},
+		{
+			name:        "English with upper case",
+			extractRe:   "",
+			query:       "beijing",
+			expectCount: 1,
+			expectTrad: "",
+			expectHwId: 4,
 		},
 	}
 	for _, tc := range tests {
