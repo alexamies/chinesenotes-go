@@ -26,6 +26,10 @@ func mockSmallDict() map[string]*dicttypes.Word {
 	t4 := "\\N"
 	p4 := "běijīng"
 	e4 := "Beijing"
+	s5 := "煉化"
+	t5 := "炼化"
+	p5 := "liànhuà"
+	e5 := "to refine; refining (e.g. oil, chemicals etc)"
 	hw1 := dicttypes.Word{
 		HeadwordId:  1,
 		Simplified:  s1,
@@ -87,6 +91,21 @@ func mockSmallDict() map[string]*dicttypes.Word {
 			},
 		},
 	}
+	hw5 := dicttypes.Word{
+		HeadwordId:  5,
+		Simplified:  s5,
+		Traditional: t5,
+		Pinyin:      p5,
+		Senses: []dicttypes.WordSense{
+			{
+				HeadwordId:  5,
+				Simplified:  s5,
+				Traditional: t5,
+				Pinyin:      p5,
+				English:     e5,
+			},
+		},
+	}
 	return map[string]*dicttypes.Word{
 		s1: &hw1,
 		t1: &hw1,
@@ -94,6 +113,8 @@ func mockSmallDict() map[string]*dicttypes.Word {
 		s3: &hw3,
 		t3: &hw3,
 		s4: &hw4,
+		s5: &hw5,
+		t5: &hw5,
 	}
 }
 
@@ -103,8 +124,8 @@ func TestFind(t *testing.T) {
 		extractRe   string
 		query       string
 		expectCount int
-		expectTrad string
-		expectHwId int
+		expectTrad  string
+		expectHwId  int
 	}
 	tests := []test{
 		{
@@ -112,40 +133,40 @@ func TestFind(t *testing.T) {
 			extractRe:   "",
 			query:       "lotus",
 			expectCount: 1,
-			expectTrad: "蓮花",
-			expectHwId: 1,
+			expectTrad:  "蓮花",
+			expectHwId:  1,
 		},
 		{
 			name:        "With delimiter",
 			extractRe:   `Scientific name: (.*?)[\(,\,,\;] aka: (.*?)[\(,\,,\;]`,
 			query:       "region",
 			expectCount: 1,
-			expectTrad: "",
-			expectHwId: 2,
+			expectTrad:  "",
+			expectHwId:  2,
 		},
 		{
 			name:        "From pinyin",
 			extractRe:   "",
 			query:       "lianhua",
-			expectCount: 1,
-			expectTrad: "蓮花",
-			expectHwId: 1,
+			expectCount: 2,
+			expectTrad:  "蓮花",
+			expectHwId:  1,
 		},
 		{
 			name:        "Equivalent from notes",
 			extractRe:   `Scientific name: (.*?)[\(,\,,\;] aka: (.*?)[\(,\,,\;]`,
 			query:       "region",
 			expectCount: 1,
-			expectTrad: "",
-			expectHwId: 2,
+			expectTrad:  "",
+			expectHwId:  2,
 		},
 		{
 			name:        "English with upper case",
 			extractRe:   "",
 			query:       "beijing",
 			expectCount: 1,
-			expectTrad: "",
-			expectHwId: 4,
+			expectTrad:  "",
+			expectHwId:  4,
 		},
 	}
 	for _, tc := range tests {
@@ -162,12 +183,12 @@ func TestFind(t *testing.T) {
 			t.Errorf("%s: unexpected error finding by English: %v", tc.name, err)
 		}
 		if len(senses) != tc.expectCount {
-			t.Errorf("TestFind %s: got no results: got %d, want %d - %v", tc.name, len(senses), tc.expectCount, senses)
+			t.Errorf("TestFind %s: num results: got %d, want %d - %v", tc.name, len(senses), tc.expectCount, senses)
 		}
-		if len(senses) > 0 && senses[0].Traditional != tc.expectTrad {
+		if len(senses) == 1 && senses[0].Traditional != tc.expectTrad {
 			t.Errorf("TestFind %s: got traditional %s, want %s", tc.name, senses[0].Traditional, tc.expectTrad)
 		}
-		if len(senses) > 0 && senses[0].HeadwordId != tc.expectHwId {
+		if len(senses) == 1 && senses[0].HeadwordId != tc.expectHwId {
 			t.Errorf("TestFind %s: got Headword Id %d, want %d", tc.name, senses[0].HeadwordId, tc.expectHwId)
 		}
 	}

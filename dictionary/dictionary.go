@@ -60,39 +60,45 @@ func NewReverseIndex(dict *Dictionary, nExtractor *NotesExtractor) ReverseIndex 
 			tokens := splitEnglish(s.English)
 			for _, eng := range tokens {
 				e := strings.ToLower(eng)
-				if senses, ok := revIndex[e]; ok {
-					if s.Traditional == "\\N" {
-						s.Traditional = ""
-					}
-					senses = append(senses, s)
-					revIndex[e] = senses
-				} else {
-					if s.Traditional == "\\N" {
-						s.Traditional = ""
-					}
-					revIndex[e] = []dicttypes.WordSense{s}
-				}
+				add(revIndex, e, s)
 			}
 			if len(s.Pinyin) > 0 {
 				p := dicttypes.NormalizePinyin(s.Pinyin)
-				if s.Traditional == "\\N" {
-					s.Traditional = ""
-				}
-				revIndex[p] = []dicttypes.WordSense{s}
+				add(revIndex, p, s)
+
 			}
 			if len(s.Notes) > 0 {
 				equivalents := nExtractor.Extract(s.Notes)
 				for _, eq := range equivalents {
-					if s.Traditional == "\\N" {
-						s.Traditional = ""
-					}
-					revIndex[eq] = []dicttypes.WordSense{s}
+					add(revIndex, eq, s)
 				}
 			}
 		}
 	}
 	return reverseIndexMem{
 		revIndex: revIndex,
+	}
+}
+
+// add add the word sense s to the reverse index revIndex with given key
+func add(revIndex map[string][]dicttypes.WordSense, key string, s dicttypes.WordSense) {
+	if s.Traditional == "\\N" {
+		s.Traditional = ""
+	}
+	if senses, ok := revIndex[key]; ok {
+		// Avoid
+		found := false
+		for _, ws := range senses {
+			if s.HeadwordId == ws.HeadwordId {
+				found = true
+			}
+		}
+		if !found {
+			senses = append(senses, s)
+			revIndex[key] = senses
+		}
+	} else {
+		revIndex[key] = []dicttypes.WordSense{s}
 	}
 }
 
