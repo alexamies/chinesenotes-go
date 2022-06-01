@@ -110,7 +110,8 @@ func splitEnglish(eng string) []string {
 	tokens := strings.Split(eng, "; ")
 	results := []string{}
 	for _, t := range tokens {
-		results = append(results, stripStopWords(t))
+		s := stripParen(t)
+		results = append(results, stripStopWords(s))
 	}
 	return results
 }
@@ -122,6 +123,13 @@ func stripStopWords(t string) string {
 		return strings.Replace(t, "an ", "", 1)
 	} else if strings.HasPrefix(t, "to ") {
 		return strings.Replace(t, "to ", "", 1)
+	}
+	return t
+}
+
+func stripParen(t string) string {
+	if i := strings.Index(t, "("); i >= 0 {
+		return strings.Trim(t[0:i], " ")
 	}
 	return t
 }

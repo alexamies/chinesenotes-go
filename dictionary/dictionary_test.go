@@ -168,6 +168,14 @@ func TestFind(t *testing.T) {
 			expectTrad:  "",
 			expectHwId:  4,
 		},
+		{
+			name:        "English with paretheses",
+			extractRe:   "",
+			query:       "refining",
+			expectCount: 1,
+			expectTrad:  "煉化",
+			expectHwId:  5,
+		},
 	}
 	for _, tc := range tests {
 		ctx := context.Background()
@@ -220,7 +228,33 @@ func TestSplitEnglish(t *testing.T) {
 	for _, tc := range tests {
 		got := splitEnglish(tc.equivalent)
 		if !reflect.DeepEqual(got, tc.want) {
-			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
+			t.Errorf("%s: splitEnglish(%s) got %q, want %q", tc.name, tc.equivalent, got, tc.want)
+		}
+	}
+}
+
+func TestStripParen(t *testing.T) {
+	type test struct {
+		name       string
+		equivalent string
+		want       string
+	}
+	tests := []test{
+		{
+			name:       "No parentheses",
+			equivalent: "item",
+			want:       "item",
+		},
+		{
+			name:       "One parentheses",
+			equivalent: "item (a thing)",
+			want:       "item",
+		},
+	}
+	for _, tc := range tests {
+		got := stripParen(tc.equivalent)
+		if got != tc.want {
+			t.Errorf("%s: stripParen(%s) got %q, want %q", tc.name, tc.equivalent, got, tc.want)
 		}
 	}
 }

@@ -486,7 +486,6 @@ func findDocs(ctx context.Context, response http.ResponseWriter, request *http.R
 		}
 	} else {
 		results, err = b.df.FindDocuments(ctx, b.reverseIndex, b.parser, q, fullText)
-		log.Printf("main.findDocs got %d terms from FindDocuments", len(results.Terms))
 	}
 
 	if err != nil {
