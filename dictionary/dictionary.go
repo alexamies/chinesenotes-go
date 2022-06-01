@@ -121,7 +121,7 @@ func stripStopWords(t string) string {
 	} else if strings.HasPrefix(t, "an ") {
 		return strings.Replace(t, "an ", "", 1)
 	} else if strings.HasPrefix(t, "to ") {
-		return strings.Replace(t, "an ", "", 1)
+		return strings.Replace(t, "to ", "", 1)
 	}
 	return t
 }

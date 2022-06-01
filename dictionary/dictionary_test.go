@@ -26,8 +26,8 @@ func mockSmallDict() map[string]*dicttypes.Word {
 	t4 := "\\N"
 	p4 := "běijīng"
 	e4 := "Beijing"
-	s5 := "煉化"
-	t5 := "炼化"
+	s5 := "炼化"
+	t5 := "煉化"
 	p5 := "liànhuà"
 	e5 := "to refine; refining (e.g. oil, chemicals etc)"
 	hw1 := dicttypes.Word{
