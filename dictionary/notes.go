@@ -12,29 +12,37 @@ import (
 // NotesExtractor is an interface for extracting multilingual equivalents using
 // regular expressions in the notes.
 type NotesExtractor struct {
-	pattern *regexp.Regexp
+	patterns []*regexp.Regexp
 }
 
 // NewNotesExtractor creates a new NotesExtractor.
-func NewNotesExtractor(patternStr string) (*NotesExtractor, error) {
-	log.Printf("dictionary.NewNotesExtractor: patternStr: %s", patternStr)
-	pattern, err := regexp.Compile(patternStr)
-	if err != nil {
-		return nil, fmt.Errorf("could not compile notes extractor regex %s: %v", patternStr, err)
+func NewNotesExtractor(patternList string) (*NotesExtractor, error) {
+	log.Printf("dictionary.NewNotesExtractor: patternStr: %s", patternList)
+	patterns := []*regexp.Regexp{}
+	patternStr := strings.Split(patternList, `","`)
+	for _, p := range patternStr {
+		p = strings.Trim(p, "\"")
+		pattern, err := regexp.Compile(p)
+		if err != nil {
+			return nil, fmt.Errorf("could not compile notes extractor regex %s: %v", patternStr, err)
+		}
+		patterns = append(patterns, pattern)
 	}
 	return &NotesExtractor{
-		pattern: pattern,
+		patterns: patterns,
 	}, nil
 }
 
 // Extract extracts multilingual equivalents from the given note
 func (n NotesExtractor) Extract(notes string) []string {
 	extracted := []string{}
-	g := n.pattern.FindStringSubmatch(notes)
-	// log.Printf("NotesExtractor.Extract: notes: %s, %d groups: %v", notes, len(g), g)
-	if len(g) > 0 {
-		for _, t := range g[1:] {
-			extracted = append(extracted, strings.Trim(t, " "))
+	for _, pattern := range n.patterns {
+		g := pattern.FindStringSubmatch(notes)
+		// log.Printf("NotesExtractor.Extract: notes: %s, %d groups: %v", notes, len(g), g)
+		if len(g) > 0 {
+			for _, t := range g[1:] {
+				extracted = append(extracted, strings.Trim(t, " "))
+			}
 		}
 	}
 	return extracted

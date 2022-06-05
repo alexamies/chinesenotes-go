@@ -18,27 +18,33 @@ func TestExtract(t *testing.T) {
 	}{
 		{
 			name:      "Empty",
-			extractRe: "Scientific name: ",
+			extractRe: ``,
 			note:      "",
 			want:      []string{},
 		},
 		{
 			name:      "Single equivalent",
-			extractRe: `Scientific name: (.*)[\(,\,]`,
+			extractRe: `"Scientific name: (.*?)[\(,\,,\;]"`,
 			note:      "Scientific name: Cedrus (CC-CEDICT '雪松'; Wikipedia '雪松')",
 			want:      []string{"Cedrus"},
 		},
 		{
 			name:      "Eqiuvalent has spaces",
-			extractRe: `Scientific name: (.*)[\(,\,]`,
+			extractRe: `"Scientific name: (.*)[\(,\,,\;]"`,
 			note:      "Scientific name: Cedrus deodara (Wikipedia '喜马拉雅雪松')",
 			want:      []string{"Cedrus deodara"},
 		},
 		{
 			name:      "Two equivalents",
-			extractRe: `Scientific name: (.*?)[\(,\,,\;] aka: (.*?)[\(,\,,\;]`,
+			extractRe: `"Scientific name: (.*?)[\(,\,,\;]","aka: (.*?)[\(,\,,\;]"`,
 			note:      "Scientific name: Cedrus deodara, aka: Himalayan cedar; a species of cedar native to the Himalayas (Wikipedia '喜马拉雅雪松')",
 			want:      []string{"Cedrus deodara", "Himalayan cedar"},
+		},
+		{
+			name:      "Two regex, one equivalent",
+			extractRe: `"Scientific name: (.*?)[\(,\,,\;]","Species: (.*?)[\(,\,,\;]"`,
+			note:      "Species: Caprimulgus indicus (Unihan '鷏')",
+			want:      []string{"Caprimulgus indicus"},
 		},
 	}
 	for _, tc := range testCases {

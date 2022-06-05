@@ -61,7 +61,6 @@ func (c WebAppConfig) NotesExtractorPattern() string {
 		log.Println("WebAppConfig.GetVar: could not find NotesExtractorPattern")
 		val = ""
 	}
-	val = strings.Trim(val, "\"")
 	return val
 }
 
