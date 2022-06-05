@@ -497,7 +497,7 @@ func findDocs(ctx context.Context, response http.ResponseWriter, request *http.R
 	// Add similar results from translation memory, only do this when more than
 	// one term is found and when the query string is between 2 and 8 characters
 	// in length
-	if !fullText && (b != nil) && (len([]rune(q)) > 1) && (len([]rune(q)) < 9) && (len(results.Terms) > 1) {
+	if !fullText && (b != nil) && (len([]rune(q)) > 1) && (len([]rune(q)) < 9) && (len(results.Terms) > 1) && (b.tmSearcher != nil) {
 		log.Println("main.findDocs similar results from translation memory")
 		tmResults, err := b.tmSearcher.Search(ctx, q, "", false, b.dict.Wdict)
 		if err != nil {
