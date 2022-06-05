@@ -15,4 +15,4 @@ FromEmail: do_not_reply@example.com
 PasswordResetURL: http://localhost:8080/loggedin/reset_password
 
  # Regular expression for extracting multilingual equivalents in the notes.
-NotesExtractorPattern: "Scientific name: (.*?)[\(,\,,\;] aka: (.*?)[\(,\,,\;]"
+NotesExtractorPattern: "Scientific name: (.*?)[\(,\,,\;]","Species: (.*?)[\(,\,,\;]"

@@ -902,7 +902,7 @@ Run it locally with minimal features (C-E dictionary lookp only) enabled
 
 ```shell
 sudo docker run -it --rm -p 8080:8080 --name cn-portal \
-  -e CNWEB_HOME=$CNWEB_HOME \
+  -e CNREADER_HOME="/" \
   cn-portal-image
 ```
 
