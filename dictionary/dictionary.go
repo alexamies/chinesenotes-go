@@ -70,7 +70,8 @@ func NewReverseIndex(dict *Dictionary, nExtractor *NotesExtractor) ReverseIndex 
 			if len(s.Notes) > 0 {
 				equivalents := nExtractor.Extract(s.Notes)
 				for _, eq := range equivalents {
-					add(revIndex, eq, s)
+					e := strings.ToLower(eq)
+					add(revIndex, e, s)
 				}
 			}
 		}

@@ -138,7 +138,7 @@ func TestFind(t *testing.T) {
 		},
 		{
 			name:        "With delimiter",
-			extractRe:   `Scientific name: (.*?)[\(,\,,\;] aka: (.*?)[\(,\,,\;]`,
+			extractRe:   `"Scientific name: (.*?)[\(,\,,\;]","Species: (.*?)[\(,\,,\;]"`,
 			query:       "region",
 			expectCount: 1,
 			expectTrad:  "",
@@ -154,11 +154,11 @@ func TestFind(t *testing.T) {
 		},
 		{
 			name:        "Equivalent from notes",
-			extractRe:   `Scientific name: (.*?)[\(,\,,\;] aka: (.*?)[\(,\,,\;]`,
-			query:       "region",
+			extractRe:   `"Scientific name: (.*?)[\(,\,,\;]","Species: (.*?)[\(,\,,\;]"`,
+			query:       "cedrus deodara",
 			expectCount: 1,
-			expectTrad:  "",
-			expectHwId:  2,
+			expectTrad:  "喜馬拉雅雪松",
+			expectHwId:  3,
 		},
 		{
 			name:        "English with upper case",
