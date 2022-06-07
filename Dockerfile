@@ -6,7 +6,7 @@ COPY . .
 RUN go build
 RUN apt-get update
 RUN apt-get install -y ca-certificates
-COPY webconfig.yaml /webconfig.yaml
+COPY *.yaml ./
 COPY data/*.tsv /data/
 COPY web-resources/*.html /web-resources/
 COPY web/* /web/

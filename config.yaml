@@ -1,0 +1,7 @@
+# Configuration file for command line utility
+
+# The name of the directory with dictionary files
+DictionaryDir: data
+
+# Dictionary files to load
+LUFiles: testdict.tsv

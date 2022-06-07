@@ -910,7 +910,7 @@ Browse to the URL http://localhost:8080
 Test basic lookup with curl
 
 ```shell
-curl http://localhost:8080/find/?query=你好
+curl http://localhost:8080/find/?query=邃古
 ```
 
 Set up the database as per the instructions at 
