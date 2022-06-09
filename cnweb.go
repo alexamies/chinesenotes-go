@@ -9,7 +9,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+//
 // Web application for Chinese-English dictionary lookup, translation memory,
 // and finding documents in a corpus. Settings in for the app are controlled
 // through the file config.yaml, located in the project home directory, which

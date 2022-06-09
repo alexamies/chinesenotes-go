@@ -1,16 +1,3 @@
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//    http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-
 package main
 
 import (
@@ -31,76 +18,76 @@ func TestNewTemplateMap(t *testing.T) {
 	const pinyin = "jǐn"
 	const english = "to be cautious"
 	ws := dicttypes.WordSense{
-		Id: 42,
-		HeadwordId: 42,
-		Simplified: simplified,
+		Id:          42,
+		HeadwordId:  42,
+		Simplified:  simplified,
 		Traditional: query,
-		Pinyin: pinyin,
-		English: english,
-		Grammar: "verb",
-		Concept: "\\N",
-		ConceptCN: "\\N",
-		Domain: "Literary Chinese",
-		DomainCN: "\\N",
-		Subdomain: "\\N",
+		Pinyin:      pinyin,
+		English:     english,
+		Grammar:     "verb",
+		Concept:     "\\N",
+		ConceptCN:   "\\N",
+		Domain:      "Literary Chinese",
+		DomainCN:    "\\N",
+		Subdomain:   "\\N",
 		SubdomainCN: "\\N",
-		Image: "\\N",
-		MP3: "\\N",
-		Notes: "\\N",
+		Image:       "\\N",
+		MP3:         "\\N",
+		Notes:       "\\N",
 	}
 	w := dicttypes.Word{
-		Simplified: simplified,
+		Simplified:  simplified,
 		Traditional: "謹",
-		Pinyin: pinyin,
-		HeadwordId: 42,
-		Senses: []dicttypes.WordSense{ws},
+		Pinyin:      pinyin,
+		HeadwordId:  42,
+		Senses:      []dicttypes.WordSense{ws},
 	}
 	term := find.TextSegment{
 		QueryText: query,
 		DictEntry: w,
 	}
 	results := find.QueryResults{
-		Query: query,
+		Query:          query,
 		CollectionFile: "",
 		NumCollections: 0,
-		NumDocuments: 0,
-		Collections: []find.Collection{},
-		Documents: []find.Document{},
-		Terms: []find.TextSegment{term},
+		NumDocuments:   0,
+		Collections:    []find.Collection{},
+		Documents:      []find.Document{},
+		Terms:          []find.TextSegment{term},
 	}
 	type test struct {
-		name string
+		name         string
 		templateName string
-		content interface{}
-		want string
-  }
-  tests := []test{
+		content      interface{}
+		want         string
+	}
+	tests := []test{
 		{
-			name: "Home page",
+			name:         "Home page",
 			templateName: "index.html",
-			content: map[string]string{"Title": title},
-			want: "<title>" + title + "</title>",
+			content:      map[string]string{"Title": title},
+			want:         "<title>" + title + "</title>",
 		},
 		{
-			name: "Find results",
+			name:         "Find results",
 			templateName: "find_results.html",
 			content: htmlContent{
-				Title: title,
+				Title:   title,
 				Results: results,
 			},
 			want: english,
 		},
-  }
-  for _, tc := range tests {
+	}
+	for _, tc := range tests {
 		templates := newTemplateMap(config.WebAppConfig{})
 		tmpl, ok := templates[tc.templateName]
 		if !ok {
-			t.Fatalf("%s, template not found: %s", tc.name, tc.templateName)
+			t.Errorf("%s, template not found: %s", tc.name, tc.templateName)
 		}
 		var buf bytes.Buffer
 		err := tmpl.Execute(&buf, tc.content)
 		if err != nil {
-			t.Fatalf("%s, error rendering template %v", tc.name, err)
+			t.Errorf("%s, error rendering template %v", tc.name, err)
 		}
 		got := buf.String()
 		if !strings.Contains(got, tc.want) {

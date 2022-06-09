@@ -1,15 +1,3 @@
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//    http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package main
 
 import (
@@ -140,19 +128,19 @@ func mockSmallDict() map[string]*dicttypes.Word {
 		},
 	}
 	return map[string]*dicttypes.Word{
-		s1: &hw1,
-		t1: &hw1,
-		s2: &hw2,
-		s3: &hw3,
-		t3: &hw3,
-		s4: &hw4,
-		s5: &hw5,
-		s6: &hw6,
-		t6: &hw6,
-		s7: &hw7,
-		s8: &hw8,
-		s9: &hw9,
-		t9: &hw9,
+		s1:  &hw1,
+		t1:  &hw1,
+		s2:  &hw2,
+		s3:  &hw3,
+		t3:  &hw3,
+		s4:  &hw4,
+		s5:  &hw5,
+		s6:  &hw6,
+		t6:  &hw6,
+		s7:  &hw7,
+		s8:  &hw8,
+		s9:  &hw9,
+		t9:  &hw9,
 		s10: &hw10,
 	}
 }
@@ -536,13 +524,13 @@ func TestFindDocs(t *testing.T) {
 			fullText:       false,
 		},
 		{
-			name: "Reverse lookup by English - HTML",
-			u: "/find/",
-			acceptHeader: "text/html",
-			query: map[string]string{"query": "lotus"},
-			docs: []find.Document{},
+			name:           "Reverse lookup by English - HTML",
+			u:              "/find/",
+			acceptHeader:   "text/html",
+			query:          map[string]string{"query": "lotus"},
+			docs:           []find.Document{},
 			expectContains: "蓮花",
-			fullText: false,
+			fullText:       false,
 		},
 		{
 			name:           "Reverse lookup by English equivalent - Upper case",
