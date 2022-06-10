@@ -1091,6 +1091,54 @@ func TestGetHeadwordId(t *testing.T) {
 	}
 }
 
+func TestTranslationHome(t *testing.T) {
+	webConfig := config.WebAppConfig{
+		ConfigVars: map[string]string{
+			"NotesReMatch": `FGDB entry ([0-9]*)`,
+			"NotesReplace": `<a href="/web/${1}.html">FGDB entry</a>`,
+		},
+	}
+	type test struct {
+		name           string
+		wdict          map[string]*dicttypes.Word
+		expectContains string
+	}
+	tests := []test{
+		{
+			name:           "Not found",
+			wdict:          map[string]*dicttypes.Word{},
+			expectContains: "Sorry we could not find that page",
+		},
+	}
+	for _, tc := range tests {
+		dict := dictionary.NewDictionary(tc.wdict)
+		extractor, err := dictionary.NewNotesExtractor("")
+		if err != nil {
+			t.Errorf("TestTranslationHome %s: not able to create extractor: %v", tc.name, err)
+			return
+		}
+		reverseIndex := dictionary.NewReverseIndex(dict, extractor)
+		b = &backends{
+			reverseIndex: reverseIndex,
+			df:           mockDocFinder{},
+			tmSearcher:   mockTMSearcher{},
+			dict:         dictionary.NewDictionary(tc.wdict),
+			parser:       find.MakeQueryParser(tc.wdict),
+			templates:    newTemplateMap(webConfig),
+			webConfig:    webConfig,
+		}
+		r := httptest.NewRequest(http.MethodPost, "/translateprocess", nil)
+		w := httptest.NewRecorder()
+		translationHome(w, r)
+		result := w.Body.String()
+		const expectContains = "Machine Translation"
+		if !strings.Contains(result, expectContains) {
+			t.Errorf("TestTranslationHome %s: got %q, want contains %q, ", tc.name, result, tc.expectContains)
+		}
+	}
+	b = nil
+}
+
 func TestWordDetail(t *testing.T) {
 	smallDict := mockSmallDict()
 	s := "一時三相"

@@ -659,6 +659,43 @@ const resetFormTmp = `
   <body>
 </html>
 `
+const translationTmpl = `
+<!DOCTYPE html>
+<html lang="en">
+  %s
+  <body>
+    %s
+    %s
+    <main>
+      <h2>Machine Translation</h2>
+      <form action='/translateprocess' method='POST'>
+      <h2>Source Text</h2>
+      <div>
+        <input type="text" value="{{.SourceText}}" size="80" required
+                 name='source' id='source'>
+        <div>
+          Enter Chinese source text in traditional characters
+        </div>
+      </div>
+      <div>
+        <p>
+          <button type="submit" id="findSubmit">Translate</button>
+          &nbsp;
+          <a class='regular' href='/translate'>Clear</a>
+        </p>
+        <div>
+        <h2>Translated Text</h2>
+        <textarea rows="4" cols="100" name='translated' id="translated"
+                  >{{.TranslatedText}}</textarea>
+        </div>
+      <input type="hidden" id="processing" name="processing"
+             value="{{.PostProcessing}}">
+    </form>
+    </main>
+    %s
+  <body>
+</html>
+`
 
 // newTemplateMap builds the template map
 func newTemplateMap(webConfig config.WebAppConfig) map[string]*template.Template {
@@ -679,7 +716,7 @@ func newTemplateMap(webConfig config.WebAppConfig) map[string]*template.Template
 		"request_reset_form.html":          requestResetTmp,
 		"reset_password_confirmation.html": resetConfTmp,
 		"reset_password_form.html":         resetFormTmp,
-		"translation.html":                 notFoundTmpl,
+		"translation.html":                 translationTmpl,
 		"word_detail.html":                 wordDetailTmpl,
 	}
 	templateMap := make(map[string]*template.Template)

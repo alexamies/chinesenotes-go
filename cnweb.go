@@ -687,11 +687,11 @@ func processTranslation(w http.ResponseWriter, r *http.Request) {
 	title := b.webConfig.GetVarWithDefault("Title", defTitle)
 	if translationProcessor == nil {
 		p := &translationPage{
-			Message:        "Translation processor not initialized",
+			Message:        "Translation service not initialized",
 			Title:          title,
 			PostProcessing: "on",
 		}
-		showTranslationPage(w, r, p)
+		showTranslationPage(w, b, p)
 	}
 	source := r.FormValue("source")
 	translated := ""
@@ -710,6 +710,7 @@ func processTranslation(w http.ResponseWriter, r *http.Request) {
 		gcpChecked = ""
 		glossaryChecked = "checked"
 	}
+	log.Printf("processTranslation, glossaryChecked %s, source: %s", glossaryChecked, source)
 	processingChecked := r.FormValue("processing")
 	if len(source) > 0 {
 		log.Printf("platform: %s", platform)
@@ -730,8 +731,8 @@ func processTranslation(w http.ResponseWriter, r *http.Request) {
 		notes = result.Notes
 		log.Printf("suggestion notes: %s, suggested translation: %s", notes, translated)
 	}
-	log.Printf("deepLChecked: %s, gcpChecked: %s, glossaryChecked: %s, processingChecked: %s",
-		deepLChecked, gcpChecked, glossaryChecked, processingChecked)
+	log.Printf("deepLChecked: %s, gcpChecked: %s, glossaryChecked: %s, processingChecked: %s, len(translated) = %d",
+		deepLChecked, gcpChecked, glossaryChecked, processingChecked, len(translated))
 	if config.PasswordProtected() {
 		sessionInfo := enforceValidSession(w, r)
 		if !sessionInfo.Valid {
@@ -753,7 +754,7 @@ func processTranslation(w http.ResponseWriter, r *http.Request) {
 		GlossaryChecked: glossaryChecked,
 		PostProcessing:  postProcessing,
 	}
-	showTranslationPage(w, r, p)
+	showTranslationPage(w, b, p)
 }
 
 // showQueryResults displays query results on a HTML page
@@ -816,7 +817,7 @@ func showQueryResults(w io.Writer, b *backends, results find.QueryResults, templ
 }
 
 // Displays the translation page.
-func showTranslationPage(w http.ResponseWriter, r *http.Request, p *translationPage) {
+func showTranslationPage(w http.ResponseWriter, b *backends, p *translationPage) {
 	displayPage(w, b, "translation.html", p)
 }
 
@@ -1325,18 +1326,18 @@ func (h StaticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func translate(sourceText, platform string) (*string, error) {
 	if platform == "DeepL" {
 		if deepLApiClient == nil {
-			return nil, fmt.Errorf("API client not initialized: %s", platform)
+			return nil, fmt.Errorf("DeepL API client not initialized: %s", platform)
 		}
 		return deepLApiClient.Translate(sourceText)
 	}
 	if platform == "gcp" {
 		if translateApiClient == nil {
-			return nil, fmt.Errorf("API client not initialized: %s", platform)
+			return nil, fmt.Errorf("GCP API client not initialized: %s", platform)
 		}
 		return translateApiClient.Translate(sourceText)
 	}
 	if glossaryApiClient == nil {
-		return nil, fmt.Errorf("API client not initialized: %s", platform)
+		return nil, fmt.Errorf("API client still not initialized: %s", platform)
 	}
 	return glossaryApiClient.Translate(sourceText)
 }
@@ -1360,7 +1361,7 @@ func translationHome(w http.ResponseWriter, r *http.Request) {
 		GlossaryChecked: "checked",
 		PostProcessing:  "on",
 	}
-	showTranslationPage(w, r, p)
+	showTranslationPage(w, b, p)
 }
 
 // translationMemory handles requests for translation memory searches
