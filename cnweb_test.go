@@ -193,6 +193,18 @@ func (m mockDocFinder) Inititialized() bool {
 	return true
 }
 
+// mockApiClient gives mock translations
+type mockApiClient struct {
+}
+
+func (m mockApiClient) Translate(sourceText string) (*string, error) {
+	if sourceText == "人" {
+		translation := "person"
+		return &translation, nil
+	}
+	return nil, fmt.Errorf("Do not know how to translate %s", sourceText)
+}
+
 // TestMain runs integration tests if the flag -integration is set
 func TestMain(m *testing.M) {
 	os.Clearenv()
@@ -1105,9 +1117,9 @@ func TestTranslationHome(t *testing.T) {
 	}
 	tests := []test{
 		{
-			name:           "Not found",
+			name:           "Shows page",
 			wdict:          map[string]*dicttypes.Word{},
-			expectContains: "Sorry we could not find that page",
+			expectContains: "Machine Translation",
 		},
 	}
 	for _, tc := range tests {
@@ -1127,13 +1139,67 @@ func TestTranslationHome(t *testing.T) {
 			templates:    newTemplateMap(webConfig),
 			webConfig:    webConfig,
 		}
-		r := httptest.NewRequest(http.MethodPost, "/translateprocess", nil)
+		r := httptest.NewRequest(http.MethodPost, "/translate", nil)
 		w := httptest.NewRecorder()
 		translationHome(w, r)
 		result := w.Body.String()
-		const expectContains = "Machine Translation"
-		if !strings.Contains(result, expectContains) {
+		if !strings.Contains(result, tc.expectContains) {
 			t.Errorf("TestTranslationHome %s: got %q, want contains %q, ", tc.name, result, tc.expectContains)
+		}
+	}
+	b = nil
+}
+
+func TestProcessTranslation(t *testing.T) {
+	webConfig := config.WebAppConfig{
+		ConfigVars: map[string]string{
+			"NotesReMatch": `FGDB entry ([0-9]*)`,
+			"NotesReplace": `<a href="/web/${1}.html">FGDB entry</a>`,
+		},
+	}
+	type test struct {
+		name           string
+		wdict          map[string]*dicttypes.Word
+		expectContains string
+	}
+	tests := []test{
+		{
+			name:           "Translation service invoked",
+			wdict:          map[string]*dicttypes.Word{},
+			expectContains: "person",
+		},
+	}
+	for _, tc := range tests {
+		dict := dictionary.NewDictionary(tc.wdict)
+		extractor, err := dictionary.NewNotesExtractor("")
+		if err != nil {
+			t.Errorf("TestProcessTranslation %s: not able to create extractor: %v", tc.name, err)
+			return
+		}
+		reverseIndex := dictionary.NewReverseIndex(dict, extractor)
+		b = &backends{
+			reverseIndex: reverseIndex,
+			df:           mockDocFinder{},
+			tmSearcher:   mockTMSearcher{},
+			dict:         dictionary.NewDictionary(tc.wdict),
+			parser:       find.MakeQueryParser(tc.wdict),
+			templates:    newTemplateMap(webConfig),
+			webConfig:    webConfig,
+			glossaryApiClient: mockApiClient{},
+		}
+		r := &http.Request{
+			Method: "POST",
+			URL:    &url.URL{Path: "translateprocess"},
+			Form:   url.Values{
+				"source": []string{"人"},
+				"platform": []string{"withGlossary"},
+			},
+		}
+		w := httptest.NewRecorder()
+		processTranslation(w, r)
+		result := w.Body.String()
+		if !strings.Contains(result, tc.expectContains) {
+			t.Errorf("TestProcessTranslation %s: got %q, want contains %q, ", tc.name, result, tc.expectContains)
 		}
 	}
 	b = nil

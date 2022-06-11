@@ -60,8 +60,6 @@ var (
 	mediaSearcher                                         *media.MediaSearcher
 	docTitleFinder                                        find.DocTitleFinder
 	docMap                                                map[string]find.DocInfo
-	translationProcessor                                  transtools.Processor
-	deepLApiClient, translateApiClient, glossaryApiClient transtools.ApiClient
 )
 
 // backends holds dependencies that access remote resources
@@ -74,6 +72,8 @@ type backends struct {
 	templates    map[string]*template.Template
 	tmSearcher   transmemory.Searcher
 	webConfig    config.WebAppConfig
+	deepLApiClient, translateApiClient, glossaryApiClient transtools.ApiClient
+	translationProcessor                                  transtools.Processor
 }
 
 // htmlContent holds content for HTML template
@@ -641,15 +641,15 @@ func highlightMatches(r find.QueryResults) find.QueryResults {
 	return results
 }
 
-// Initializes translation API clients and processing utility.
-func initTranslationClients() {
+// initTranslationClients initializes translation API clients and processing utility.
+func initTranslationClients(b *backends) {
 	deepLKey, ok := os.LookupEnv(deepLKeyName)
 	if !ok {
 		log.Printf("%s not set\n", deepLKeyName)
 	} else {
-		deepLApiClient = transtools.NewDeepLClient(deepLKey)
+		b.deepLApiClient = transtools.NewDeepLClient(deepLKey)
 	}
-	translateApiClient = transtools.NewGoogleClient()
+	b.translateApiClient = transtools.NewGoogleClient()
 	glossaryName, ok := os.LookupEnv(glossaryKeyName)
 	if !ok {
 		log.Printf("%s not set\n", glossaryKeyName)
@@ -658,7 +658,7 @@ func initTranslationClients() {
 		if !ok {
 			log.Printf("%s not set\n", projectIDKey)
 		} else {
-			glossaryApiClient = transtools.NewGlossaryClient(projectID, glossaryName)
+			b.glossaryApiClient = transtools.NewGlossaryClient(projectID, glossaryName)
 		}
 	}
 	fExpected, err := os.Open(transtools.ExpectedDataFile)
@@ -679,13 +679,13 @@ func initTranslationClients() {
 			log.Printf("Error closing replace file: %v", err)
 		}
 	}()
-	translationProcessor = transtools.NewProcessor(fExpected, fReplace)
+	b.translationProcessor = transtools.NewProcessor(fExpected, fReplace)
 }
 
-// Performs translation and post processing of source text.
+// processTranslation performs translation and post processing of source text.
 func processTranslation(w http.ResponseWriter, r *http.Request) {
 	title := b.webConfig.GetVarWithDefault("Title", defTitle)
-	if translationProcessor == nil {
+	if b.translationProcessor == nil {
 		p := &translationPage{
 			Message:        "Translation service not initialized",
 			Title:          title,
@@ -714,7 +714,7 @@ func processTranslation(w http.ResponseWriter, r *http.Request) {
 	processingChecked := r.FormValue("processing")
 	if len(source) > 0 {
 		log.Printf("platform: %s", platform)
-		trText, err := translate(source, platform)
+		trText, err := translate(b, source, platform)
 		if err != nil {
 			log.Printf("Translation error: %v", err)
 			message = err.Error()
@@ -726,7 +726,7 @@ func processTranslation(w http.ResponseWriter, r *http.Request) {
 		message = "Please enter translated text or click Translate for a machine translation"
 	}
 	if len(translated) > 0 && processingChecked == "on" {
-		result := translationProcessor.Suggest(source, translated)
+		result := b.translationProcessor.Suggest(source, translated)
 		translated = result.Replacement
 		notes = result.Notes
 		log.Printf("suggestion notes: %s, suggested translation: %s", notes, translated)
@@ -1323,23 +1323,23 @@ func (h StaticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // Call the relevant API to translate text.
-func translate(sourceText, platform string) (*string, error) {
+func translate(b *backends, sourceText, platform string) (*string, error) {
 	if platform == "DeepL" {
-		if deepLApiClient == nil {
+		if b.deepLApiClient == nil {
 			return nil, fmt.Errorf("DeepL API client not initialized: %s", platform)
 		}
-		return deepLApiClient.Translate(sourceText)
+		return b.deepLApiClient.Translate(sourceText)
 	}
 	if platform == "gcp" {
-		if translateApiClient == nil {
+		if b.translateApiClient == nil {
 			return nil, fmt.Errorf("GCP API client not initialized: %s", platform)
 		}
-		return translateApiClient.Translate(sourceText)
+		return b.translateApiClient.Translate(sourceText)
 	}
-	if glossaryApiClient == nil {
+	if b.glossaryApiClient == nil {
 		return nil, fmt.Errorf("API client still not initialized: %s", platform)
 	}
-	return glossaryApiClient.Translate(sourceText)
+	return b.glossaryApiClient.Translate(sourceText)
 }
 
 // Initialzie an empty translation page and display it.
@@ -1521,7 +1521,7 @@ func main() {
 	http.HandleFunc("/loggedin/reset_password", resetPasswordFormHandler)
 	http.HandleFunc("/loggedin/reset_password_submit", resetPasswordHandler)
 	http.HandleFunc("/loggedin/submitcpwd", changePasswordHandler)
-	initTranslationClients()
+	initTranslationClients(b)
 	http.HandleFunc("/translateprocess", processTranslation)
 	http.HandleFunc("/translate", translationHome)
 	http.Handle("/web/", http.StripPrefix("/web/", StaticHandler{}))
