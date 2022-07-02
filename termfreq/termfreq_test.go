@@ -28,19 +28,19 @@ var (
 	projectID = flag.String("project_id", "", "GCP project ID")
 )
 
-// TestFindDocsForTerm tests the default HTTP handler.
-func TestFindDocsForTerm(t *testing.T) {
+func TestFindDocsTermFreq(t *testing.T) {
 	ctx := context.Background()
 	client, err := firestore.NewClient(ctx, *projectID)
 	if err != nil {
-		log.Fatalf("Failed to create client: %v", err)
+		t.Fatalf("Failed to create client: %v", err)
 	}
 	defer client.Close()
 	corpus := "cnreader"
 	generation := 0
 	terms := []string{"古"}
-	err = FindDocsForTerm(ctx, client, corpus, generation, terms)
+	docs, err := FindDocsTermFreq(ctx, client, corpus, generation, terms)
 	if err != nil {
-		log.Printf("Failed to create client: %v", err)
+		t.Errorf("Unexpected error in test: %v", err)
 	}
+	log.Printf("FindDocsTermFreq: found %d docs\n: %v", len(docs), docs)
 }
