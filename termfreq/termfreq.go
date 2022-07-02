@@ -20,6 +20,7 @@ package termfreq
 import (
         "context"
         "fmt"
+        "log"
 
         "google.golang.org/api/iterator"
 
@@ -43,6 +44,7 @@ type TermFreqDoc struct {
 
 type BM25Score struct {
 	Document string
+	Collection string
 	Score float64
 }
 
@@ -69,11 +71,22 @@ func bm25(entries []*TermFreqDoc) float64 {
 	return score
 }
 
+// FindDocsBigramFreq finds documents with occurences of any of the bigram given in the corpus ordered by BM25 score
+func FindDocsBigramFreq(ctx context.Context, client *firestore.Client, corpus string, generation int, terms []string) ([]BM25Score, error) {
+	fbCol := fmt.Sprintf("%s_bigram_doc_freq%d", corpus, generation)
+	return findDocsTermFreq(ctx, client, fbCol, terms)
+}
+
 // FindDocsTermFreq finds documents with occurences of any of the terms given in the corpus ordered by BM25 score
 func FindDocsTermFreq(ctx context.Context, client *firestore.Client, corpus string, generation int, terms []string) ([]BM25Score, error) {
 	fbCol := fmt.Sprintf("%s_wordfreqdoc%d", corpus, generation)
+	return findDocsTermFreq(ctx, client, fbCol, terms)
+}	
+
+// findDocsTermFreq finds documents with occurences of any of the terms or bigrams
+func findDocsTermFreq(ctx context.Context, client *firestore.Client, fbCol string, terms []string) ([]BM25Score, error) {
 	entries := client.Collection(fbCol)
-	q := entries.Where("term", "in", terms).OrderBy("freq", firestore.Desc)
+	q := entries.Where("term", "in", terms).OrderBy("freq", firestore.Desc).Limit(100)
 	iter := q.Documents(ctx)
 	defer iter.Stop()
 	docs := map[string][]*TermFreqDoc{}
@@ -90,7 +103,7 @@ func FindDocsTermFreq(ctx context.Context, client *firestore.Client, corpus stri
 		if err != nil {
 			return nil, fmt.Errorf("FindDocsTermFreq type conversion error: %v\n", err)
 		}
-		fmt.Printf("%s: %d in %s", tf.Term, tf.Freq, tf.Document)
+		log.Printf("%s: %d in doc %s, col %s", tf.Term, tf.Freq, tf.Document, tf.Collection)
 		d, ok := docs[tf.Document]
 		if ok {
 			d = append(d, &tf)
@@ -101,8 +114,13 @@ func FindDocsTermFreq(ctx context.Context, client *firestore.Client, corpus stri
 	}
 	scores := []BM25Score{}
 	for k, v := range docs {
+		col := ""
+		if len(v) > 0 {
+			col = v[0].Collection
+		}
 		d := BM25Score{
 			Document: k,
+			Collection: col,
 			Score: bm25(v),
 		}
 		scores = append(scores, d)

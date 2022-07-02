@@ -35,9 +35,9 @@ func TestFindDocsTermFreq(t *testing.T) {
 		t.Fatalf("Failed to create client: %v", err)
 	}
 	defer client.Close()
-	corpus := "cnreader"
+	corpus := "cnotes"
 	generation := 0
-	terms := []string{"古"}
+	terms := []string{"丘"}
 	docs, err := FindDocsTermFreq(ctx, client, corpus, generation, terms)
 	if err != nil {
 		t.Errorf("Unexpected error in test: %v", err)
