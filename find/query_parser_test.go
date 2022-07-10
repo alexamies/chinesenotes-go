@@ -24,7 +24,7 @@ import (
 func TestParseChinese0(t *testing.T) {
 	t.Log("TestParseChinese: Begin unit tests\n")
 	dict := map[string]*dicttypes.Word{}
-	parser := MakeQueryParser(dict)
+	parser := NewQueryParser(dict)
 	s1 := "小"
 	query := s1
 	terms := parser.ParseQuery(query)
@@ -40,7 +40,7 @@ func TestParseChinese0(t *testing.T) {
 func TestParseChinese1(t *testing.T) {
 	t.Log("TestParseChinese: Begin unit tests")
 	dict := map[string]*dicttypes.Word{}
-	parser := MakeQueryParser(dict)
+	parser := NewQueryParser(dict)
 	s1 := "小"
 	s2 := "王"
 	query := s1 + s2
@@ -70,7 +70,7 @@ func TestParseChinese2(t *testing.T) {
 	w.Pinyin = "xiǎo"
 	w.HeadwordId = 42
 	dict["小"] = &w
-	parser := MakeQueryParser(dict)
+	parser := NewQueryParser(dict)
 	s2 := "王"
 	query := s1 + s2
 	terms := parser.ParseQuery(query)
@@ -96,7 +96,7 @@ func TestParseChinese3(t *testing.T) {
 	w.Pinyin = "nǐhǎo"
 	w.HeadwordId = 42
 	dict["你好"] = &w
-	parser := MakeQueryParser(dict)
+	parser := NewQueryParser(dict)
 	s2 := "小"
 	s3 := "王"
 	query := s1 + s2 + s3
@@ -126,7 +126,7 @@ func TestParseChinese4(t *testing.T) {
 	w.Pinyin = "nǐhǎo"
 	w.HeadwordId = 42
 	dict["你好"] = &w
-	parser := MakeQueryParser(dict)
+	parser := NewQueryParser(dict)
 	s2 := "，"
 	s3 := "小"
 	s4 := "王"
@@ -147,7 +147,7 @@ func TestParseChinese4(t *testing.T) {
 // Test empty query
 func TestParseQuery0(t *testing.T) {
 	dict := map[string]*dicttypes.Word{}
-	parser := MakeQueryParser(dict)
+	parser := NewQueryParser(dict)
 	terms := parser.ParseQuery("")
 	if len(terms) != 0 {
 		t.Fatalf("TestParseQuery0: len(terms) != 0: %d", len(terms))
@@ -158,7 +158,7 @@ func TestParseQuery0(t *testing.T) {
 func TestParseQuery1(t *testing.T) {
 	query := "hello"
 	dict := map[string]*dicttypes.Word{}
-	parser := MakeQueryParser(dict)
+	parser := NewQueryParser(dict)
 	terms := parser.ParseQuery(query)
 	if len(terms) != 1 {
 		t.Fatalf("TestParseQuery1: len(terms) != 1: %d", len(terms))
@@ -174,7 +174,7 @@ func TestParseQuery2(t *testing.T) {
 	s2 := "王"
 	query := s1 + s2
 	dict := map[string]*dicttypes.Word{}
-	parser := MakeQueryParser(dict)
+	parser := NewQueryParser(dict)
 	terms := parser.ParseQuery(query)
 	if len(terms) != 2 {
 		t.Fatalf("TestParseQuery2: len(terms) != 2: %d", len(terms))
@@ -194,7 +194,7 @@ func TestParseQuery3(t *testing.T) {
 	s3 := "王"
 	query := s1 + s2 + s3
 	dict := map[string]*dicttypes.Word{}
-	parser := MakeQueryParser(dict)
+	parser := NewQueryParser(dict)
 	terms := parser.ParseQuery(query)
 	if len(terms) != 3 {
 		t.Fatalf("TestParseQuery3: len(terms) != 3: %v", terms)

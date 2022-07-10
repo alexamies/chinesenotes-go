@@ -146,7 +146,7 @@ func initApp(ctx context.Context) (*backends, error) {
 			return nil, fmt.Errorf("main.initApp() unable to load dictionary from net: %v", err)
 		}
 	}
-	parser := find.MakeQueryParser(dict.Wdict)
+	parser := find.NewQueryParser(dict.Wdict)
 	var tms transmemory.Searcher
 	if database != nil {
 		tms, err = transmemory.NewSearcher(ctx, database)

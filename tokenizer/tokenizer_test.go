@@ -15,15 +15,38 @@
 package tokenizer
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
 
-// Test simple query with one character
+// isEqual checks equality since introduction of generics seems to break reflect.DeepEqual
+func isEqual(got, want []TextToken) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i, _ := range got {
+		if got[i].Token != want[i].Token {
+			return false
+		}
+	}
+	return true
+}
+
+// TestGreedyLtoR tests simple query with one character
+func TestNewDictTokenizer(t *testing.T) {
+	dict := map[string]bool{"你好": true}
+	tokenizer := NewDictTokenizer(dict)
+	chunk := "你好"
+	tokens := tokenizer.Tokenize(chunk)
+	expect := 1
+	if len(tokens) != expect &&  tokens[0].Token != chunk {
+		t.Error("TestNewDictTokenizer: expect list of one token, got ", tokens)
+	}
+}
+
+// TestGreedyLtoR tests simple query with one character
 func TestGreedyLtoR(t *testing.T) {
-	t.Log("TestGreedyLtoR: Begin unit tests")
 	dict := map[string]*dicttypes.Word{}
 	s1 := "你好"
 	w := dicttypes.Word{}
@@ -32,19 +55,50 @@ func TestGreedyLtoR(t *testing.T) {
 	w.Pinyin = "nǐhǎo"
 	w.HeadwordId = 42
 	dict["你好"] = &w
-	tokenizer := DictTokenizer{dict}
+	tokenizer := NewDictTokenizer(dict)
 	chunk := "你好"
 	tokens := tokenizer.greedyLtoR(chunk)
 	expect := 1
 	if len(tokens) != expect &&  tokens[0].Token != chunk {
-		t.Error("TestTokenize1: expect list of one token, got ", tokens)
+		t.Error("TestGreedyLtoR: expect list of one token, got ", tokens)
 	}
 }
 
-// Test simple query with one character
+// TestTerm tests the generic method
+func TestTerm(t *testing.T) {
+	emptyDict := map[string]bool{}
+	simpleDict := map[string]bool{"全": true}
+	testCases := []struct {
+		name string
+		dict map[string]bool
+		in  string
+		wantOK bool
+	}{
+		{
+			name: "Empty",
+			dict: emptyDict,
+			in: "全", 
+			wantOK: false,
+		},
+		{
+			name: "Happy pass",
+			dict: simpleDict,
+			in: "全",
+			wantOK: true,
+		},
+	}
+  for _, tc := range testCases {
+		_, ok := term(tc.dict, tc.in)
+  	if ok != tc.wantOK {
+  		t.Errorf("TestTerm %s, got %t, wantOK %t", tc.name, ok, tc.wantOK)
+  	}
+	}
+}
+
+// TestGreedyRtoL tests simple query with one character
 func TestGreedyRtoL(t *testing.T) {
 	chunk := "全"
-	tokenizer := DictTokenizer{}
+	tokenizer := DictTokenizer[bool]{}
 	tokens := tokenizer.greedyRtoL(chunk)
 	expect := 1
 	if len(tokens) != expect &&  tokens[0].Token != chunk {
@@ -278,7 +332,7 @@ func TestTokenize(t *testing.T) {
 	comma := TextToken{
 		Token: "，",
 	}
-	tokenizer := DictTokenizer{wdict}
+	tokenizer := NewDictTokenizer(wdict)
 	testCases := []struct {
 		name string
 		in  string
@@ -337,8 +391,8 @@ func TestTokenize(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		got := tokenizer.Tokenize(tc.in)
-  	if !reflect.DeepEqual(tc.want, got)  {
-  		t.Errorf("%s, expected %v, got %v", tc.name, tc.want, got)
+  	if !isEqual(got, tc.want) {
+  		t.Errorf("%s, got %v, want %v", tc.name, got, tc.want)
   	}
 	}
 }

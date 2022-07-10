@@ -580,7 +580,7 @@ func TestFindDocs(t *testing.T) {
 			},
 			tmSearcher: mockTMSearcher{},
 			dict:       dict,
-			parser:     find.MakeQueryParser(dict.Wdict),
+			parser:     find.NewQueryParser(dict.Wdict),
 			templates:  newTemplateMap(config.WebAppConfig{}),
 		}
 		r := httptest.NewRequest(http.MethodGet, u, nil)
@@ -686,7 +686,7 @@ func TestFindFullText(t *testing.T) {
 			},
 			tmSearcher: mockTMSearcher{},
 			dict:       dictionary.NewDictionary(wdict),
-			parser:     find.MakeQueryParser(wdict),
+			parser:     find.NewQueryParser(wdict),
 			templates:  newTemplateMap(config.WebAppConfig{}),
 		}
 		r := httptest.NewRequest(http.MethodGet, u, nil)
@@ -731,7 +731,7 @@ func TestFindHandler(t *testing.T) {
 		df:           mockDocFinder{},
 		tmSearcher:   mockTMSearcher{},
 		dict:         dictionary.NewDictionary(wdict),
-		parser:       find.MakeQueryParser(wdict),
+		parser:       find.NewQueryParser(wdict),
 	}
 	type test struct {
 		name           string
@@ -1052,7 +1052,7 @@ func TestTranslationMemory(t *testing.T) {
 			df:           mockDocFinder{},
 			tmSearcher:   mockTMSearcher{tc.words},
 			dict:         dictionary.NewDictionary(wdict),
-			parser:       find.MakeQueryParser(wdict),
+			parser:       find.NewQueryParser(wdict),
 		}
 		u := "/findtm?query=" + tc.query
 		r := httptest.NewRequest(http.MethodGet, u, nil)
@@ -1135,7 +1135,7 @@ func TestTranslationHome(t *testing.T) {
 			df:           mockDocFinder{},
 			tmSearcher:   mockTMSearcher{},
 			dict:         dictionary.NewDictionary(tc.wdict),
-			parser:       find.MakeQueryParser(tc.wdict),
+			parser:       find.NewQueryParser(tc.wdict),
 			templates:    newTemplateMap(webConfig),
 			webConfig:    webConfig,
 		}
@@ -1182,7 +1182,7 @@ func TestProcessTranslation(t *testing.T) {
 			df:           mockDocFinder{},
 			tmSearcher:   mockTMSearcher{},
 			dict:         dictionary.NewDictionary(tc.wdict),
-			parser:       find.MakeQueryParser(tc.wdict),
+			parser:       find.NewQueryParser(tc.wdict),
 			templates:    newTemplateMap(webConfig),
 			webConfig:    webConfig,
 			glossaryApiClient: mockApiClient{},
@@ -1266,7 +1266,7 @@ func TestWordDetail(t *testing.T) {
 			df:           mockDocFinder{},
 			tmSearcher:   mockTMSearcher{},
 			dict:         dictionary.NewDictionary(tc.wdict),
-			parser:       find.MakeQueryParser(tc.wdict),
+			parser:       find.NewQueryParser(tc.wdict),
 			templates:    newTemplateMap(webConfig),
 			webConfig:    webConfig,
 		}

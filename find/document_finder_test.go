@@ -118,7 +118,7 @@ func TestFindDocuments(t *testing.T) {
 	}
 	reverseIndex := mockReverseIndex{}
 	dict := map[string]*dicttypes.Word{}
-	parser := MakeQueryParser(dict)
+	parser := NewQueryParser(dict)
 
 	// Test data
 	type test struct {
@@ -255,7 +255,7 @@ func TestFindDocumentsInCol(t *testing.T) {
 	}
 	reverseIndex := mockReverseIndex{}
 	dict := map[string]*dicttypes.Word{}
-	parser := MakeQueryParser(dict)
+	parser := NewQueryParser(dict)
 
 	// Test data
 	type test struct {

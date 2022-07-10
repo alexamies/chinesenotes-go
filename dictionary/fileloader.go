@@ -39,6 +39,30 @@ func LoadDictFile(appConfig config.AppConfig) (*Dictionary, error) {
 	return NewDictionary(wdict), nil
 }
 
+// LoadDictKeys loads the keys only from static files
+func LoadDictKeys(appConfig config.AppConfig) (*map[string]bool, error) {
+	fNames := appConfig.LUFileNames
+	log.Printf("LoadDictFile, loading %d files", len(fNames))
+	wdict := make(map[string]bool)
+	avoidSub := appConfig.AvoidSubDomains()
+	for _, fName := range fNames {
+		log.Printf("fileloader.LoadDictKeys: fName: %s", fName)
+		wsfile, err := os.Open(fName)
+		if err != nil {
+			return nil, fmt.Errorf("fileloader.LoadDictKeys, error opening %s: %v",
+				fName, err)
+		}
+		defer wsfile.Close()
+		err = loadDictKeys(wsfile, wdict, avoidSub)
+		if err != nil {
+			return nil, fmt.Errorf("fileloader.LoadDictKeys, error reading from %s: %v",
+				fName, err)
+		}
+	}
+	log.Printf("LoadDictKeys, loaded %d entries", len(wdict))
+	return &wdict, nil
+}
+
 // Loads all words from a URL
 func LoadDictURL(appConfig config.AppConfig, url string) (*Dictionary, error) {
 	log.Println("LoadDictURL loading from URL")
@@ -172,6 +196,39 @@ func loadDictReader(r io.Reader, wdict map[string]*dicttypes.Word,
 					Senses:      []dicttypes.WordSense{ws},
 				}
 			}
+		}
+	}
+	return nil
+}
+
+// loadDictKeys ads keys only from an io.Reader to the given dictionary
+func loadDictKeys(r io.Reader, wdict map[string]bool, avoidSub map[string]bool) error {
+	reader := csv.NewReader(r)
+	reader.FieldsPerRecord = -1
+	reader.Comma = rune('\t')
+	reader.Comment = '#'
+	rawCSVdata, err := reader.ReadAll()
+	if err != nil {
+		return fmt.Errorf("could not parse lexical units file: %v", err)
+	}
+	for i, row := range rawCSVdata {
+		if len(row) < 15 {
+			fmt.Printf("only %d elements (less than 15) for row %d, text: %v", len(row), i, row)
+			continue
+		}
+		simp := row[1]
+		trad := row[2]
+		subdomain := row[11]
+		if subdomain == "\\N" {
+			subdomain = ""
+		}
+		// If subdomain, aka parent, should be avoided, then skip
+		if _, ok := avoidSub[subdomain]; ok {
+			continue
+		}
+		wdict[simp] = true
+		if trad != "\\N" {
+			wdict[trad] = true
 		}
 	}
 	return nil

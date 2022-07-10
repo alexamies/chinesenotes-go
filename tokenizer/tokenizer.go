@@ -28,8 +28,15 @@ type Tokenizer interface {
 }
 
 // Tokenizes Chinese text using a dictionary
-type DictTokenizer struct{
-	WDict map[string]*dicttypes.Word
+type DictTokenizer[V any] struct{
+	wDict map[string]V
+}
+
+func NewDictTokenizer[V any](wDict map[string]V) *DictTokenizer[V] {
+	tokenizer := DictTokenizer[V]{
+		wDict: wDict,
+	}
+	return &tokenizer
 }
 
 // A text token contains the results of tokenizing a string
@@ -39,13 +46,25 @@ type TextToken struct{
 	Senses []dicttypes.WordSense
 }
 
+func newTextToken(token string, v interface{}) TextToken {
+	if s, ok := v.(*dicttypes.Word); ok {
+		return TextToken{
+			Token: token,
+			DictEntry: *s,
+		}
+	}
+	return TextToken{
+		Token: token,
+	}
+}
+
 // Tokenizes a Chinese text string into words and other terms in the dictionary.
 // If the terms are not found in the dictionary then individual characters will
 // be returned. Compares left to right and right to left greedy methods, taking
 // the one with the least tokens.
 // Long text is handled by breaking the string into segments delimited by
 // punctuation or non-Chinese characters.
-func (tokenizer DictTokenizer) Tokenize(text string) []TextToken {
+func (tokenizer DictTokenizer[V]) Tokenize(text string) []TextToken {
 	tokens := []TextToken{}
 	segments := Segment(text)
 	for _, segment := range segments {
@@ -67,9 +86,15 @@ func (tokenizer DictTokenizer) Tokenize(text string) []TextToken {
 	return tokens
 }
 
+// term looks up either a simple string of the full dictionary term
+func term[V any](dict map[string]V, w string) (V, bool) {
+	v, ok := dict[w]
+	return v, ok
+}
+
 // Tokenizes text with a greedy knapsack-like algorithm, scanning left to
 // right.
-func (tokenizer DictTokenizer) greedyLtoR(fragment string) []TextToken {
+func (tokenizer DictTokenizer[V]) greedyLtoR(fragment string) []TextToken {
 	tokens := []TextToken{}
 	if len(fragment) == 0 {
 		return tokens
@@ -79,8 +104,8 @@ func (tokenizer DictTokenizer) greedyLtoR(fragment string) []TextToken {
 		for j := len(characters); j > 0; j-- {
 			w := strings.Join(characters[i:j], "")
 			//log.Printf("greedyLtoR: w = %s\n", w)
-			if entry, ok := tokenizer.WDict[w]; ok {
-				token := TextToken{w, *entry, []dicttypes.WordSense{}}
+			if entry, ok := term(tokenizer.wDict, w); ok {
+				token := newTextToken(w, entry)
 				tokens = append(tokens, token)
 				i = j - 1
 				j = 0
@@ -98,7 +123,7 @@ func (tokenizer DictTokenizer) greedyLtoR(fragment string) []TextToken {
 
 // Tokenizes text with a greedy knapsack-like algorithm, scanning right to
 // left.
-func (tokenizer DictTokenizer) greedyRtoL(fragment string) []TextToken {
+func (tokenizer DictTokenizer[V]) greedyRtoL(fragment string) []TextToken {
 	tokens := []TextToken{}
 	if len(fragment) == 0 {
 		return tokens
@@ -108,8 +133,8 @@ func (tokenizer DictTokenizer) greedyRtoL(fragment string) []TextToken {
 		for j := 0; j < i; j++ {
 			w := strings.Join(characters[j:i], "")
 			//log.Printf("greedyRtoL: i, j, w = %d, %d, %s\n", i, j, w)
-			if entry, ok := tokenizer.WDict[w]; ok {
-				token := TextToken{w, *entry, []dicttypes.WordSense{}}
+			if entry, ok := tokenizer.wDict[w]; ok {
+				token := newTextToken(w, entry)
 				tokens = append([]TextToken{token}, tokens...)
 				i = j + 1
 				break

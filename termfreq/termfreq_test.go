@@ -16,31 +16,13 @@
 package termfreq
 
 import (
-	"context"
-	"flag"
-	"log"
 	"testing"
-
-  "cloud.google.com/go/firestore"
 )
 
-var (
-	projectID = flag.String("project_id", "", "GCP project ID")
-)
-
-func TestFindDocsTermFreq(t *testing.T) {
-	ctx := context.Background()
-	client, err := firestore.NewClient(ctx, *projectID)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-	defer client.Close()
-	corpus := "cnotes"
-	generation := 0
-	terms := []string{"丘"}
-	docs, err := FindDocsTermFreq(ctx, client, corpus, generation, terms)
-	if err != nil {
-		t.Errorf("Unexpected error in test: %v", err)
-	}
-	log.Printf("FindDocsTermFreq: found %d docs\n: %v", len(docs), docs)
+func TestBM25(t *testing.T) {
+	entries := []*TermFreqDoc{}
+	got := bm25(entries)
+	if got != 0 {
+		t.Errorf("TestBM25: got %f, want 0.0", got)
+	}	
 }

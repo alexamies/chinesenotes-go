@@ -25,7 +25,9 @@ type QueryParser interface {
 	ParseQuery(query string) []TextSegment
 }
 
-type DictQueryParser struct{ Tokenizer tokenizer.DictTokenizer }
+type DictQueryParser struct{
+	Tokenizer *tokenizer.DictTokenizer[*dicttypes.Word]
+}
 
 // A text segment contains the QueryText searched for and possibly a matching
 // dictionary entry. There will only be matching dictionary entries for
@@ -39,10 +41,8 @@ type TextSegment struct {
 }
 
 // Creates a QueryParser
-func MakeQueryParser(dict map[string]*dicttypes.Word) QueryParser {
-	tokenizer := tokenizer.DictTokenizer{
-		WDict: dict,
-	}
+func NewQueryParser(dict map[string]*dicttypes.Word) QueryParser {
+	tokenizer := tokenizer.NewDictTokenizer(dict)
 	return DictQueryParser{tokenizer}
 }
 
