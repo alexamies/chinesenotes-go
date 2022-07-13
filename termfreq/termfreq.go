@@ -138,13 +138,13 @@ func findDocsTermFreq(ctx context.Context, client fsClient, fbCol string, terms 
 
 // FindDocsTermCo finds documents within the scope of a corpus collection
 func FindDocsBigramCo(ctx context.Context, client fsClient, corpus string, generation int, bigrams []string, col string) ([]BM25Score, error) {
-	fbCol := fmt.Sprintf("%s_bigram_doc_freq%d, col: %s", corpus, generation, col)
+	fbCol := fmt.Sprintf("%s_bigram_doc_freq%d", corpus, generation)
 	return findDocsCol(ctx, client, fbCol, bigrams, col)
 }
 
 // FindDocsTermCo finds documents within the scope of a corpus collection
 func FindDocsTermCo(ctx context.Context, client fsClient, corpus string, generation int, terms []string, col string) ([]BM25Score, error) {
-	fbCol := fmt.Sprintf("%s_wordfreqdoc%d, col: %s", corpus, generation, col)
+	fbCol := fmt.Sprintf("%s_wordfreqdoc%d", corpus, generation)
 	return findDocsCol(ctx, client, fbCol, terms, col)
 }
 
