@@ -113,3 +113,29 @@ func TestFindDocsTermFreq(t *testing.T) {
 		}
 	}
 }
+
+func TestFindDocsCol(t *testing.T) {
+	ctx := context.Background()
+	client := mockFsClient{}
+	type test struct {
+		name      string
+		path      string
+		wantError bool
+	}
+	tests := []test{
+		{
+			name:      "Empty",
+			path:      "",
+			wantError: true,
+		},
+	}
+	for _, tc := range tests {
+		_, err := findDocsCol(ctx, client, tc.path, []string{}, "x")
+		if !tc.wantError && err != nil {
+			t.Fatalf("TestFindDocsCol.%s: unexpected error: %v", tc.name, err)
+		}
+		if tc.wantError && err == nil {
+			t.Fatalf("TestFindDocsCol.%s: expected error but got none", tc.name)
+		}
+	}
+}

@@ -135,3 +135,63 @@ func findDocsTermFreq(ctx context.Context, client fsClient, fbCol string, terms 
 	}
 	return scores, nil
 }
+
+// FindDocsTermCo finds documents within the scope of a corpus collection
+func FindDocsBigramCo(ctx context.Context, client fsClient, corpus string, generation int, bigrams []string, col string) ([]BM25Score, error) {
+	fbCol := fmt.Sprintf("FindDocsBigramCo %s_bigram_doc_freq%d, col: %s", corpus, generation, col)
+	return findDocsCol(ctx, client, fbCol, bigrams, col)
+}
+
+// FindDocsTermCo finds documents within the scope of a corpus collection
+func FindDocsTermCo(ctx context.Context, client fsClient, corpus string, generation int, terms []string, col string) ([]BM25Score, error) {
+	fbCol := fmt.Sprintf("FindDocsTermCo %s_wordfreqdoc%d, col: %s", corpus, generation, col)
+	return findDocsCol(ctx, client, fbCol, terms, col)
+}
+
+// findDocsCol finds documents within the scope of a corpus collection
+func findDocsCol(ctx context.Context, client fsClient, fbCol string, terms []string, colName string) ([]BM25Score, error) {
+	col := client.Collection(fbCol)
+	if col == nil {
+		return nil, fmt.Errorf("findDocsCol collection is empty")
+	}
+	q := col.Where("term", "in", terms).Where("collection", "==", colName).OrderBy("freq", firestore.Desc).Limit(100)
+	iter := q.Documents(ctx)
+	defer iter.Stop()
+	docs := map[string][]*TermFreqDoc{}
+	for {
+		ds, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("FindDocsTermFreq iteration error: %v", err)
+		}
+		var tf TermFreqDoc
+		err = ds.DataTo(&tf)
+		if err != nil {
+			return nil, fmt.Errorf("FindDocsTermFreq type conversion error: %v", err)
+		}
+		log.Printf("%s: %d in doc %s, col %s", tf.Term, tf.Freq, tf.Document, tf.Collection)
+		d, ok := docs[tf.Document]
+		if ok {
+			d = append(d, &tf)
+			docs[tf.Document] = d
+		} else {
+			docs[tf.Document] = []*TermFreqDoc{&tf}
+		}
+	}
+	scores := []BM25Score{}
+	for k, v := range docs {
+		col := ""
+		if len(v) > 0 {
+			col = v[0].Collection
+		}
+		d := BM25Score{
+			Document:   k,
+			Collection: col,
+			Score:      bm25(v),
+		}
+		scores = append(scores, d)
+	}
+	return scores, nil
+}

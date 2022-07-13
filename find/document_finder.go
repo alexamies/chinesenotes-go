@@ -45,12 +45,10 @@ type DocFinder interface {
 	FindDocumentsInCol(ctx context.Context, dictSearcher dictionary.ReverseIndex,
 		parser QueryParser, query, col_gloss_file string) (*QueryResults, error)
 	GetColMap() map[string]string
-	Inititialized() bool
 }
 
 // databaseDocFinder holds stateful items needed for text search in database.
 type databaseDocFinder struct {
-	initialized                                                        bool
 	countColStmt                                                       *sql.Stmt
 	database                                                           *sql.DB
 	colMap                                                             map[string]string
@@ -96,9 +94,8 @@ func NewDocFinder(ctx context.Context,
 	database *sql.DB,
 	docMap map[string]DocInfo) DocFinder {
 	df := databaseDocFinder{
-		database:    database,
-		docMap:      docMap,
-		initialized: false,
+		database: database,
+		docMap:   docMap,
 	}
 	if database != nil {
 		err := df.initFind(ctx)
@@ -108,12 +105,7 @@ func NewDocFinder(ctx context.Context,
 		}
 	}
 	log.Println("NewDocFinder initialized")
-	df.initialized = true
 	return &df
-}
-
-func (df databaseDocFinder) Inititialized() bool {
-	return df.initialized
 }
 
 // For printing out retrieved document metadata
