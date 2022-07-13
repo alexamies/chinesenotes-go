@@ -77,9 +77,9 @@ func bm25(entries []*TermFreqDoc) float64 {
 }
 
 // FindDocsBigramFreq finds documents with occurences of any of the bigram given in the corpus ordered by BM25 score
-func FindDocsBigramFreq(ctx context.Context, client fsClient, corpus string, generation int, terms []string) ([]BM25Score, error) {
+func FindDocsBigramFreq(ctx context.Context, client fsClient, corpus string, generation int, bigrams []string) ([]BM25Score, error) {
 	fbCol := fmt.Sprintf("%s_bigram_doc_freq%d", corpus, generation)
-	return findDocsTermFreq(ctx, client, fbCol, terms)
+	return findDocsTermFreq(ctx, client, fbCol, bigrams)
 }
 
 // FindDocsTermFreq finds documents with occurences of any of the terms given in the corpus ordered by BM25 score
@@ -138,13 +138,13 @@ func findDocsTermFreq(ctx context.Context, client fsClient, fbCol string, terms 
 
 // FindDocsTermCo finds documents within the scope of a corpus collection
 func FindDocsBigramCo(ctx context.Context, client fsClient, corpus string, generation int, bigrams []string, col string) ([]BM25Score, error) {
-	fbCol := fmt.Sprintf("FindDocsBigramCo %s_bigram_doc_freq%d, col: %s", corpus, generation, col)
+	fbCol := fmt.Sprintf("%s_bigram_doc_freq%d, col: %s", corpus, generation, col)
 	return findDocsCol(ctx, client, fbCol, bigrams, col)
 }
 
 // FindDocsTermCo finds documents within the scope of a corpus collection
 func FindDocsTermCo(ctx context.Context, client fsClient, corpus string, generation int, terms []string, col string) ([]BM25Score, error) {
-	fbCol := fmt.Sprintf("FindDocsTermCo %s_wordfreqdoc%d, col: %s", corpus, generation, col)
+	fbCol := fmt.Sprintf("%s_wordfreqdoc%d, col: %s", corpus, generation, col)
 	return findDocsCol(ctx, client, fbCol, terms, col)
 }
 
@@ -154,7 +154,7 @@ func findDocsCol(ctx context.Context, client fsClient, fbCol string, terms []str
 	if col == nil {
 		return nil, fmt.Errorf("findDocsCol collection is empty")
 	}
-	q := col.Where("term", "in", terms).Where("collection", "==", colName).OrderBy("freq", firestore.Desc).Limit(100)
+	q := col.Where("term", "in", terms).Where("collection", "==", colName).Limit(100)
 	iter := q.Documents(ctx)
 	defer iter.Stop()
 	docs := map[string][]*TermFreqDoc{}
