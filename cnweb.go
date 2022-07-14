@@ -53,25 +53,25 @@ const (
 )
 
 var (
-	appConfig                                             config.AppConfig
-	b                                                     *backends
-	database                                              *sql.DB
-	authenticator                                         *identity.Authenticator
-	mediaSearcher                                         *media.MediaSearcher
-	docTitleFinder                                        find.DocTitleFinder
-	docMap                                                map[string]find.DocInfo
+	appConfig      config.AppConfig
+	b              *backends
+	authenticator  *identity.Authenticator
+	mediaSearcher  *media.MediaSearcher
+	docTitleFinder find.DocTitleFinder
+	docMap         map[string]find.DocInfo
 )
 
 // backends holds dependencies that access remote resources
 type backends struct {
-	df           find.DocFinder
-	dict         *dictionary.Dictionary
-	parser       find.QueryParser
-	reverseIndex dictionary.ReverseIndex
-	substrIndex  dictionary.SubstringIndex
-	templates    map[string]*template.Template
-	tmSearcher   transmemory.Searcher
-	webConfig    config.WebAppConfig
+	database                                              *sql.DB
+	df                                                    find.DocFinder
+	dict                                                  *dictionary.Dictionary
+	parser                                                find.QueryParser
+	reverseIndex                                          dictionary.ReverseIndex
+	substrIndex                                           dictionary.SubstringIndex
+	templates                                             map[string]*template.Template
+	tmSearcher                                            transmemory.Searcher
+	webConfig                                             config.WebAppConfig
 	deepLApiClient, translateApiClient, glossaryApiClient transtools.ApiClient
 	translationProcessor                                  transtools.Processor
 }
@@ -120,12 +120,12 @@ func initApp(ctx context.Context) (*backends, error) {
 		webConfig = config.InitWeb(configFile)
 	}
 	if config.UseDatabase() {
-		database, err = initDBCon()
+		b.database, err = initDBCon()
 		if err != nil {
 			return nil, fmt.Errorf("initApp unable to connect to database: %v", err)
 		}
 	}
-	substrIndex, err := dictionary.NewSubstringIndexDB(ctx, database)
+	substrIndex, err := dictionary.NewSubstringIndexDB(ctx, b.database)
 	if err != nil {
 		log.Printf("initApp, non-fatal error, unable to initialize substrIndex: %v", err)
 	}
@@ -148,8 +148,8 @@ func initApp(ctx context.Context) (*backends, error) {
 	}
 	parser := find.NewQueryParser(dict.Wdict)
 	var tms transmemory.Searcher
-	if database != nil {
-		tms, err = transmemory.NewSearcher(ctx, database)
+	if b.database != nil {
+		tms, err = transmemory.NewSearcher(ctx, b.database)
 		if err != nil {
 			return nil, fmt.Errorf("main.initApp() unable to create new TM searcher: %v", err)
 		}
@@ -167,7 +167,7 @@ func initApp(ctx context.Context) (*backends, error) {
 	reverseIndex := dictionary.NewReverseIndex(dict, extractor)
 	log.Printf("main.initApp() doc map loaded with %d items", len(docMap))
 	bends := &backends{
-		df:           find.NewDocFinder(ctx, database, docMap),
+		df:           find.NewDocFinder(ctx, b.database, docMap),
 		dict:         dict,
 		parser:       parser,
 		reverseIndex: reverseIndex,
@@ -877,6 +877,9 @@ func findSubstring(response http.ResponseWriter, request *http.Request) {
 func healthcheck(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "OK")
 	fmt.Fprintf(w, "Using a database: %t", config.UseDatabase())
+	if b != nil {
+		fmt.Fprintf(w, "Using database: %s", b.webConfig.DBType())
+	}
 	fmt.Fprintf(w, "Password protected: %t", config.PasswordProtected())
 }
 
@@ -1047,7 +1050,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 func mediaDetailHandler(response http.ResponseWriter, request *http.Request) {
 	ctx := context.Background()
 	if mediaSearcher == nil {
-		mediaSearcher = media.NewMediaSearcher(database, ctx)
+		mediaSearcher = media.NewMediaSearcher(b.database, ctx)
 		if !mediaSearcher.Initialized() {
 			log.Println("main.mediaDetailHandler initializing media searcher")
 			http.Error(response, "Error marshalling results",

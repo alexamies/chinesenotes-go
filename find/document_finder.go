@@ -44,7 +44,6 @@ type DocFinder interface {
 		parser QueryParser, query string, advanced bool) (*QueryResults, error)
 	FindDocumentsInCol(ctx context.Context, dictSearcher dictionary.ReverseIndex,
 		parser QueryParser, query, col_gloss_file string) (*QueryResults, error)
-	GetColMap() map[string]string
 }
 
 // databaseDocFinder holds stateful items needed for text search in database.
@@ -140,10 +139,6 @@ func (df *databaseDocFinder) cacheColDetails(ctx context.Context) map[string]str
 	return df.colMap
 }
 
-func (df databaseDocFinder) GetColMap() map[string]string {
-	return df.colMap
-}
-
 // Compute the combined similarity based on logistic regression of document
 // relevance for BM25 for words, BM25 for bigrams, and bit vector dot product.
 // Raw BM25 values are scaled with 1.0 being the top value
@@ -187,7 +182,7 @@ func (df databaseDocFinder) countCollections(ctx context.Context, query string) 
 
 // findBodyBM25 searches the corpus for document bodies most similar using a BM25 model.
 //  Param: terms - The decomposed query string with 0 < num elements < 7
-func (df databaseDocFinder) findBodyBM25(ctx context.Context, terms []string) ([]Document, error) {
+func (df databaseDocFinder) FindDocsTermFreq(ctx context.Context, terms []string) ([]Document, error) {
 	log.Println("findBodyBM25, terms = ", terms)
 	var results *sql.Rows
 	var err error
@@ -227,9 +222,9 @@ func (df databaseDocFinder) findBodyBM25(ctx context.Context, terms []string) ([
 // Search the corpus for document bodies most similar using a BM25 model in a
 // specific collection.
 //  Param: terms - The decomposed query string with 1 < num elements < 7
-func (df databaseDocFinder) findBodyBM25InCol(ctx context.Context, terms []string,
+func (df databaseDocFinder) FindDocsTermCo(ctx context.Context, terms []string,
 	col_gloss_file string) ([]Document, error) {
-	log.Println("findBodyBM25InCol, terms = ", terms)
+	log.Println("FindDocsTermCo, terms = ", terms)
 	var results *sql.Rows
 	var err error
 	if len(terms) == 1 {
@@ -254,7 +249,7 @@ func (df databaseDocFinder) findBodyBM25InCol(ctx context.Context, terms []strin
 			col_gloss_file)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("findBodyBM25InCol, Error for query %v: %v", terms, err)
+		return nil, fmt.Errorf("FindDocsTermCo, Error for query %v: %v", terms, err)
 	}
 	simSlice := []Document{}
 	for results.Next() {
@@ -262,7 +257,7 @@ func (df databaseDocFinder) findBodyBM25InCol(ctx context.Context, terms []strin
 		docSim.CollectionFile = col_gloss_file
 		results.Scan(&docSim.SimWords, &docSim.SimBitVector,
 			&docSim.ContainsWords, &docSim.GlossFile)
-		//log.Println("findBodyBM25InCol, Similarity, Document = ", docSim)
+		//log.Println("FindDocsTermCo, Similarity, Document = ", docSim)
 		simSlice = append(simSlice, docSim)
 	}
 	return simSlice, nil
@@ -271,12 +266,12 @@ func (df databaseDocFinder) findBodyBM25InCol(ctx context.Context, terms []strin
 // Search the corpus for document bodies most similar using bigrams with a BM25
 // model.
 //  Param: terms - The decomposed query string with 1 < num elements < 7
-func (df databaseDocFinder) findBodyBigram(ctx context.Context, terms []string) ([]Document, error) {
-	log.Println("findBodyBigram, terms = ", terms)
+func (df databaseDocFinder) FindDocsBigramFreq(ctx context.Context, terms []string) ([]Document, error) {
+	log.Println("FindDocsBigramFreq, terms = ", terms)
 	var results *sql.Rows
 	var err error
 	if len(terms) < 2 {
-		return nil, fmt.Errorf("findBodyBigram, too few arguments, len(terms) < 2: %d", len(terms))
+		return nil, fmt.Errorf("FindDocsBigramFreq, too few arguments, len(terms) < 2: %d", len(terms))
 	} else if len(terms) == 2 {
 		bigram1 := terms[0] + terms[1]
 		results, err = df.simBigram1Stmt.QueryContext(ctx, df.avdl, bigram1)
@@ -308,29 +303,28 @@ func (df databaseDocFinder) findBodyBigram(ctx context.Context, terms []string) 
 			bigram3, bigram4, bigram5)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("findBodyBigram, Error for query %v: %v", terms, err)
+		return nil, fmt.Errorf("FindDocsBigramFreq, Error for query %v: %v", terms, err)
 	}
 	simSlice := []Document{}
 	for results.Next() {
 		docSim := Document{}
 		results.Scan(&docSim.SimBigram, &docSim.ContainsBigrams,
 			&docSim.CollectionFile, &docSim.GlossFile)
-		//log.Println("findBodyBigram, Similarity, Document = ", docSim)
+		//log.Println("FindDocsBigramFreq, Similarity, Document = ", docSim)
 		simSlice = append(simSlice, docSim)
 	}
 	return simSlice, nil
 }
 
-// findBodyBgInCol searches the corpus for document bodies most similar using bigrams with a BM25
+// FindDocsBigramCo searches the corpus for document bodies most similar using bigrams with a BM25
 // model within a specific collection
 //  Param: terms - The decomposed query string with 1 < num elements < 7
-func (df databaseDocFinder) findBodyBgInCol(ctx context.Context, terms []string,
-	col_gloss_file string) ([]Document, error) {
-	log.Println("findBodyBgInCol, terms = ", terms)
+func (df databaseDocFinder) FindDocsBigramCo(ctx context.Context, terms []string, col_gloss_file string) ([]Document, error) {
+	log.Println("FindDocsBigramCo, terms = ", terms)
 	var results *sql.Rows
 	var err error
 	if len(terms) < 2 {
-		return nil, fmt.Errorf("findBodyBgInCol, too few arguments, len(terms) < 2: %d", len(terms))
+		return nil, fmt.Errorf("FindDocsBigramCo, too few arguments, len(terms) < 2: %d", len(terms))
 	} else if len(terms) == 2 {
 		if df.simBgCol1Stmt == nil {
 			return []Document{}, nil
@@ -373,7 +367,7 @@ func (df databaseDocFinder) findBodyBgInCol(ctx context.Context, terms []string,
 			bigram3, bigram4, bigram5, col_gloss_file)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("findBodyBgInCol, Error for query %v: %v", terms, err)
+		return nil, fmt.Errorf("FindDocsBigramCo, Error for query %v: %v", terms, err)
 	}
 	simSlice := []Document{}
 	for results.Next() {
@@ -381,7 +375,7 @@ func (df databaseDocFinder) findBodyBgInCol(ctx context.Context, terms []string,
 		docSim.CollectionFile = col_gloss_file
 		results.Scan(&docSim.SimBigram, &docSim.ContainsBigrams,
 			&docSim.GlossFile)
-		//log.Println("findBodyBgInCol, Similarity, Document = ", docSim)
+		//log.Println("FindDocsBigramCo, Similarity, Document = ", docSim)
 		simSlice = append(simSlice, docSim)
 	}
 	return simSlice, nil
@@ -445,11 +439,7 @@ func (df databaseDocFinder) findDocsByTitleInCol(ctx context.Context,
 }
 
 // findDocuments find documents by both title and contents, and merge the lists
-func (df databaseDocFinder) findDocuments(
-	ctx context.Context,
-	query string,
-	terms []TextSegment,
-	advanced bool) ([]Document, error) {
+func (df databaseDocFinder) findDocuments(ctx context.Context, query string, terms []TextSegment, advanced bool) ([]Document, error) {
 	log.Printf("findDocuments, enter: %s", query)
 	docs, err := df.findDocsByTitle(ctx, query)
 	if err != nil {
@@ -464,7 +454,7 @@ func (df databaseDocFinder) findDocuments(
 	// For more than one term find docs that are similar body and merge
 	simDocMap := toSimilarDocMap(docs) // similarity = 1.0
 	log.Printf("findDocuments, len(docMap): %s, %d", query, len(simDocMap))
-	simDocs, err := df.findBodyBM25(ctx, queryTerms)
+	simDocs, err := df.FindDocsTermFreq(ctx, queryTerms)
 	if err != nil {
 		return nil, err
 	}
@@ -478,7 +468,7 @@ func (df databaseDocFinder) findDocuments(
 		relevantDocs := toRelevantDocList(df, sortedDocs, queryTerms)
 		return relevantDocs, nil
 	}
-	moreDocs, err := df.findBodyBigram(ctx, queryTerms)
+	moreDocs, err := df.FindDocsBigramFreq(ctx, queryTerms)
 	if err != nil {
 		return nil, err
 	}
@@ -507,7 +497,7 @@ func (df databaseDocFinder) findDocumentsInCol(ctx context.Context, query string
 	// For more than one term find docs that are similar body and merge
 	simDocMap := toSimilarDocMap(docs) // similarity = 1.0
 	//simDocs, err := findBodyBitVector(queryTerms)
-	simDocs, err := df.findBodyBM25InCol(ctx, queryTerms, col_gloss_file)
+	simDocs, err := df.FindDocsTermCo(ctx, queryTerms, col_gloss_file)
 	if err != nil {
 		return nil, err
 	}
@@ -516,10 +506,10 @@ func (df databaseDocFinder) findDocumentsInCol(ctx context.Context, query string
 
 	if len(terms) > 1 {
 		// If there are 2 or more terms then check bigrams
-		simBGDocs, err := df.findBodyBgInCol(ctx, queryTerms, col_gloss_file)
+		simBGDocs, err := df.FindDocsBigramCo(ctx, queryTerms, col_gloss_file)
 		//log.Println("findDocumentsInCol, len(simBGDocs) ", len(simBGDocs))
 		if err != nil {
-			return nil, fmt.Errorf("findDocumentsInCol, findBodyBgInCol error: %v",
+			return nil, fmt.Errorf("findDocumentsInCol, FindDocsBigramCo error: %v",
 				err)
 		}
 		mergeDocList(df, simDocMap, simBGDocs)
@@ -1090,7 +1080,7 @@ func mergeDocList(df databaseDocFinder, simDocMap map[string]Document, docList [
 			}
 			simDocMap[simDoc.GlossFile] = sDoc
 		} else {
-			colTitle, ok1 := df.GetColMap()[simDoc.CollectionFile]
+			colTitle, ok1 := df.colMap[simDoc.CollectionFile]
 			document, ok2 := df.docMap[simDoc.GlossFile]
 			if ok1 && ok2 {
 				doc := Document{CollectionFile: simDoc.CollectionFile,

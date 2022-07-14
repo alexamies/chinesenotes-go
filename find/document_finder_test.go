@@ -174,67 +174,6 @@ func TestFindDocuments(t *testing.T) {
 	}
 }
 
-func TestFindBodyBigram(t *testing.T) {
-	database, err := initDBCon()
-	if err != nil {
-		t.Errorf("TestFindBodyBigram, Error: %v", err)
-		return
-	}
-	if database == nil {
-		t.Log("TestFindBodyBigram, no database skipping")
-		return
-	}
-	df := databaseDocFinder{
-		database: database,
-	}
-	ctx := context.Background()
-	err = df.initFind(ctx)
-	if err != nil {
-		t.Errorf("TestFindBodyBigram, Error: %v", err)
-		return
-	}
-	// Test data
-	type test struct {
-		name  string
-		terms []string
-	}
-	tests := []test{
-		{
-			name:  "Happy pass",
-			terms: []string{"后妃"},
-		},
-		{
-			name:  "Two terms",
-			terms: []string{"后妃", "之"},
-		},
-		{
-			name:  "Three terms",
-			terms: []string{"后妃", "之", "德"},
-		},
-		{
-			name:  "Four terms",
-			terms: []string{"后妃", "之", "德", "也"},
-		},
-		{
-			name:  "Five terms",
-			terms: []string{"箴", "也", "所以", "攻", "疾"},
-		},
-		{
-			name:  "Six terms",
-			terms: []string{"箴", "也", "所以", "攻", "疾", "防患"},
-		},
-	}
-
-	for _, tc := range tests {
-		docs, err := df.findBodyBigram(ctx, tc.terms)
-		if err != nil {
-			t.Errorf("TestFindBodyBigram, %s: unexpected error: %v", tc.name, err)
-			continue
-		}
-		t.Logf("TestFindBodyBigram, len(docSimilarity) = %d", len(docs))
-	}
-}
-
 func TestFindDocumentsInCol(t *testing.T) {
 	database, err := initDBCon()
 	if err != nil {

@@ -24,6 +24,16 @@ func TestGetVarWithDefault(t *testing.T) {
 	}
 }
 
+// TestDBType tests the DBType function
+func TestDBType(t *testing.T) {
+	const want = "mysql"
+	c := WebAppConfig{}
+	got := c.DBType()
+	if got != want {
+		t.Errorf("TestDBType: got %s, want %s", got, want)
+	}
+}
+
 // TestNotesExtractorPattern tests NotesExtractorPattern
 func TestNotesExtractorPattern(t *testing.T) {
 	testCases := []struct {

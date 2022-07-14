@@ -1178,20 +1178,20 @@ func TestProcessTranslation(t *testing.T) {
 		}
 		reverseIndex := dictionary.NewReverseIndex(dict, extractor)
 		b = &backends{
-			reverseIndex: reverseIndex,
-			df:           mockDocFinder{},
-			tmSearcher:   mockTMSearcher{},
-			dict:         dictionary.NewDictionary(tc.wdict),
-			parser:       find.NewQueryParser(tc.wdict),
-			templates:    newTemplateMap(webConfig),
-			webConfig:    webConfig,
+			reverseIndex:      reverseIndex,
+			df:                mockDocFinder{},
+			tmSearcher:        mockTMSearcher{},
+			dict:              dictionary.NewDictionary(tc.wdict),
+			parser:            find.NewQueryParser(tc.wdict),
+			templates:         newTemplateMap(webConfig),
+			webConfig:         webConfig,
 			glossaryApiClient: mockApiClient{},
 		}
 		r := &http.Request{
 			Method: "POST",
 			URL:    &url.URL{Path: "translateprocess"},
-			Form:   url.Values{
-				"source": []string{"人"},
+			Form: url.Values{
+				"source":   []string{"人"},
 				"platform": []string{"withGlossary"},
 			},
 		}

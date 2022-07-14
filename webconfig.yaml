@@ -16,3 +16,6 @@ PasswordResetURL: http://localhost:8080/loggedin/reset_password
 
  # Regular expression for extracting multilingual equivalents in the notes.
 NotesExtractorPattern: "Scientific name: (.*?)[\(,\,,\;]","Species: (.*?)[\(,\,,\;]"
+
+ # Regular expression for extracting multilingual equivalents in the notes.
+DBType: "mysql"
