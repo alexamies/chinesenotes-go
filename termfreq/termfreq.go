@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/alexamies/chinesenotes-go/find"
+
 	"google.golang.org/api/iterator"
 
 	"cloud.google.com/go/firestore"
@@ -45,12 +47,6 @@ type TermFreqDoc struct {
 	Document   string  `firestore:"document"`
 	IDF        float64 `firestore:"idf"`
 	DocLen     int64   `firestore:"doclen"`
-}
-
-type BM25Score struct {
-	Document   string
-	Collection string
-	Score      float64
 }
 
 type FBDocFinder struct {
@@ -82,20 +78,25 @@ func bm25(entries []*TermFreqDoc) float64 {
 	return score
 }
 
+// bitvector computes the bit vector product; that is, how many terms in the query are present in the document
+func bitvector(entries []*TermFreqDoc) float64 {
+	return float64(len(entries))
+}
+
 // FindDocsBigramFreq finds documents with occurences of any of the bigram given in the corpus ordered by BM25 score
-func (f FBDocFinder) FindDocsBigramFreq(ctx context.Context, bigrams []string) ([]BM25Score, error) {
+func (f FBDocFinder) FindDocsBigramFreq(ctx context.Context, bigrams []string) ([]find.BM25Score, error) {
 	fbCol := fmt.Sprintf("%s_bigram_doc_freq%d", f.corpus, f.generation)
 	return findDocsTermFreq(ctx, f.client, fbCol, bigrams)
 }
 
 // FindDocsTermFreq finds documents with occurences of any of the terms given in the corpus ordered by BM25 score
-func (f FBDocFinder) FindDocsTermFreq(ctx context.Context, terms []string) ([]BM25Score, error) {
+func (f FBDocFinder) FindDocsTermFreq(ctx context.Context, terms []string) ([]find.BM25Score, error) {
 	fbCol := fmt.Sprintf("%s_wordfreqdoc%d", f.corpus, f.generation)
 	return findDocsTermFreq(ctx, f.client, fbCol, terms)
 }
 
 // findDocsTermFreq finds documents with occurences of any of the terms or bigrams
-func findDocsTermFreq(ctx context.Context, client fsClient, fbCol string, terms []string) ([]BM25Score, error) {
+func findDocsTermFreq(ctx context.Context, client fsClient, fbCol string, terms []string) ([]find.BM25Score, error) {
 	col := client.Collection(fbCol)
 	if col == nil {
 		return nil, fmt.Errorf("findDocsTermFreq collection is empty")
@@ -126,16 +127,22 @@ func findDocsTermFreq(ctx context.Context, client fsClient, fbCol string, terms 
 			docs[tf.Document] = []*TermFreqDoc{&tf}
 		}
 	}
-	scores := []BM25Score{}
+	scores := []find.BM25Score{}
 	for k, v := range docs {
 		col := ""
 		if len(v) > 0 {
 			col = v[0].Collection
 		}
-		d := BM25Score{
-			Document:   k,
-			Collection: col,
-			Score:      bm25(v),
+		containsTerms := ""
+		for _, tf := range v {
+			containsTerms = containsTerms + tf.Term
+		}
+		d := find.BM25Score{
+			Document:      k,
+			Collection:    col,
+			Score:         bm25(v),
+			BitVector:     bitvector(v),
+			ContainsTerms: containsTerms,
 		}
 		scores = append(scores, d)
 	}
@@ -143,19 +150,19 @@ func findDocsTermFreq(ctx context.Context, client fsClient, fbCol string, terms 
 }
 
 // FindDocsTermCo finds documents within the scope of a corpus collection
-func (f FBDocFinder) FindDocsBigramCo(ctx context.Context, bigrams []string, col string) ([]BM25Score, error) {
+func (f FBDocFinder) FindDocsBigramCo(ctx context.Context, bigrams []string, col string) ([]find.BM25Score, error) {
 	fbCol := fmt.Sprintf("%s_bigram_doc_freq%d", f.corpus, f.generation)
 	return findDocsCol(ctx, f.client, fbCol, bigrams, col)
 }
 
 // FindDocsTermCo finds documents within the scope of a corpus collection
-func (f FBDocFinder) FindDocsTermCo(ctx context.Context, terms []string, col string) ([]BM25Score, error) {
+func (f FBDocFinder) FindDocsTermCo(ctx context.Context, terms []string, col string) ([]find.BM25Score, error) {
 	fbCol := fmt.Sprintf("%s_wordfreqdoc%d", f.corpus, f.generation)
 	return findDocsCol(ctx, f.client, fbCol, terms, col)
 }
 
 // findDocsCol finds documents within the scope of a corpus collection
-func findDocsCol(ctx context.Context, client fsClient, fbCol string, terms []string, colName string) ([]BM25Score, error) {
+func findDocsCol(ctx context.Context, client fsClient, fbCol string, terms []string, colName string) ([]find.BM25Score, error) {
 	col := client.Collection(fbCol)
 	if col == nil {
 		return nil, fmt.Errorf("findDocsCol collection is empty")
@@ -186,16 +193,22 @@ func findDocsCol(ctx context.Context, client fsClient, fbCol string, terms []str
 			docs[tf.Document] = []*TermFreqDoc{&tf}
 		}
 	}
-	scores := []BM25Score{}
+	scores := []find.BM25Score{}
 	for k, v := range docs {
 		col := ""
 		if len(v) > 0 {
 			col = v[0].Collection
 		}
-		d := BM25Score{
-			Document:   k,
-			Collection: col,
-			Score:      bm25(v),
+		containsTerms := ""
+		for _, tf := range v {
+			containsTerms = containsTerms + tf.Term
+		}
+		d := find.BM25Score{
+			Document:      k,
+			Collection:    col,
+			Score:         bm25(v),
+			BitVector:     bitvector(v),
+			ContainsTerms: containsTerms,
 		}
 		scores = append(scores, d)
 	}

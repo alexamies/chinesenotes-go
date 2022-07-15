@@ -18,6 +18,7 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"reflect"
 	"testing"
 
 	"github.com/alexamies/chinesenotes-go/config"
@@ -40,6 +41,42 @@ func initDBCon() (*sql.DB, error) {
 	}
 	conString := config.DBConfig()
 	return sql.Open("mysql", conString)
+}
+
+func TestBigrams(t *testing.T) {
+	type test struct {
+		name  string
+		terms []string
+		want  []string
+	}
+	tests := []test{
+		{
+			name:  "Zero",
+			terms: []string{},
+			want:  []string{},
+		},
+		{
+			name:  "One",
+			terms: []string{"one"},
+			want:  []string{},
+		},
+		{
+			name:  "Two",
+			terms: []string{"one", "two"},
+			want:  []string{"onetwo"},
+		},
+		{
+			name:  "Three",
+			terms: []string{"one", "two", "three"},
+			want:  []string{"onetwo", "twothree"},
+		},
+	}
+	for _, tc := range tests {
+		got := bigrams(tc.terms)
+		if !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("TestBigrams.%s with terms %v, got: %v, want %v", tc.name, tc.terms, got, tc.want)
+		}
+	}
 }
 
 // Test package initialization, which requires a database connection

@@ -46,6 +46,14 @@ type DocFinder interface {
 		parser QueryParser, query, col_gloss_file string) (*QueryResults, error)
 }
 
+type BM25Score struct {
+	Document      string
+	Collection    string
+	Score         float64
+	BitVector     float64
+	ContainsTerms string
+}
+
 // databaseDocFinder holds stateful items needed for text search in database.
 type databaseDocFinder struct {
 	countColStmt                                                       *sql.Stmt
@@ -105,6 +113,37 @@ func NewDocFinder(ctx context.Context,
 	}
 	log.Println("NewDocFinder initialized")
 	return &df
+}
+
+// convert2DocSim converts a BM25Score struct to a Document for term similarity
+func convert4Term(scores []BM25Score) []Document {
+	documents := []Document{}
+	for _, s := range scores {
+		d := Document{
+			SimWords:       s.Score,
+			SimBitVector:   s.BitVector,
+			GlossFile:      s.Document,
+			CollectionFile: s.Collection,
+			ContainsWords:  s.ContainsTerms,
+		}
+		documents = append(documents, d)
+	}
+	return documents
+}
+
+// convert2DocSim converts a BM25Score struct to a Document for term similarity
+func convert4Bigram(scores []BM25Score) []Document {
+	documents := []Document{}
+	for _, s := range scores {
+		d := Document{
+			SimBigram:       s.Score,
+			GlossFile:       s.Document,
+			CollectionFile:  s.Collection,
+			ContainsBigrams: s.ContainsTerms,
+		}
+		documents = append(documents, d)
+	}
+	return documents
 }
 
 // For printing out retrieved document metadata
@@ -182,7 +221,7 @@ func (df databaseDocFinder) countCollections(ctx context.Context, query string) 
 
 // findBodyBM25 searches the corpus for document bodies most similar using a BM25 model.
 //  Param: terms - The decomposed query string with 0 < num elements < 7
-func (df databaseDocFinder) FindDocsTermFreq(ctx context.Context, terms []string) ([]Document, error) {
+func (df databaseDocFinder) FindDocsTermFreq(ctx context.Context, terms []string) ([]BM25Score, error) {
 	log.Println("findBodyBM25, terms = ", terms)
 	var results *sql.Rows
 	var err error
@@ -208,22 +247,21 @@ func (df databaseDocFinder) FindDocsTermFreq(ctx context.Context, terms []string
 
 		return nil, fmt.Errorf("findBodyBM25, Error for query %v: %v", terms, err)
 	}
-	simSlice := []Document{}
+	scores := []BM25Score{}
 	for results.Next() {
-		docSim := Document{}
-		results.Scan(&docSim.SimWords, &docSim.SimBitVector,
-			&docSim.ContainsWords, &docSim.CollectionFile, &docSim.GlossFile)
+		s := BM25Score{}
+		results.Scan(&s.Score, &s.BitVector,
+			&s.ContainsTerms, &s.Collection, &s.Document)
 		//log.Println("findBodyBM25, Similarity, Document = ", docSim)
-		simSlice = append(simSlice, docSim)
+		scores = append(scores, s)
 	}
-	return simSlice, nil
+	return scores, nil
 }
 
 // Search the corpus for document bodies most similar using a BM25 model in a
 // specific collection.
 //  Param: terms - The decomposed query string with 1 < num elements < 7
-func (df databaseDocFinder) FindDocsTermCo(ctx context.Context, terms []string,
-	col_gloss_file string) ([]Document, error) {
+func (df databaseDocFinder) FindDocsTermCo(ctx context.Context, terms []string, col_gloss_file string) ([]BM25Score, error) {
 	log.Println("FindDocsTermCo, terms = ", terms)
 	var results *sql.Rows
 	var err error
@@ -251,134 +289,105 @@ func (df databaseDocFinder) FindDocsTermCo(ctx context.Context, terms []string,
 	if err != nil {
 		return nil, fmt.Errorf("FindDocsTermCo, Error for query %v: %v", terms, err)
 	}
-	simSlice := []Document{}
+	scores := []BM25Score{}
 	for results.Next() {
-		docSim := Document{}
-		docSim.CollectionFile = col_gloss_file
-		results.Scan(&docSim.SimWords, &docSim.SimBitVector,
-			&docSim.ContainsWords, &docSim.GlossFile)
+		s := BM25Score{}
+		s.Collection = col_gloss_file
+		results.Scan(&s.Score, &s.BitVector, &s.ContainsTerms, &s.Document)
 		//log.Println("FindDocsTermCo, Similarity, Document = ", docSim)
-		simSlice = append(simSlice, docSim)
+		scores = append(scores, s)
 	}
-	return simSlice, nil
+	return scores, nil
+}
+
+func bigrams(terms []string) []string {
+	b := []string{}
+	if len(terms) < 2 {
+		return b
+	}
+	for i := range terms {
+		if i == 0 {
+			continue
+		}
+		b = append(b, terms[i-1]+terms[i])
+	}
+	return b
 }
 
 // Search the corpus for document bodies most similar using bigrams with a BM25
 // model.
 //  Param: terms - The decomposed query string with 1 < num elements < 7
-func (df databaseDocFinder) FindDocsBigramFreq(ctx context.Context, terms []string) ([]Document, error) {
-	log.Println("FindDocsBigramFreq, terms = ", terms)
+func (df databaseDocFinder) FindDocsBigramFreq(ctx context.Context, bigrams []string) ([]BM25Score, error) {
+	log.Println("FindDocsBigramFreq, bigrams = ", bigrams)
 	var results *sql.Rows
 	var err error
-	if len(terms) < 2 {
-		return nil, fmt.Errorf("FindDocsBigramFreq, too few arguments, len(terms) < 2: %d", len(terms))
-	} else if len(terms) == 2 {
-		bigram1 := terms[0] + terms[1]
-		results, err = df.simBigram1Stmt.QueryContext(ctx, df.avdl, bigram1)
-	} else if len(terms) == 3 {
-		bigram1 := terms[0] + terms[1]
-		bigram2 := terms[1] + terms[2]
-		results, err = df.simBigram2Stmt.QueryContext(ctx, df.avdl, bigram1, bigram2)
-	} else if len(terms) == 4 {
-		bigram1 := terms[0] + terms[1]
-		bigram2 := terms[1] + terms[2]
-		bigram3 := terms[2] + terms[3]
-		results, err = df.simBigram3Stmt.QueryContext(ctx, df.avdl, bigram1, bigram2,
-			bigram3)
-	} else if len(terms) == 5 {
-		bigram1 := terms[0] + terms[1]
-		bigram2 := terms[1] + terms[2]
-		bigram3 := terms[2] + terms[3]
-		bigram4 := terms[3] + terms[4]
-		results, err = df.simBigram4Stmt.QueryContext(ctx, df.avdl, bigram1, bigram2,
-			bigram3, bigram4)
+	if len(bigrams) == 1 {
+		results, err = df.simBigram1Stmt.QueryContext(ctx, df.avdl, bigrams[0])
+	} else if len(bigrams) == 2 {
+		results, err = df.simBigram2Stmt.QueryContext(ctx, df.avdl, bigrams[0], bigrams[1])
+	} else if len(bigrams) == 3 {
+		results, err = df.simBigram3Stmt.QueryContext(ctx, df.avdl, bigrams[0], bigrams[1], bigrams[2])
+	} else if len(bigrams) == 4 {
+		results, err = df.simBigram4Stmt.QueryContext(ctx, df.avdl, bigrams[0], bigrams[1], bigrams[2], bigrams[3])
 	} else {
-		// Ignore arguments beyond the first six
-		bigram1 := terms[0] + terms[1]
-		bigram2 := terms[1] + terms[2]
-		bigram3 := terms[2] + terms[3]
-		bigram4 := terms[3] + terms[4]
-		bigram5 := terms[4] + terms[5]
-		results, err = df.simBigram5Stmt.QueryContext(ctx, df.avdl, bigram1, bigram2,
-			bigram3, bigram4, bigram5)
+		// Ignore arguments beyond the first five bigrams
+		results, err = df.simBigram5Stmt.QueryContext(ctx, df.avdl, bigrams[0], bigrams[1], bigrams[2], bigrams[3], bigrams[4])
 	}
 	if err != nil {
-		return nil, fmt.Errorf("FindDocsBigramFreq, Error for query %v: %v", terms, err)
+		return nil, fmt.Errorf("FindDocsBigramFreq, Error for query %v: %v", bigrams, err)
 	}
-	simSlice := []Document{}
+	scores := []BM25Score{}
 	for results.Next() {
-		docSim := Document{}
-		results.Scan(&docSim.SimBigram, &docSim.ContainsBigrams,
-			&docSim.CollectionFile, &docSim.GlossFile)
+		s := BM25Score{}
+		results.Scan(&s.Score, &s.ContainsTerms,
+			&s.Collection, &s.Document)
 		//log.Println("FindDocsBigramFreq, Similarity, Document = ", docSim)
-		simSlice = append(simSlice, docSim)
+		scores = append(scores, s)
 	}
-	return simSlice, nil
+	return scores, nil
 }
 
 // FindDocsBigramCo searches the corpus for document bodies most similar using bigrams with a BM25
 // model within a specific collection
 //  Param: terms - The decomposed query string with 1 < num elements < 7
-func (df databaseDocFinder) FindDocsBigramCo(ctx context.Context, terms []string, col_gloss_file string) ([]Document, error) {
-	log.Println("FindDocsBigramCo, terms = ", terms)
+func (df databaseDocFinder) FindDocsBigramCo(ctx context.Context, bigrams []string, col_gloss_file string) ([]BM25Score, error) {
+	log.Println("FindDocsBigramCo, bigrams = ", bigrams)
 	var results *sql.Rows
 	var err error
-	if len(terms) < 2 {
-		return nil, fmt.Errorf("FindDocsBigramCo, too few arguments, len(terms) < 2: %d", len(terms))
-	} else if len(terms) == 2 {
+	if len(bigrams) == 1 {
 		if df.simBgCol1Stmt == nil {
-			return []Document{}, nil
+			return []BM25Score{}, nil
 		}
-		bigram1 := terms[0] + terms[1]
-		results, err = df.simBgCol1Stmt.QueryContext(ctx, df.avdl, bigram1,
-			col_gloss_file)
-	} else if len(terms) == 3 {
+		results, err = df.simBgCol1Stmt.QueryContext(ctx, df.avdl, bigrams[0], col_gloss_file)
+	} else if len(bigrams) == 2 {
 		if df.simBgCol2Stmt == nil {
-			return []Document{}, nil
+			return []BM25Score{}, nil
 		}
-		bigram1 := terms[0] + terms[1]
-		bigram2 := terms[1] + terms[2]
-		results, err = df.simBgCol2Stmt.QueryContext(ctx, df.avdl, bigram1, bigram2,
-			col_gloss_file)
-	} else if len(terms) == 4 {
+		results, err = df.simBgCol2Stmt.QueryContext(ctx, df.avdl, bigrams[0], bigrams[1], col_gloss_file)
+	} else if len(bigrams) == 3 {
 		if df.simBgCol3Stmt == nil {
-			return []Document{}, nil
+			return []BM25Score{}, nil
 		}
-		bigram1 := terms[0] + terms[1]
-		bigram2 := terms[1] + terms[2]
-		bigram3 := terms[2] + terms[3]
-		results, err = df.simBgCol3Stmt.QueryContext(ctx, df.avdl, bigram1, bigram2,
-			bigram3, col_gloss_file)
-	} else if len(terms) == 5 {
-		bigram1 := terms[0] + terms[1]
-		bigram2 := terms[1] + terms[2]
-		bigram3 := terms[2] + terms[3]
-		bigram4 := terms[3] + terms[4]
-		results, err = df.simBgCol4Stmt.QueryContext(ctx, df.avdl, bigram1, bigram2,
-			bigram3, bigram4, col_gloss_file)
+		results, err = df.simBgCol3Stmt.QueryContext(ctx, df.avdl, bigrams[0], bigrams[1], bigrams[2], col_gloss_file)
+	} else if len(bigrams) == 4 {
+		results, err = df.simBgCol4Stmt.QueryContext(ctx, df.avdl, bigrams[0], bigrams[1], bigrams[2], bigrams[3], col_gloss_file)
 	} else {
-		// Ignore arguments beyond the first six
-		bigram1 := terms[0] + terms[1]
-		bigram2 := terms[1] + terms[2]
-		bigram3 := terms[2] + terms[3]
-		bigram4 := terms[3] + terms[4]
-		bigram5 := terms[4] + terms[5]
-		results, err = df.simBgCol5Stmt.QueryContext(ctx, df.avdl, bigram1, bigram2,
-			bigram3, bigram4, bigram5, col_gloss_file)
+		// Ignore bigrams beyond the first five
+		results, err = df.simBgCol5Stmt.QueryContext(ctx, df.avdl, bigrams[0], bigrams[1], bigrams[2], bigrams[3], bigrams[4], col_gloss_file)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("FindDocsBigramCo, Error for query %v: %v", terms, err)
+		return nil, fmt.Errorf("FindDocsBigramCo, Error for query %v: %v", bigrams, err)
 	}
-	simSlice := []Document{}
+	scores := []BM25Score{}
 	for results.Next() {
-		docSim := Document{}
-		docSim.CollectionFile = col_gloss_file
-		results.Scan(&docSim.SimBigram, &docSim.ContainsBigrams,
-			&docSim.GlossFile)
+		s := BM25Score{}
+		s.Collection = col_gloss_file
+		results.Scan(&s.Score, &s.ContainsTerms,
+			&s.Document)
 		//log.Println("FindDocsBigramCo, Similarity, Document = ", docSim)
-		simSlice = append(simSlice, docSim)
+		scores = append(scores, s)
 	}
-	return simSlice, nil
+	return scores, nil
 }
 
 func (df databaseDocFinder) findCollections(ctx context.Context, query string) []Collection {
@@ -454,10 +463,11 @@ func (df databaseDocFinder) findDocuments(ctx context.Context, query string, ter
 	// For more than one term find docs that are similar body and merge
 	simDocMap := toSimilarDocMap(docs) // similarity = 1.0
 	log.Printf("findDocuments, len(docMap): %s, %d", query, len(simDocMap))
-	simDocs, err := df.FindDocsTermFreq(ctx, queryTerms)
+	termScores, err := df.FindDocsTermFreq(ctx, queryTerms)
 	if err != nil {
 		return nil, err
 	}
+	simDocs := convert4Term(termScores)
 	mergeDocList(df, simDocMap, simDocs)
 
 	// If less than 2 terms then do not need to check bigrams
@@ -468,10 +478,12 @@ func (df databaseDocFinder) findDocuments(ctx context.Context, query string, ter
 		relevantDocs := toRelevantDocList(df, sortedDocs, queryTerms)
 		return relevantDocs, nil
 	}
-	moreDocs, err := df.FindDocsBigramFreq(ctx, queryTerms)
+	qBigrams := bigrams(queryTerms)
+	bigramScores, err := df.FindDocsBigramFreq(ctx, qBigrams)
 	if err != nil {
 		return nil, err
 	}
+	moreDocs := convert4Bigram(bigramScores)
 	mergeDocList(df, simDocMap, moreDocs)
 	sortedDocs := toSortedDocList(simDocMap)
 	log.Printf("findDocuments, len(sortedDocs): %s, %d", query, len(sortedDocs))
@@ -497,21 +509,24 @@ func (df databaseDocFinder) findDocumentsInCol(ctx context.Context, query string
 	// For more than one term find docs that are similar body and merge
 	simDocMap := toSimilarDocMap(docs) // similarity = 1.0
 	//simDocs, err := findBodyBitVector(queryTerms)
-	simDocs, err := df.FindDocsTermCo(ctx, queryTerms, col_gloss_file)
+	termScores, err := df.FindDocsTermCo(ctx, queryTerms, col_gloss_file)
 	if err != nil {
 		return nil, err
 	}
+	simDocs := convert4Term(termScores)
 	//log.Println("findDocumentsInCol, len(simDocs) by word freq: ", len(simDocs))
 	mergeDocList(df, simDocMap, simDocs)
 
 	if len(terms) > 1 {
 		// If there are 2 or more terms then check bigrams
-		simBGDocs, err := df.FindDocsBigramCo(ctx, queryTerms, col_gloss_file)
+		qBigrams := bigrams(queryTerms)
+		bigramScores, err := df.FindDocsBigramCo(ctx, qBigrams, col_gloss_file)
 		//log.Println("findDocumentsInCol, len(simBGDocs) ", len(simBGDocs))
 		if err != nil {
 			return nil, fmt.Errorf("findDocumentsInCol, FindDocsBigramCo error: %v",
 				err)
 		}
+		simBGDocs := convert4Bigram(bigramScores)
 		mergeDocList(df, simDocMap, simBGDocs)
 	}
 	sortedDocs := toSortedDocList(simDocMap)
