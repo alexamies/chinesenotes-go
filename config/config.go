@@ -19,6 +19,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -100,6 +101,27 @@ func (c AppConfig) DictionaryDir() string {
 // IndexDir gets the name of the directory containing the dictionary files
 func (c AppConfig) IndexDir() string {
 	return c.ProjectHome + "/index"
+}
+
+// IndexCorpus gets the name of the corpus to test the term frequency index in Firestore.
+func (c AppConfig) IndexCorpus() (string, bool) {
+	val, ok := c.ConfigVars["IndexCorpus"]
+	return val, ok
+}
+
+// IndexGen gets the generation number for the term frequency index in Firestore.
+func (c AppConfig) IndexGen() int {
+	val, ok := c.ConfigVars["IndexGen"]
+	if !ok {
+		val = "0"
+		log.Printf("config.IndexGen: no value found for IndexGen using %s", val)
+	}
+	gen, err := strconv.Atoi(val)
+	if err != nil {
+		gen = 0
+		log.Printf("config.IndexGen: bad value %s found for IndexGen using %d", val, gen)
+	}
+	return gen
 }
 
 // GetVar gets a configuration variable value

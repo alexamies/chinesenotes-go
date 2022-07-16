@@ -83,14 +83,6 @@ func (c WebAppConfig) GetVarWithDefault(key, defaultVal string) string {
 	return val
 }
 
-func (c WebAppConfig) DBType() string {
-	val, ok := c.ConfigVars["DBType"]
-	if !ok {
-		return "mysql"
-	}
-	return val
-}
-
 // DBConfig gets the configuration string to connect to the database
 func DBConfig() string {
 	instanceConnectionName := os.Getenv("INSTANCE_CONNECTION_NAME")

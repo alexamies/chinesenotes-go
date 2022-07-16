@@ -39,15 +39,18 @@ import (
 	"github.com/alexamies/chinesenotes-go/fulltext"
 	"github.com/alexamies/chinesenotes-go/identity"
 	"github.com/alexamies/chinesenotes-go/media"
+	"github.com/alexamies/chinesenotes-go/termfreq"
 	"github.com/alexamies/chinesenotes-go/transmemory"
 	"github.com/alexamies/chinesenotes-go/transtools"
+
+	"cloud.google.com/go/firestore"
 )
 
 const (
 	deepLKeyName         = "DEEPL_AUTH_KEY" // Only needed if using machine translation
 	defTitle             = "Chinese Notes Translation Portal"
 	glossaryKeyName      = "TRANSLATION_GLOSSARY" // Google Translation API glossary
-	projectIDKey         = "PROJECT_ID"           // For translation glossary location
+	projectIDKey         = "PROJECT_ID"           // For GCP project
 	titleIndexFN         = "documents.tsv"
 	translationTemplFile = "web-resources/translation.html"
 )
@@ -160,13 +163,32 @@ func initApp(ctx context.Context) (*backends, error) {
 			log.Printf("main.initApp() unable to load doc map: %v", err)
 		}
 	}
+	log.Printf("main.initApp() doc map loaded with %d items", len(docMap))
 	extractor, err := dictionary.NewNotesExtractor(webConfig.NotesExtractorPattern())
 	if err != nil {
 		log.Printf("initApp, non-fatal error, unable to initialize NotesExtractor: %v", err)
 	}
 	reverseIndex := dictionary.NewReverseIndex(dict, extractor)
-	log.Printf("main.initApp() doc map loaded with %d items", len(docMap))
-	tfDocFinder := find.NewMysqlDocFinder(ctx, b.database)
+
+	var tfDocFinder find.TermFreqDocFinder
+	projectID, ok := os.LookupEnv(projectIDKey)
+	if !ok {
+		log.Printf("%s not set, falling back to mysql TermFreqDocFinder", projectIDKey)
+		tfDocFinder = find.NewMysqlDocFinder(ctx, b.database)
+	} else {
+		client, err := firestore.NewClient(ctx, projectID)
+		if err != nil {
+			log.Printf("Cannot instantiate Firestore TermFreqDocFinder: %v", err)
+		} else {
+			indexCorpus, ok := appConfig.IndexCorpus()
+			if !ok {
+				log.Print("Cannot find value for IndexCorpus")
+			} else {
+				indexGen := appConfig.IndexGen()
+				tfDocFinder = termfreq.NewFirestoreDocFinder(client, indexCorpus, indexGen)
+			}
+		}
+	}
 	titleFinder := find.NewMysqlTitleFinder(ctx, b.database, &docMap)
 	bends := &backends{
 		df:           find.NewDocFinder(tfDocFinder, titleFinder),
@@ -879,9 +901,6 @@ func findSubstring(response http.ResponseWriter, request *http.Request) {
 func healthcheck(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "OK")
 	fmt.Fprintf(w, "Using a database: %t", config.UseDatabase())
-	if b != nil {
-		fmt.Fprintf(w, "Using database: %s", b.webConfig.DBType())
-	}
 	fmt.Fprintf(w, "Password protected: %t", config.PasswordProtected())
 }
 
