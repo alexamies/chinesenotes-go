@@ -72,7 +72,7 @@ func TestBigrams(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		got := bigrams(tc.terms)
+		got := Bigrams(tc.terms)
 		if !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("TestBigrams.%s with terms %v, got: %v, want %v", tc.name, tc.terms, got, tc.want)
 		}

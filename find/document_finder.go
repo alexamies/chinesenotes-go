@@ -361,7 +361,8 @@ func (df databaseDocFinder) FindDocsTermCo(ctx context.Context, terms []string, 
 	return scores, nil
 }
 
-func bigrams(terms []string) []string {
+// Bigrams constructs a slice of bigrams from pairs of terms
+func Bigrams(terms []string) []string {
 	b := []string{}
 	if len(terms) < 2 {
 		return b
@@ -538,7 +539,7 @@ func (df docFinder) findDocuments(ctx context.Context, query string, terms []Tex
 		relevantDocs := toRelevantDocList(df.titleFinder, sortedDocs, queryTerms)
 		return relevantDocs, nil
 	}
-	qBigrams := bigrams(queryTerms)
+	qBigrams := Bigrams(queryTerms)
 	bigramScores, err := df.tfDocFinder.FindDocsBigramFreq(ctx, qBigrams)
 	if err != nil {
 		return nil, err
@@ -579,7 +580,7 @@ func (df docFinder) findDocumentsInCol(ctx context.Context, query string, terms 
 
 	if len(terms) > 1 {
 		// If there are 2 or more terms then check bigrams
-		qBigrams := bigrams(queryTerms)
+		qBigrams := Bigrams(queryTerms)
 		bigramScores, err := df.tfDocFinder.FindDocsBigramCo(ctx, qBigrams, col_gloss_file)
 		//log.Println("findDocumentsInCol, len(simBGDocs) ", len(simBGDocs))
 		if err != nil {
