@@ -79,32 +79,6 @@ func TestBigrams(t *testing.T) {
 	}
 }
 
-// Test package initialization, which requires a database connection
-func TestCacheColDetails(t *testing.T) {
-	database, err := initDBCon()
-	if err != nil {
-		t.Errorf("TestCacheColDetails, Error: %v", err)
-		return
-	}
-	if database == nil {
-		t.Skip("TestCacheColDetails, no database skipping")
-	}
-	df := databaseDocFinder{
-		database: database,
-	}
-	ctx := context.Background()
-	err = df.initFind(ctx)
-	if err != nil {
-		t.Fatalf("TestCacheColDetails, Error: %v", err)
-	}
-	cMap := df.cacheColDetails(ctx)
-	title := cMap["wenxuan.html"]
-	if title == "" {
-		t.Logf("TestCacheColDetails: got empty title, map size, %d",
-			len(cMap))
-	}
-}
-
 func TestCombineByWeight(t *testing.T) {
 	doc := Document{
 		GlossFile:    "f2.html",
@@ -147,6 +121,9 @@ func TestFindDocuments(t *testing.T) {
 		return
 	}
 	df := databaseDocFinder{}
+	dFinder := docFinder{
+		tfDocFinder: df,
+	}
 	ctx := context.Background()
 	err = df.initFind(ctx)
 	if err != nil {
@@ -190,7 +167,7 @@ func TestFindDocuments(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		qr, err := df.FindDocuments(ctx, reverseIndex, parser, tc.query, false)
+		qr, err := dFinder.FindDocuments(ctx, reverseIndex, parser, tc.query, false)
 		gotError := (err != nil)
 		if tc.expectError != gotError {
 			t.Errorf("TestFindDocuments, %s: expectError: %t vs got %t",
@@ -222,6 +199,9 @@ func TestFindDocumentsInCol(t *testing.T) {
 	}
 	df := databaseDocFinder{
 		database: database,
+	}
+	dFinder := docFinder{
+		tfDocFinder: df,
 	}
 	ctx := context.Background()
 	err = df.initFind(ctx)
@@ -294,7 +274,7 @@ func TestFindDocumentsInCol(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		qr, err := df.FindDocumentsInCol(ctx, reverseIndex, parser, tc.query, tc.collection)
+		qr, err := dFinder.FindDocumentsInCol(ctx, reverseIndex, parser, tc.query, tc.collection)
 		gotError := (err == nil)
 		if tc.expectError != gotError {
 			t.Errorf("TestFindDocumentsInCol, %s: expected error %t vs got error: %t",
@@ -323,11 +303,11 @@ func TestMergeDocList(t *testing.T) {
 	if database == nil {
 		t.Skip("TestMergeDocList, no database skipping")
 	}
-	df := databaseDocFinder{
+	df := mysqlTitleFinder{
 		database: database,
 	}
 	ctx := context.Background()
-	err = df.initFind(ctx)
+	err = df.initMysqlTitleFinder(ctx)
 	if err != nil {
 		t.Errorf("TestMergeDocList, Error: %v", err)
 		return
@@ -400,7 +380,7 @@ func TestMergeDocList(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		mergeDocList(df, tc.simDocMap, tc.docList)
+		mergeDocList(&df, tc.simDocMap, tc.docList)
 		if tc.expectNum != len(simDocMap) {
 			t.Errorf("TestMergeDocList, %s: expected %d vs got %d",
 				tc.name, tc.expectNum, len(simDocMap))
@@ -620,11 +600,11 @@ func TestToRelevantDocList(t *testing.T) {
 		t.Skip("TestMergeDocList, no database skipping")
 		return
 	}
-	df := databaseDocFinder{
+	df := mysqlTitleFinder{
 		database: database,
 	}
 	ctx := context.Background()
-	err = df.initFind(ctx)
+	err = df.initMysqlTitleFinder(ctx)
 	if err != nil {
 		t.Fatalf("TestMergeDocList, Error: %v", err)
 	}
@@ -650,7 +630,7 @@ func TestToRelevantDocList(t *testing.T) {
 	similarDocMap[doc3.GlossFile] = doc3
 	docs := toSortedDocList(similarDocMap)
 	queryTerms := []string{}
-	docs = toRelevantDocList(df, docs, queryTerms)
+	docs = toRelevantDocList(&df, docs, queryTerms)
 	expected := 2
 	result := len(docs)
 	if result == expected {

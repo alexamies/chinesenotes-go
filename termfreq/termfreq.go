@@ -49,10 +49,19 @@ type TermFreqDoc struct {
 	DocLen     int64   `firestore:"doclen"`
 }
 
-type FBDocFinder struct {
+type fsDocFinder struct {
 	client     fsClient
 	corpus     string
 	generation int
+}
+
+// NewFirestoreDocFinder creates a TermFreqDocFinder implemented with a Firestore client
+func NewFirestoreDocFinder(client fsClient, corpus string, generation int) find.TermFreqDocFinder {
+	return fsDocFinder{
+		client:     client,
+		corpus:     corpus,
+		generation: generation,
+	}
 }
 
 // bm25 computes the BM25 score using the formula (Zhai and Massung 2016, loc. 2423):
@@ -84,13 +93,13 @@ func bitvector(entries []*TermFreqDoc) float64 {
 }
 
 // FindDocsBigramFreq finds documents with occurences of any of the bigram given in the corpus ordered by BM25 score
-func (f FBDocFinder) FindDocsBigramFreq(ctx context.Context, bigrams []string) ([]find.BM25Score, error) {
+func (f fsDocFinder) FindDocsBigramFreq(ctx context.Context, bigrams []string) ([]find.BM25Score, error) {
 	fbCol := fmt.Sprintf("%s_bigram_doc_freq%d", f.corpus, f.generation)
 	return findDocsTermFreq(ctx, f.client, fbCol, bigrams)
 }
 
 // FindDocsTermFreq finds documents with occurences of any of the terms given in the corpus ordered by BM25 score
-func (f FBDocFinder) FindDocsTermFreq(ctx context.Context, terms []string) ([]find.BM25Score, error) {
+func (f fsDocFinder) FindDocsTermFreq(ctx context.Context, terms []string) ([]find.BM25Score, error) {
 	fbCol := fmt.Sprintf("%s_wordfreqdoc%d", f.corpus, f.generation)
 	return findDocsTermFreq(ctx, f.client, fbCol, terms)
 }
@@ -150,13 +159,13 @@ func findDocsTermFreq(ctx context.Context, client fsClient, fbCol string, terms 
 }
 
 // FindDocsTermCo finds documents within the scope of a corpus collection
-func (f FBDocFinder) FindDocsBigramCo(ctx context.Context, bigrams []string, col string) ([]find.BM25Score, error) {
+func (f fsDocFinder) FindDocsBigramCo(ctx context.Context, bigrams []string, col string) ([]find.BM25Score, error) {
 	fbCol := fmt.Sprintf("%s_bigram_doc_freq%d", f.corpus, f.generation)
 	return findDocsCol(ctx, f.client, fbCol, bigrams, col)
 }
 
 // FindDocsTermCo finds documents within the scope of a corpus collection
-func (f FBDocFinder) FindDocsTermCo(ctx context.Context, terms []string, col string) ([]find.BM25Score, error) {
+func (f fsDocFinder) FindDocsTermCo(ctx context.Context, terms []string, col string) ([]find.BM25Score, error) {
 	fbCol := fmt.Sprintf("%s_wordfreqdoc%d", f.corpus, f.generation)
 	return findDocsCol(ctx, f.client, fbCol, terms, col)
 }

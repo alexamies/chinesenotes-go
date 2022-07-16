@@ -46,6 +46,14 @@ type DocFinder interface {
 		parser QueryParser, query, col_gloss_file string) (*QueryResults, error)
 }
 
+// DocFinder finds documents.
+type TermFreqDocFinder interface {
+	FindDocsTermFreq(ctx context.Context, terms []string) ([]BM25Score, error)
+	FindDocsBigramFreq(ctx context.Context, bigrams []string) ([]BM25Score, error)
+	FindDocsTermCo(ctx context.Context, terms []string, col string) ([]BM25Score, error)
+	FindDocsBigramCo(ctx context.Context, bigrams []string, col string) ([]BM25Score, error)
+}
+
 type BM25Score struct {
 	Document      string
 	Collection    string
@@ -56,13 +64,9 @@ type BM25Score struct {
 
 // databaseDocFinder holds stateful items needed for text search in database.
 type databaseDocFinder struct {
-	countColStmt                                                       *sql.Stmt
 	database                                                           *sql.DB
-	colMap                                                             map[string]string
-	docMap                                                             map[string]DocInfo
 	docListStmt                                                        *sql.Stmt
-	findAllTitlesStmt, findAllColTitlesStmt                            *sql.Stmt
-	findColStmt, findDocStmt, findDocInColStmt, findWordStmt           *sql.Stmt
+	findWordStmt                                                       *sql.Stmt
 	simBM251Stmt, simBM252Stmt, simBM253Stmt, simBM254Stmt             *sql.Stmt
 	simBM255Stmt, simBM256Stmt                                         *sql.Stmt
 	simBM25Col1Stmt, simBM25Col2Stmt, simBM25Col3Stmt, simBM25Col4Stmt *sql.Stmt
@@ -72,6 +76,21 @@ type databaseDocFinder struct {
 	simBgCol1Stmt, simBgCol2Stmt, simBgCol3Stmt, simBgCol4Stmt         *sql.Stmt
 	simBgCol5Stmt                                                      *sql.Stmt
 	avdl                                                               int // The average document length
+}
+
+func NewMysqlDocFinder(ctx context.Context, database *sql.DB) TermFreqDocFinder {
+	df := databaseDocFinder{
+		database: database,
+	}
+	if database != nil {
+		err := df.initFind(ctx)
+		if err != nil {
+			log.Printf("NewDocFinder, Error: %v", err)
+			return &df
+		}
+	}
+	log.Println("NewDocFinder initialized")
+	return &df
 }
 
 type Collection struct {
@@ -96,16 +115,49 @@ type QueryResults struct {
 	SimilarTerms                 []TextSegment
 }
 
-// Create and initialize an implementation of the DocFinder interface
-func NewDocFinder(ctx context.Context,
-	database *sql.DB,
-	docMap map[string]DocInfo) DocFinder {
-	df := databaseDocFinder{
+type docFinder struct {
+	tfDocFinder TermFreqDocFinder
+	titleFinder TitleFinder
+}
+
+// NewDocFinder creates and initializes an implementation of the DocFinder interface
+func NewDocFinder(tfDocFinder TermFreqDocFinder, titleFinder TitleFinder) DocFinder {
+	return &docFinder{
+		tfDocFinder: tfDocFinder,
+		titleFinder: titleFinder,
+	}
+}
+
+type TitleFinder interface {
+	CountCollections(ctx context.Context, query string) (int, error)
+	FindCollections(ctx context.Context, query string) []Collection
+	FindDocsByTitle(ctx context.Context, query string) ([]Document, error)
+	FindDocsByTitleInCol(ctx context.Context, query, col_gloss_file string) ([]Document, error)
+	ColMap() *map[string]string
+	DocMap() *map[string]DocInfo
+}
+
+// mysqlTitleFinder holds stateful items needed for title search in database.
+type mysqlTitleFinder struct {
+	database             *sql.DB
+	colMap               *map[string]string
+	docMap               *map[string]DocInfo
+	countColStmt         *sql.Stmt
+	findColStmt          *sql.Stmt
+	findDocStmt          *sql.Stmt
+	findAllColTitlesStmt *sql.Stmt
+	findAllTitlesStmt    *sql.Stmt
+	findDocInColStmt     *sql.Stmt
+}
+
+func NewMysqlTitleFinder(ctx context.Context, database *sql.DB, docMap *map[string]DocInfo) TitleFinder {
+	df := mysqlTitleFinder{
 		database: database,
+		colMap:   &map[string]string{},
 		docMap:   docMap,
 	}
 	if database != nil {
-		err := df.initFind(ctx)
+		err := df.initMysqlTitleFinder(ctx)
 		if err != nil {
 			log.Printf("NewDocFinder, Error: %v", err)
 			return &df
@@ -113,6 +165,14 @@ func NewDocFinder(ctx context.Context,
 	}
 	log.Println("NewDocFinder initialized")
 	return &df
+}
+
+func (m mysqlTitleFinder) ColMap() *map[string]string {
+	return m.colMap
+}
+
+func (m mysqlTitleFinder) DocMap() *map[string]DocInfo {
+	return m.docMap
 }
 
 // convert2DocSim converts a BM25Score struct to a Document for term similarity
@@ -157,25 +217,26 @@ func (doc Document) String() string {
 }
 
 // Cache the details of all collecitons by target file name
-func (df *databaseDocFinder) cacheColDetails(ctx context.Context) map[string]string {
+func (df *mysqlTitleFinder) cacheColDetails(ctx context.Context) *map[string]string {
 	if df.findAllColTitlesStmt == nil {
-		return map[string]string{}
+		return &map[string]string{}
 	}
-	df.colMap = map[string]string{}
+	colMap := map[string]string{}
 	results, err := df.findAllColTitlesStmt.QueryContext(ctx)
 	if err != nil {
 		log.Printf("cacheColDetails, Error for query: %v", err)
-		return df.colMap
+		return &colMap
 	}
 	defer results.Close()
 
 	for results.Next() {
 		var gloss_file, title string
 		results.Scan(&gloss_file, &title)
-		df.colMap[gloss_file] = title
+		colMap[gloss_file] = title
 	}
-	log.Printf("cacheColDetails, len(colMap) = %d", len(df.colMap))
-	return df.colMap
+	log.Printf("cacheColDetails, len(colMap) = %d", len(colMap))
+	df.colMap = &colMap
+	return &colMap
 }
 
 // Compute the combined similarity based on logistic regression of document
@@ -207,11 +268,11 @@ func combineByWeight(doc Document, maxSimWords, maxSimBigram float64) Document {
 	return simDoc
 }
 
-func (df databaseDocFinder) countCollections(ctx context.Context, query string) (int, error) {
+func (df mysqlTitleFinder) CountCollections(ctx context.Context, query string) (int, error) {
 	var count int
 	results, err := df.countColStmt.QueryContext(ctx, "%"+query+"%")
 	if err != nil {
-		return 0, fmt.Errorf("countCollections: query %s, error: %v", query, err)
+		return 0, fmt.Errorf("CountCollections: query %s, error: %v", query, err)
 	}
 	results.Next()
 	results.Scan(&count)
@@ -390,10 +451,10 @@ func (df databaseDocFinder) FindDocsBigramCo(ctx context.Context, bigrams []stri
 	return scores, nil
 }
 
-func (df databaseDocFinder) findCollections(ctx context.Context, query string) []Collection {
+func (df mysqlTitleFinder) FindCollections(ctx context.Context, query string) []Collection {
 	results, err := df.findColStmt.QueryContext(ctx, "%"+query+"%")
 	if err != nil {
-		log.Printf("findCollections, Error for query %v: %v", query, err)
+		log.Printf("FindCollections, Error for query %v: %v", query, err)
 		return nil
 	}
 	defer results.Close()
@@ -407,7 +468,7 @@ func (df databaseDocFinder) findCollections(ctx context.Context, query string) [
 }
 
 // findDocsByTitle find documents based on a match in title
-func (df databaseDocFinder) findDocsByTitle(ctx context.Context, query string) ([]Document, error) {
+func (df mysqlTitleFinder) FindDocsByTitle(ctx context.Context, query string) ([]Document, error) {
 	results, err := df.findDocStmt.QueryContext(ctx, "%"+query+"%")
 	if err != nil {
 		return nil, fmt.Errorf("findDocsByTitle, Error for query %v: %v", query, err)
@@ -426,8 +487,7 @@ func (df databaseDocFinder) findDocsByTitle(ctx context.Context, query string) (
 }
 
 // findDocsByTitleInCol find documents based on a match in title within a specific collection
-func (df databaseDocFinder) findDocsByTitleInCol(ctx context.Context,
-	query, col_gloss_file string) ([]Document, error) {
+func (df mysqlTitleFinder) FindDocsByTitleInCol(ctx context.Context, query, col_gloss_file string) ([]Document, error) {
 	results, err := df.findDocInColStmt.QueryContext(ctx, "%"+query+"%",
 		col_gloss_file)
 	if err != nil {
@@ -448,9 +508,9 @@ func (df databaseDocFinder) findDocsByTitleInCol(ctx context.Context,
 }
 
 // findDocuments find documents by both title and contents, and merge the lists
-func (df databaseDocFinder) findDocuments(ctx context.Context, query string, terms []TextSegment, advanced bool) ([]Document, error) {
+func (df docFinder) findDocuments(ctx context.Context, query string, terms []TextSegment, advanced bool) ([]Document, error) {
 	log.Printf("findDocuments, enter: %s", query)
-	docs, err := df.findDocsByTitle(ctx, query)
+	docs, err := df.titleFinder.FindDocsByTitle(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -463,42 +523,42 @@ func (df databaseDocFinder) findDocuments(ctx context.Context, query string, ter
 	// For more than one term find docs that are similar body and merge
 	simDocMap := toSimilarDocMap(docs) // similarity = 1.0
 	log.Printf("findDocuments, len(docMap): %s, %d", query, len(simDocMap))
-	termScores, err := df.FindDocsTermFreq(ctx, queryTerms)
+	termScores, err := df.tfDocFinder.FindDocsTermFreq(ctx, queryTerms)
 	if err != nil {
 		return nil, err
 	}
 	simDocs := convert4Term(termScores)
-	mergeDocList(df, simDocMap, simDocs)
+	mergeDocList(df.titleFinder, simDocMap, simDocs)
 
 	// If less than 2 terms then do not need to check bigrams
 	if len(terms) < 2 {
 		sortedDocs := toSortedDocList(simDocMap)
 		log.Printf("findDocuments, < 2 len(sortedDocs): %s, %d", query,
 			len(sortedDocs))
-		relevantDocs := toRelevantDocList(df, sortedDocs, queryTerms)
+		relevantDocs := toRelevantDocList(df.titleFinder, sortedDocs, queryTerms)
 		return relevantDocs, nil
 	}
 	qBigrams := bigrams(queryTerms)
-	bigramScores, err := df.FindDocsBigramFreq(ctx, qBigrams)
+	bigramScores, err := df.tfDocFinder.FindDocsBigramFreq(ctx, qBigrams)
 	if err != nil {
 		return nil, err
 	}
 	moreDocs := convert4Bigram(bigramScores)
-	mergeDocList(df, simDocMap, moreDocs)
+	mergeDocList(df.titleFinder, simDocMap, moreDocs)
 	sortedDocs := toSortedDocList(simDocMap)
 	log.Printf("findDocuments, len(sortedDocs): %s, %d", query, len(sortedDocs))
-	relevantDocs := toRelevantDocList(df, sortedDocs, queryTerms)
+	relevantDocs := toRelevantDocList(df.titleFinder, sortedDocs, queryTerms)
 	log.Printf("findDocuments, len(relevantDocs): %s, %d", query, len(relevantDocs))
 	return relevantDocs, nil
 }
 
 // findDocumentsInCol finds documents in a specific collection by both title and contents, and
 // merge the lists
-func (df databaseDocFinder) findDocumentsInCol(ctx context.Context, query string, terms []TextSegment,
+func (df docFinder) findDocumentsInCol(ctx context.Context, query string, terms []TextSegment,
 	col_gloss_file string) ([]Document, error) {
 	log.Printf("findDocumentsInCol, col_gloss_file, terms: %s, %v",
 		col_gloss_file, terms)
-	docs, err := df.findDocsByTitleInCol(ctx, query, col_gloss_file)
+	docs, err := df.titleFinder.FindDocsByTitleInCol(ctx, query, col_gloss_file)
 	if err != nil {
 		return nil, err
 	}
@@ -509,29 +569,29 @@ func (df databaseDocFinder) findDocumentsInCol(ctx context.Context, query string
 	// For more than one term find docs that are similar body and merge
 	simDocMap := toSimilarDocMap(docs) // similarity = 1.0
 	//simDocs, err := findBodyBitVector(queryTerms)
-	termScores, err := df.FindDocsTermCo(ctx, queryTerms, col_gloss_file)
+	termScores, err := df.tfDocFinder.FindDocsTermCo(ctx, queryTerms, col_gloss_file)
 	if err != nil {
 		return nil, err
 	}
 	simDocs := convert4Term(termScores)
 	//log.Println("findDocumentsInCol, len(simDocs) by word freq: ", len(simDocs))
-	mergeDocList(df, simDocMap, simDocs)
+	mergeDocList(df.titleFinder, simDocMap, simDocs)
 
 	if len(terms) > 1 {
 		// If there are 2 or more terms then check bigrams
 		qBigrams := bigrams(queryTerms)
-		bigramScores, err := df.FindDocsBigramCo(ctx, qBigrams, col_gloss_file)
+		bigramScores, err := df.tfDocFinder.FindDocsBigramCo(ctx, qBigrams, col_gloss_file)
 		//log.Println("findDocumentsInCol, len(simBGDocs) ", len(simBGDocs))
 		if err != nil {
 			return nil, fmt.Errorf("findDocumentsInCol, FindDocsBigramCo error: %v",
 				err)
 		}
 		simBGDocs := convert4Bigram(bigramScores)
-		mergeDocList(df, simDocMap, simBGDocs)
+		mergeDocList(df.titleFinder, simDocMap, simBGDocs)
 	}
 	sortedDocs := toSortedDocList(simDocMap)
 	log.Printf("findDocumentsInCol, len(sortedDocs): %d", len(sortedDocs))
-	relevantDocs := toRelevantDocList(df, sortedDocs, queryTerms)
+	relevantDocs := toRelevantDocList(df.titleFinder, sortedDocs, queryTerms)
 	log.Printf("findDocumentsInCol, len(relevantDocs): %s, %d", query,
 		len(relevantDocs))
 	return relevantDocs, nil
@@ -544,7 +604,7 @@ func (df databaseDocFinder) findDocumentsInCol(ctx context.Context, query string
 // Chinese words in the dictionary. If there are no Chinese words in the query
 // then the Chinese word senses matching the English or Pinyin will be included
 // in the TextSegment.Senses field.
-func (df databaseDocFinder) FindDocuments(ctx context.Context, reverseIndex dictionary.ReverseIndex,
+func (df docFinder) FindDocuments(ctx context.Context, reverseIndex dictionary.ReverseIndex,
 	parser QueryParser, query string,
 	advanced bool) (*QueryResults, error) {
 	if query == "" {
@@ -563,24 +623,11 @@ func (df databaseDocFinder) FindDocuments(ctx context.Context, reverseIndex dict
 		terms[0].Senses = senses
 	}
 
-	if df.database == nil {
-		return &QueryResults{
-			Query:          query,
-			CollectionFile: "",
-			NumCollections: 0,
-			NumDocuments:   0,
-			Collections:    nil,
-			Documents:      nil,
-			Terms:          terms,
-			SimilarTerms:   nil,
-		}, nil
-	}
-
-	nCol, err := df.countCollections(ctx, query)
+	nCol, err := df.titleFinder.CountCollections(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("FindDocuments, error from countCollections: %v", err)
 	}
-	collections := df.findCollections(ctx, query)
+	collections := df.titleFinder.FindCollections(ctx, query)
 	documents, err := df.findDocuments(ctx, query, terms, advanced)
 	if err != nil {
 		return nil, fmt.Errorf("FindDocuments, error from findDocuments: %v", err)
@@ -608,7 +655,7 @@ func (df databaseDocFinder) FindDocuments(ctx context.Context, reverseIndex dict
 // Chinese words in the dictionary. If there are no Chinese words in the query
 // then the Chinese word senses matching the English or Pinyin will be included
 // in the TextSegment.Senses field.
-func (df databaseDocFinder) FindDocumentsInCol(ctx context.Context,
+func (df docFinder) FindDocumentsInCol(ctx context.Context,
 	reverseIndex dictionary.ReverseIndex, parser QueryParser, query,
 	col_gloss_file string) (*QueryResults, error) {
 	if query == "" {
@@ -657,6 +704,21 @@ func (df *databaseDocFinder) initFind(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+// Open database connection and prepare statements. Allows for re-initialization
+// at most every minute
+func (df *mysqlTitleFinder) initMysqlTitleFinder(ctx context.Context) error {
+	log.Println("find.initMysqlTitleFinder Initializing document_finder")
+	err := df.initTitleStatements(ctx)
+	if err != nil {
+		conString := config.DBConfig()
+		return fmt.Errorf("find.initMysqlTitleFinder: got error with conString %s: \n%v", conString, err)
+	}
+	if err != nil {
+		return err
+	}
 	df.colMap = df.cacheColDetails(ctx)
 	return nil
 }
@@ -672,39 +734,6 @@ func (df *databaseDocFinder) initStatements(ctx context.Context) error {
 			"FROM document")
 	if err != nil {
 		return fmt.Errorf("find.initStatements() Error for docListStmt: %v", err)
-	}
-
-	df.findColStmt, err = df.database.PrepareContext(ctx,
-		"SELECT title, gloss_file FROM collection WHERE title LIKE ? LIMIT 20")
-	if err != nil {
-		return fmt.Errorf("find.initStatements() Error preparing collection stmt: %v",
-			err)
-	}
-
-	df.countColStmt, err = df.database.PrepareContext(ctx,
-		"SELECT count(title) FROM collection WHERE title LIKE ?")
-	if err != nil {
-		return fmt.Errorf("find.initStatements() Error preparing cstmt: %v", err)
-	}
-
-	// Search documents by title substring
-	df.findDocStmt, err = df.database.PrepareContext(ctx,
-		"SELECT title, gloss_file, col_gloss_file, col_title "+
-			"FROM document "+
-			"WHERE col_plus_doc_title LIKE ? LIMIT 20")
-	if err != nil {
-		return fmt.Errorf("find.initStatements() Error preparing dstmt: %v", err)
-	}
-
-	// Search documents by title substring within a collection
-	df.findDocInColStmt, err = df.database.PrepareContext(ctx,
-		"SELECT title, gloss_file, col_title "+
-			"FROM document "+
-			"WHERE col_plus_doc_title LIKE ? "+
-			"AND col_gloss_file = ? "+
-			"LIMIT 500")
-	if err != nil {
-		return fmt.Errorf("find.initStatements() Error preparing dstmt: %v", err)
 	}
 
 	df.findWordStmt, err = df.database.PrepareContext(ctx,
@@ -1054,6 +1083,37 @@ func (df *databaseDocFinder) initStatements(ctx context.Context) error {
 		return fmt.Errorf("find.initStatements() Error for simBgCol5Stmt: %v", err)
 	}
 
+	return nil
+}
+
+func (df *mysqlTitleFinder) initTitleStatements(ctx context.Context) error {
+	var err error
+	if df.database == nil {
+		return fmt.Errorf("initTitleStatements, database is nil")
+	}
+
+	df.countColStmt, err = df.database.PrepareContext(ctx,
+		"SELECT count(title) FROM collection WHERE title LIKE ?")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error preparing cstmt: %v", err)
+	}
+
+	df.findColStmt, err = df.database.PrepareContext(ctx,
+		"SELECT title, gloss_file FROM collection WHERE title LIKE ? LIMIT 20")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error preparing collection stmt: %v",
+			err)
+	}
+
+	// Search documents by title substring
+	df.findDocStmt, err = df.database.PrepareContext(ctx,
+		"SELECT title, gloss_file, col_gloss_file, col_title "+
+			"FROM document "+
+			"WHERE col_plus_doc_title LIKE ? LIMIT 20")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error preparing dstmt: %v", err)
+	}
+
 	// Find the titles of all documents
 	df.findAllTitlesStmt, err = df.database.PrepareContext(ctx,
 		"SELECT gloss_file, title, col_gloss_file, col_title "+
@@ -1070,14 +1130,27 @@ func (df *databaseDocFinder) initStatements(ctx context.Context) error {
 			err)
 	}
 
+	// Search documents by title substring within a collection
+	df.findDocInColStmt, err = df.database.PrepareContext(ctx,
+		"SELECT title, gloss_file, col_title "+
+			"FROM document "+
+			"WHERE col_plus_doc_title LIKE ? "+
+			"AND col_gloss_file = ? "+
+			"LIMIT 500")
+	if err != nil {
+		return fmt.Errorf("find.initStatements() Error preparing dstmt: %v", err)
+	}
+
 	return nil
 }
 
 // Merge a list of documents with map of similar docs, adding the similarity
 // for docs that are in both lists
-func mergeDocList(df databaseDocFinder, simDocMap map[string]Document, docList []Document) {
+func mergeDocList(df TitleFinder, simDocMap map[string]Document, docList []Document) {
 	for _, simDoc := range docList {
 		sDoc, ok := simDocMap[simDoc.GlossFile]
+		colMap := *df.ColMap()
+		docMap := *df.DocMap()
 		if ok {
 			sDoc.SimTitle += simDoc.SimTitle
 			sDoc.SimWords += simDoc.SimWords
@@ -1095,8 +1168,8 @@ func mergeDocList(df databaseDocFinder, simDocMap map[string]Document, docList [
 			}
 			simDocMap[simDoc.GlossFile] = sDoc
 		} else {
-			colTitle, ok1 := df.colMap[simDoc.CollectionFile]
-			document, ok2 := df.docMap[simDoc.GlossFile]
+			colTitle, ok1 := colMap[simDoc.CollectionFile]
+			document, ok2 := docMap[simDoc.GlossFile]
 			if ok1 && ok2 {
 				doc := Document{CollectionFile: simDoc.CollectionFile,
 					CollectionTitle: colTitle,
@@ -1180,13 +1253,14 @@ func sortMatchingSubstr(docs []Document) {
 }
 
 // Filter documents that are not similar
-func toRelevantDocList(df databaseDocFinder, docs []Document, terms []string) []Document {
+func toRelevantDocList(df TitleFinder, docs []Document, terms []string) []Document {
 	if len(docs) < 1 {
 		return docs
 	}
 	keys := []string{}
+	docMap := *df.DocMap()
 	for _, doc := range docs {
-		d, ok := df.docMap[doc.GlossFile]
+		d, ok := docMap[doc.GlossFile]
 		if !ok {
 			log.Printf("find.toRelevantDocList could not find %s", doc.GlossFile)
 			continue
@@ -1199,7 +1273,7 @@ func toRelevantDocList(df databaseDocFinder, docs []Document, terms []string) []
 		log.Printf("toRelevantDocList, check Similarity %f, min %f, gloss %s, "+
 			"title: %s", doc.Similarity, minSimilarity, doc.GlossFile,
 			doc.Title)
-		d, ok := df.docMap[doc.GlossFile]
+		d, ok := docMap[doc.GlossFile]
 		if !ok {
 			log.Printf("find.toRelevantDocList 2 could not find %s", doc.GlossFile)
 			continue

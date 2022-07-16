@@ -166,8 +166,10 @@ func initApp(ctx context.Context) (*backends, error) {
 	}
 	reverseIndex := dictionary.NewReverseIndex(dict, extractor)
 	log.Printf("main.initApp() doc map loaded with %d items", len(docMap))
+	tfDocFinder := find.NewMysqlDocFinder(ctx, b.database)
+	titleFinder := find.NewMysqlTitleFinder(ctx, b.database, &docMap)
 	bends := &backends{
-		df:           find.NewDocFinder(ctx, b.database, docMap),
+		df:           find.NewDocFinder(tfDocFinder, titleFinder),
 		dict:         dict,
 		parser:       parser,
 		reverseIndex: reverseIndex,
