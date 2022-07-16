@@ -15,6 +15,7 @@ package find
 import (
 	"context"
 	"encoding/csv"
+	"fmt"
 	"io"
 	"log"
 )
@@ -23,22 +24,29 @@ type DocInfo struct {
 	CorpusFile, GlossFile, Title, TitleCN, TitleEN, CollectionFile, CollectionTitle string
 }
 
-// DocTitleFinder finds documents by title.
-type DocTitleFinder interface {
-	FindDocuments(ctx context.Context, query string) (*QueryResults, error)
+// docTitleFinder implements the TitleFinder interface
+type fileTitleFinder struct {
+	colMap  *map[string]string
+	dInfoCN *map[string]DocInfo
+	docMap  *map[string]DocInfo
 }
 
-// docTitleFinder implements the DocTitleFinder interface
-type docTitleFinder struct {
-	infoCache map[string]DocInfo
+// NewDocTitleFinder initializes a DocTitleFinder implementation
+// Params
+//   infoCache: key to the map is the Chinese part of the title
+func NewFileTitleFinder(colMap *map[string]string, dInfoCN, docMap *map[string]DocInfo) TitleFinder {
+	return fileTitleFinder{
+		colMap:  colMap,
+		dInfoCN: dInfoCN,
+		docMap:  docMap,
+	}
 }
 
 // FileDocTitleFinder finds documents by title using an index loaded from file.
-func (f docTitleFinder) FindDocuments(ctx context.Context, query string) (*QueryResults, error) {
-	results := QueryResults{
-		Query: query,
-	}
-	if i, ok := f.infoCache[query]; ok {
+func (f fileTitleFinder) FindDocsByTitle(ctx context.Context, query string) ([]Document, error) {
+	results := []Document{}
+	dInfoCN := *f.dInfoCN
+	if i, ok := dInfoCN[query]; ok {
 		d := Document{
 			GlossFile:       i.GlossFile,
 			Title:           i.Title,
@@ -46,19 +54,29 @@ func (f docTitleFinder) FindDocuments(ctx context.Context, query string) (*Query
 			CollectionTitle: i.CollectionTitle,
 			TitleCNMatch:    true,
 		}
-		results.NumDocuments = 1
-		results.Documents = []Document{d}
+		results = append(results, d)
 	}
-	return &results, nil
+	return results, nil
 }
 
-// NewDocTitleFinder initializes a DocTitleFinder implementation
-// Params
-//   infoCache: key to the map is the Chinese part of the title
-func NewDocTitleFinder(infoCache map[string]DocInfo) DocTitleFinder {
-	return docTitleFinder{
-		infoCache: infoCache,
-	}
+func (f fileTitleFinder) CountCollections(ctx context.Context, query string) (int, error) {
+	return 0, fmt.Errorf("not implemented")
+}
+
+func (f fileTitleFinder) FindCollections(ctx context.Context, query string) []Collection {
+	return []Collection{}
+}
+
+func (f fileTitleFinder) FindDocsByTitleInCol(ctx context.Context, query, col_gloss_file string) ([]Document, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+func (f fileTitleFinder) ColMap() *map[string]string {
+	return f.colMap
+}
+
+func (f fileTitleFinder) DocMap() *map[string]DocInfo {
+	return f.docMap
 }
 
 // Load title info for all documents

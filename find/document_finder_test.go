@@ -16,12 +16,10 @@ package find
 
 import (
 	"context"
-	"database/sql"
 	"log"
 	"reflect"
 	"testing"
 
-	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/fulltext"
 )
@@ -35,12 +33,70 @@ func (m mockReverseIndex) Find(ctx context.Context, query string) ([]dicttypes.W
 	return results, nil
 }
 
-func initDBCon() (*sql.DB, error) {
-	if !config.UseDatabase() {
-		return nil, nil
+type mockDocFinder struct {
+	scores []BM25Score
+}
+
+func newMockDocFinder(scores []BM25Score) TermFreqDocFinder {
+	return mockDocFinder{
+		scores: scores,
 	}
-	conString := config.DBConfig()
-	return sql.Open("mysql", conString)
+}
+
+func (m mockDocFinder) FindDocsTermFreq(ctx context.Context, terms []string) ([]BM25Score, error) {
+	return m.scores, nil
+}
+
+func (m mockDocFinder) FindDocsBigramFreq(ctx context.Context, bigrams []string) ([]BM25Score, error) {
+	return m.scores, nil
+}
+
+func (m mockDocFinder) FindDocsTermCo(ctx context.Context, terms []string, col string) ([]BM25Score, error) {
+	return m.scores, nil
+}
+
+func (m mockDocFinder) FindDocsBigramCo(ctx context.Context, bigrams []string, col string) ([]BM25Score, error) {
+	return m.scores, nil
+}
+
+type mockTitleFinder struct {
+	collections []Collection
+	documents   []Document
+	colMap      *map[string]string
+	docMap      *map[string]DocInfo
+}
+
+func newMockTitleFinder(collections []Collection, documents []Document, colMap *map[string]string, docMap *map[string]DocInfo) TitleFinder {
+	return mockTitleFinder{
+		collections: collections,
+		documents:   documents,
+		colMap:      colMap,
+		docMap:      docMap,
+	}
+}
+
+func (m mockTitleFinder) CountCollections(ctx context.Context, query string) (int, error) {
+	return 0, nil
+}
+
+func (m mockTitleFinder) FindCollections(ctx context.Context, query string) []Collection {
+	return m.collections
+}
+
+func (m mockTitleFinder) FindDocsByTitle(ctx context.Context, query string) ([]Document, error) {
+	return m.documents, nil
+}
+
+func (m mockTitleFinder) FindDocsByTitleInCol(ctx context.Context, query, col_gloss_file string) ([]Document, error) {
+	return m.documents, nil
+}
+
+func (m mockTitleFinder) ColMap() *map[string]string {
+	return m.colMap
+}
+
+func (m mockTitleFinder) DocMap() *map[string]DocInfo {
+	return m.docMap
 }
 
 func TestBigrams(t *testing.T) {
@@ -111,25 +167,17 @@ func TestCombineByWeight(t *testing.T) {
 func TestFindDocuments(t *testing.T) {
 
 	// Setup
-	database, err := initDBCon()
-	if err != nil {
-		t.Errorf("TestFindDocuments, Error: %v", err)
-		return
-	}
-	if database == nil {
-		t.Log("TestFindDocuments, not connected to db, skipping")
-		return
-	}
-	df := databaseDocFinder{}
+	df := newMockDocFinder([]BM25Score{})
+	collections := []Collection{}
+	documents := []Document{}
+	colMap := map[string]string{}
+	docMap := map[string]DocInfo{}
+	titleFinder := newMockTitleFinder(collections, documents, &colMap, &docMap)
 	dFinder := docFinder{
 		tfDocFinder: df,
+		titleFinder: titleFinder,
 	}
 	ctx := context.Background()
-	err = df.initFind(ctx)
-	if err != nil {
-		t.Errorf("TestFindDocuments, Error: %v", err)
-		return
-	}
 	reverseIndex := mockReverseIndex{}
 	dict := map[string]*dicttypes.Word{}
 	parser := NewQueryParser(dict)
@@ -148,7 +196,7 @@ func TestFindDocuments(t *testing.T) {
 			query:          "Assembly",
 			expectError:    false,
 			expectNoTerms:  1,
-			expectNoSenses: 1,
+			expectNoSenses: 0,
 		},
 		{
 			name:           "Empty query",
@@ -161,8 +209,8 @@ func TestFindDocuments(t *testing.T) {
 			name:           "No word senses",
 			query:          "hello",
 			expectError:    false,
-			expectNoTerms:  0,
-			expectNoSenses: 1,
+			expectNoTerms:  1,
+			expectNoSenses: 0,
 		},
 	}
 
@@ -170,10 +218,10 @@ func TestFindDocuments(t *testing.T) {
 		qr, err := dFinder.FindDocuments(ctx, reverseIndex, parser, tc.query, false)
 		gotError := (err != nil)
 		if tc.expectError != gotError {
-			t.Errorf("TestFindDocuments, %s: expectError: %t vs got %t",
+			t.Errorf("TestFindDocuments.%s: expectError: %t vs got %t",
 				tc.name, tc.expectError, gotError)
 			if gotError {
-				t.Errorf("TestFindDocuments, %s: unexpected error: %v", tc.name, err)
+				t.Errorf("TestFindDocuments.%s: unexpected error: %v", tc.name, err)
 			}
 			continue
 		}
@@ -181,34 +229,33 @@ func TestFindDocuments(t *testing.T) {
 			continue
 		}
 		gotNoTerms := len(qr.Terms)
-		if tc.expectNoTerms != gotNoTerms {
-			t.Errorf("TestFindDocuments, %s: expectNum: %d vs got %d",
-				tc.name, tc.expectNoTerms, gotNoTerms)
+		if gotNoTerms != tc.expectNoTerms {
+			t.Errorf("TestFindDocuments.%s: gotNoTerms %d, want: %d, details: %v",
+				tc.name, gotNoTerms, tc.expectNoTerms, qr.Terms)
+		}
+		if gotNoTerms > 0 {
+			senses := qr.Terms[0].Senses
+			gotNoSenses := len(senses)
+			if gotNoSenses != tc.expectNoSenses {
+				t.Errorf("TestFindDocuments.%s: gotNoSenses %d, want: %d, details: %v",
+					tc.name, gotNoSenses, tc.expectNoSenses, senses)
+			}
 		}
 	}
 }
 
 func TestFindDocumentsInCol(t *testing.T) {
-	database, err := initDBCon()
-	if err != nil {
-		t.Errorf("TestFindDocumentsInCol, Error: %v", err)
-		return
-	}
-	if database == nil {
-		t.Skip("TestFindDocumentsInCol, no database skipping")
-	}
-	df := databaseDocFinder{
-		database: database,
-	}
+	df := newMockDocFinder([]BM25Score{})
+	collections := []Collection{}
+	documents := []Document{}
+	colMap := map[string]string{}
+	docMap := map[string]DocInfo{}
+	titleFinder := newMockTitleFinder(collections, documents, &colMap, &docMap)
 	dFinder := docFinder{
 		tfDocFinder: df,
+		titleFinder: titleFinder,
 	}
 	ctx := context.Background()
-	err = df.initFind(ctx)
-	if err != nil {
-		t.Errorf("TestFindDocumentsInCol, Error: %v", err)
-		return
-	}
 	reverseIndex := mockReverseIndex{}
 	dict := map[string]*dicttypes.Word{}
 	parser := NewQueryParser(dict)
@@ -275,81 +322,84 @@ func TestFindDocumentsInCol(t *testing.T) {
 
 	for _, tc := range tests {
 		qr, err := dFinder.FindDocumentsInCol(ctx, reverseIndex, parser, tc.query, tc.collection)
-		gotError := (err == nil)
-		if tc.expectError != gotError {
-			t.Errorf("TestFindDocumentsInCol, %s: expected error %t vs got error: %t",
-				tc.name, tc.expectError, gotError)
-			if gotError {
-				t.Errorf("TestFindDocumentsInCol, %s: unexpected error: %v", tc.name, err)
+		if err != nil {
+			if !tc.expectError {
+				t.Errorf("TestFindDocumentsInCol.%s: with query %q unexpected error: %v", tc.name, tc.query, err)
 			}
 			continue
 		}
-		if gotError {
-			continue
+		if err == nil && tc.expectError {
+			t.Errorf("TestFindDocumentsInCol.%s: with query %q, no error but want one", tc.name, tc.query)
 		}
-		if tc.expectNumTerms != len(qr.Terms) {
-			t.Errorf("TestFindDocumentsInCol %s:  expected num terms %d vs got %d",
-				tc.name, tc.expectNumTerms, len(qr.Terms))
+		if len(qr.Terms) != tc.expectNumTerms {
+			t.Errorf("TestFindDocumentsInCol.%s: with query %q, got %d num terms but want %d", tc.name, tc.query, len(qr.Terms), tc.expectNumTerms)
 		}
 	}
 }
 
 func TestMergeDocList(t *testing.T) {
-	database, err := initDBCon()
-	if err != nil {
-		t.Errorf("TestMergeDocList, Error: %v", err)
-		return
-	}
-	if database == nil {
-		t.Skip("TestMergeDocList, no database skipping")
-	}
-	df := mysqlTitleFinder{
-		database: database,
-	}
-	ctx := context.Background()
-	err = df.initMysqlTitleFinder(ctx)
-	if err != nil {
-		t.Errorf("TestMergeDocList, Error: %v", err)
-		return
-	}
-
 	simDocMap := map[string]Document{}
 	docList := []Document{}
 	doc1 := Document{
-		GlossFile: "f1.html",
-		Title:     "Good doc by title",
-		SimTitle:  1.0,
+		GlossFile:      "f1.html",
+		CollectionFile: "collection.html",
+		Title:          "Good doc by title",
+		SimTitle:       1.0,
 	}
 	simDocMap[doc1.GlossFile] = doc1
 	doc2 := Document{
-		GlossFile: "f2.html",
-		Title:     "Very Good doc",
-		SimWords:  0.5,
-		SimBigram: 1.5,
+		GlossFile:      "f2.html",
+		CollectionFile: "collection.html",
+		Title:          "Very Good doc",
+		SimWords:       0.5,
+		SimBigram:      1.5,
 	}
 	docList = append(docList, doc2)
 
 	simDocMap2 := map[string]Document{}
 	docList2 := []Document{}
 	doc3 := Document{
-		GlossFile: "f1.html",
-		Title:     "SAme Very Good doc",
-		SimTitle:  1.0,
+		GlossFile:      "f1.html",
+		CollectionFile: "collection.html",
+		Title:          "Same Very Good doc",
+		SimTitle:       1.0,
 	}
 	simDocMap2[doc3.GlossFile] = doc3
 	doc4 := Document{
-		GlossFile: "f2.html",
-		Title:     "Reasonable by word frequ",
-		SimWords:  1.6,
+		CollectionFile: "collection.html",
+		GlossFile:      "f2.html",
+		Title:          "Reasonable by word frequ",
+		SimWords:       1.6,
 	}
 	doc5 := Document{
-		GlossFile: "f1.html",
-		Title:     "Same Very Good doc",
-		SimWords:  1.5,
-		SimBigram: 1.5,
+		GlossFile:      "f1.html",
+		CollectionFile: "collection.html",
+		Title:          "Same Very Good doc",
+		SimWords:       1.5,
+		SimBigram:      1.5,
 	}
-	docList2 = append(docList2, doc4)
-	docList2 = append(docList2, doc5)
+	docList2 = append(docList2, doc4, doc5)
+
+	collections := []Collection{}
+	documents := []Document{}
+	colMap := map[string]string{
+		"collection.html": "collection.html",
+	}
+	docMap := map[string]DocInfo{
+		"f1.html": {
+			GlossFile:      "f1.html",
+			CollectionFile: "collection.html",
+		},
+		"f2.html": {
+			GlossFile:      "f2.html",
+			CollectionFile: "collection.html",
+		},
+		"f3.html": {
+			GlossFile:      "f3.html",
+			CollectionFile: "collection.html",
+		},
+	}
+	titleFinder := newMockTitleFinder(collections, documents, &colMap, &docMap)
 
 	// Test data
 	type test struct {
@@ -375,27 +425,26 @@ func TestMergeDocList(t *testing.T) {
 			docList:         docList2,
 			expectNum:       2,
 			expectNumDocs:   2,
-			expectGlossFile: doc3.GlossFile,
+			expectGlossFile: doc2.GlossFile,
 		},
 	}
 
 	for _, tc := range tests {
-		mergeDocList(&df, tc.simDocMap, tc.docList)
+		mergeDocList(titleFinder, tc.simDocMap, tc.docList)
 		if tc.expectNum != len(simDocMap) {
-			t.Errorf("TestMergeDocList, %s: expected %d vs got %d",
+			t.Errorf("TestMergeDocList.%s: expected %d vs got %d",
 				tc.name, tc.expectNum, len(simDocMap))
 			continue
 		}
 		docs := toSortedDocList(simDocMap)
 		if tc.expectNumDocs != len(docs) {
-			t.Errorf("TestMergeDocList, %s: expected docs %d vs got %d",
+			t.Errorf("TestMergeDocList.%s: expected docs %d vs got %d",
 				tc.name, tc.expectNumDocs, len(docs))
 			continue
 		}
 		result := docs[0]
-		if tc.expectGlossFile != result.GlossFile {
-			t.Errorf("TestMergeDocList: expected %s, got, %v, docs: %v",
-				tc.name, tc.expectGlossFile, result.GlossFile)
+		if result.GlossFile != tc.expectGlossFile {
+			t.Errorf("TestMergeDocList.%s: got result.GlossFile %v, want: %v", tc.name, result.GlossFile, tc.expectGlossFile)
 		}
 	}
 }
@@ -591,23 +640,11 @@ func TestSortMatchingSubstr3(t *testing.T) {
 }
 
 func TestToRelevantDocList(t *testing.T) {
-	database, err := initDBCon()
-	if err != nil {
-		t.Errorf("TestMergeDocList, Error: %v", err)
-		return
-	}
-	if database == nil {
-		t.Skip("TestMergeDocList, no database skipping")
-		return
-	}
-	df := mysqlTitleFinder{
-		database: database,
-	}
-	ctx := context.Background()
-	err = df.initMysqlTitleFinder(ctx)
-	if err != nil {
-		t.Fatalf("TestMergeDocList, Error: %v", err)
-	}
+	collections := []Collection{}
+	documents := []Document{}
+	colMap := map[string]string{}
+	docMap := map[string]DocInfo{}
+	titleFinder := newMockTitleFinder(collections, documents, &colMap, &docMap)
 
 	similarDocMap := map[string]Document{}
 	doc1 := Document{
@@ -630,7 +667,7 @@ func TestToRelevantDocList(t *testing.T) {
 	similarDocMap[doc3.GlossFile] = doc3
 	docs := toSortedDocList(similarDocMap)
 	queryTerms := []string{}
-	docs = toRelevantDocList(&df, docs, queryTerms)
+	docs = toRelevantDocList(titleFinder, docs, queryTerms)
 	expected := 2
 	result := len(docs)
 	if result == expected {

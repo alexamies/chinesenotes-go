@@ -9,5 +9,5 @@ LUFiles: testdict.tsv
 # IndexCorpus is the name of the corpus for the term frequency index in Firestore.
 IndexCorpus: cnreader
 
- # IndexGen gets the generation number for the term frequency index in Firestore.
+ # IndexGen is the generation number for the term frequency index in Firestore.
 IndexGen: 0

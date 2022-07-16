@@ -56,12 +56,11 @@ const (
 )
 
 var (
-	appConfig      config.AppConfig
-	b              *backends
-	authenticator  *identity.Authenticator
-	mediaSearcher  *media.MediaSearcher
-	docTitleFinder find.DocTitleFinder
-	docMap         map[string]find.DocInfo
+	appConfig     config.AppConfig
+	b             *backends
+	authenticator *identity.Authenticator
+	mediaSearcher *media.MediaSearcher
+	docMap        map[string]find.DocInfo
 )
 
 // backends holds dependencies that access remote resources
@@ -77,6 +76,7 @@ type backends struct {
 	webConfig                                             config.WebAppConfig
 	deepLApiClient, translateApiClient, glossaryApiClient transtools.ApiClient
 	translationProcessor                                  transtools.Processor
+	docTitleFinder                                        find.TitleFinder
 }
 
 // htmlContent holds content for HTML template
@@ -122,15 +122,19 @@ func initApp(ctx context.Context) (*backends, error) {
 		defer configFile.Close()
 		webConfig = config.InitWeb(configFile)
 	}
+	var database *sql.DB
 	if config.UseDatabase() {
-		b.database, err = initDBCon()
+		database, err = initDBCon()
 		if err != nil {
 			return nil, fmt.Errorf("initApp unable to connect to database: %v", err)
 		}
 	}
-	substrIndex, err := dictionary.NewSubstringIndexDB(ctx, b.database)
-	if err != nil {
-		log.Printf("initApp, non-fatal error, unable to initialize substrIndex: %v", err)
+	var substrIndex dictionary.SubstringIndex
+	if database != nil {
+		substrIndex, err = dictionary.NewSubstringIndexDB(ctx, database)
+		if err != nil {
+			log.Printf("initApp, non-fatal error, unable to initialize substrIndex: %v", err)
+		}
 	}
 	cnReaderHome := os.Getenv("CNREADER_HOME")
 	var dict *dictionary.Dictionary
@@ -151,16 +155,23 @@ func initApp(ctx context.Context) (*backends, error) {
 	}
 	parser := find.NewQueryParser(dict.Wdict)
 	var tms transmemory.Searcher
-	if b.database != nil {
-		tms, err = transmemory.NewSearcher(ctx, b.database)
+	var titleFinder find.TitleFinder
+	if database != nil {
+		tms, err = transmemory.NewSearcher(ctx, database)
 		if err != nil {
 			return nil, fmt.Errorf("main.initApp() unable to create new TM searcher: %v", err)
 		}
-	}
-	if len(docMap) == 0 {
-		_, err := initDocTitleFinder()
+		titleFinder, err = find.NewMysqlTitleFinder(ctx, database, &docMap)
 		if err != nil {
-			log.Printf("main.initApp() unable to load doc map: %v", err)
+			log.Printf("main.initApp() unable to initialize MysqlTitleFinder: %v", err)
+		}
+	}
+	if titleFinder == nil {
+		titleFinder, err = initDocTitleFinder()
+		if err != nil {
+			log.Printf("main.initApp() unable to load titleFinder: %v", err)
+		} else {
+			docMap = *titleFinder.DocMap()
 		}
 	}
 	log.Printf("main.initApp() doc map loaded with %d items", len(docMap))
@@ -174,7 +185,7 @@ func initApp(ctx context.Context) (*backends, error) {
 	projectID, ok := os.LookupEnv(projectIDKey)
 	if !ok {
 		log.Printf("%s not set, falling back to mysql TermFreqDocFinder", projectIDKey)
-		tfDocFinder = find.NewMysqlDocFinder(ctx, b.database)
+		tfDocFinder = find.NewMysqlDocFinder(ctx, database)
 	} else {
 		client, err := firestore.NewClient(ctx, projectID)
 		if err != nil {
@@ -189,8 +200,8 @@ func initApp(ctx context.Context) (*backends, error) {
 			}
 		}
 	}
-	titleFinder := find.NewMysqlTitleFinder(ctx, b.database, &docMap)
 	bends := &backends{
+		database:     database,
 		df:           find.NewDocFinder(tfDocFinder, titleFinder),
 		dict:         dict,
 		parser:       parser,
@@ -210,9 +221,9 @@ func initApp(ctx context.Context) (*backends, error) {
 }
 
 // Initialize the document title finder
-func initDocTitleFinder() (find.DocTitleFinder, error) {
-	if docTitleFinder != nil {
-		return docTitleFinder, nil
+func initDocTitleFinder() (find.TitleFinder, error) {
+	if b != nil && b.docTitleFinder != nil {
+		return b.docTitleFinder, nil
 	}
 	titleFileName := appConfig.IndexDir() + "/" + titleIndexFN
 	r, err := os.Open(titleFileName)
@@ -223,7 +234,11 @@ func initDocTitleFinder() (find.DocTitleFinder, error) {
 	defer r.Close()
 	var dInfoCN map[string]find.DocInfo
 	dInfoCN, docMap = find.LoadDocInfo(r)
-	docTitleFinder = find.NewDocTitleFinder(dInfoCN)
+	colMap := map[string]string{}
+	docTitleFinder := find.NewFileTitleFinder(&colMap, &dInfoCN, &docMap)
+	if b != nil {
+		b.docTitleFinder = docTitleFinder
+	}
 	return docTitleFinder, nil
 }
 
@@ -501,12 +516,16 @@ func findDocs(ctx context.Context, response http.ResponseWriter, request *http.R
 	} else if len(findTitle) > 0 {
 		docTitleFinder, err := initDocTitleFinder()
 		if err == nil {
-			results, err = docTitleFinder.FindDocuments(ctx, q)
-		}
-		if err != nil {
-			log.Printf("main.findDocs Error finding docs, %v", err)
-			http.Error(response, "Internal error", http.StatusInternalServerError)
-			return
+			docs, err := docTitleFinder.FindDocsByTitle(ctx, q)
+			results = &find.QueryResults{
+				Query:     q,
+				Documents: docs,
+			}
+			if err != nil {
+				log.Printf("main.findDocs Error finding docs, %v", err)
+				http.Error(response, "Internal error", http.StatusInternalServerError)
+				return
+			}
 		}
 	} else {
 		results, err = b.df.FindDocuments(ctx, b.reverseIndex, b.parser, q, fullText)

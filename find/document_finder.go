@@ -150,7 +150,7 @@ type mysqlTitleFinder struct {
 	findDocInColStmt     *sql.Stmt
 }
 
-func NewMysqlTitleFinder(ctx context.Context, database *sql.DB, docMap *map[string]DocInfo) TitleFinder {
+func NewMysqlTitleFinder(ctx context.Context, database *sql.DB, docMap *map[string]DocInfo) (TitleFinder, error) {
 	df := mysqlTitleFinder{
 		database: database,
 		colMap:   &map[string]string{},
@@ -159,12 +159,11 @@ func NewMysqlTitleFinder(ctx context.Context, database *sql.DB, docMap *map[stri
 	if database != nil {
 		err := df.initMysqlTitleFinder(ctx)
 		if err != nil {
-			log.Printf("NewDocFinder, Error: %v", err)
-			return &df
+			return nil, fmt.Errorf("NewDocFinder, Error: %v", err)
 		}
 	}
-	log.Println("NewDocFinder initialized")
-	return &df
+	log.Println("NewMysqlTitleFinder initialized")
+	return &df, nil
 }
 
 func (m mysqlTitleFinder) ColMap() *map[string]string {
@@ -268,9 +267,9 @@ func combineByWeight(doc Document, maxSimWords, maxSimBigram float64) Document {
 	return simDoc
 }
 
-func (df mysqlTitleFinder) CountCollections(ctx context.Context, query string) (int, error) {
+func (tf mysqlTitleFinder) CountCollections(ctx context.Context, query string) (int, error) {
 	var count int
-	results, err := df.countColStmt.QueryContext(ctx, "%"+query+"%")
+	results, err := tf.countColStmt.QueryContext(ctx, "%"+query+"%")
 	if err != nil {
 		return 0, fmt.Errorf("CountCollections: query %s, error: %v", query, err)
 	}
@@ -605,9 +604,8 @@ func (df docFinder) findDocumentsInCol(ctx context.Context, query string, terms 
 // Chinese words in the dictionary. If there are no Chinese words in the query
 // then the Chinese word senses matching the English or Pinyin will be included
 // in the TextSegment.Senses field.
-func (df docFinder) FindDocuments(ctx context.Context, reverseIndex dictionary.ReverseIndex,
-	parser QueryParser, query string,
-	advanced bool) (*QueryResults, error) {
+func (df docFinder) FindDocuments(ctx context.Context, reverseIndex dictionary.ReverseIndex, parser QueryParser, query string, advanced bool) (*QueryResults, error) {
+	log.Printf("FindDocuments, query: %q df.titleFinder: %v", query, df.titleFinder)
 	if query == "" {
 		return nil, fmt.Errorf("FindDocuments, Empty query string")
 	}
@@ -615,7 +613,6 @@ func (df docFinder) FindDocuments(ctx context.Context, reverseIndex dictionary.R
 	log.Printf("FindDocuments, got: %d terms", len(terms))
 	if (len(terms) == 1) && (terms[0].DictEntry.HeadwordId == 0) {
 		q := strings.ToLower(query)
-		log.Printf("FindDocuments, no Chinese in query, look for English and Pinyin matches: %s", q)
 		senses, err := reverseIndex.Find(ctx, q)
 		if err != nil {
 			return nil, err
@@ -623,19 +620,23 @@ func (df docFinder) FindDocuments(ctx context.Context, reverseIndex dictionary.R
 		log.Printf("FindDocuments, found senses %v matching reverse query: %s", senses, query)
 		terms[0].Senses = senses
 	}
-
-	nCol, err := df.titleFinder.CountCollections(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("FindDocuments, error from countCollections: %v", err)
+	nCol := 0
+	var err error
+	collections := []Collection{}
+	documents := []Document{}
+	if df.titleFinder != nil {
+		nCol, err = df.titleFinder.CountCollections(ctx, query)
+		if err != nil {
+			log.Printf("FindDocuments, error from CountCollections: %v", err)
+		}
+		collections = df.titleFinder.FindCollections(ctx, query)
+		documents, err = df.findDocuments(ctx, query, terms, advanced)
 	}
-	collections := df.titleFinder.FindCollections(ctx, query)
-	documents, err := df.findDocuments(ctx, query, terms, advanced)
 	if err != nil {
 		return nil, fmt.Errorf("FindDocuments, error from findDocuments: %v", err)
 	}
 	nDoc := len(documents)
-	log.Printf("FindDocuments, query %s, nTerms %d, collection %d, doc count %d: ",
-		query, len(terms), nCol, nDoc)
+	log.Printf("FindDocuments, query %s, nTerms %d, collection %d, doc count %d: ", query, len(terms), nCol, nDoc)
 	return &QueryResults{
 		Query:          query,
 		CollectionFile: "",
@@ -656,16 +657,14 @@ func (df docFinder) FindDocuments(ctx context.Context, reverseIndex dictionary.R
 // Chinese words in the dictionary. If there are no Chinese words in the query
 // then the Chinese word senses matching the English or Pinyin will be included
 // in the TextSegment.Senses field.
-func (df docFinder) FindDocumentsInCol(ctx context.Context,
-	reverseIndex dictionary.ReverseIndex, parser QueryParser, query,
-	col_gloss_file string) (*QueryResults, error) {
-	if query == "" {
+func (df docFinder) FindDocumentsInCol(ctx context.Context, reverseIndex dictionary.ReverseIndex, parser QueryParser, query, colFile string) (*QueryResults, error) {
+	log.Printf("FindDocumentsInCol, Query %q, colFile: %s", query, colFile)
+	if len(query) == 0 {
 		return nil, fmt.Errorf("FindDocumentsInCol, Empty query string")
 	}
 	terms := parser.ParseQuery(query)
 	if (len(terms) == 1) && (terms[0].DictEntry.HeadwordId == 0) {
-		log.Printf("FindDocumentsInCol, Query does not contain Chinese, "+
-			"look for English and Pinyin matches query: %s", query)
+		log.Printf("FindDocumentsInCol, Query with no Chinese, look for English and Pinyin matches query: %s", query)
 		senses, err := reverseIndex.Find(ctx, terms[0].QueryText)
 		if err != nil {
 			return nil, err
@@ -673,7 +672,7 @@ func (df docFinder) FindDocumentsInCol(ctx context.Context,
 			terms[0].Senses = senses
 		}
 	}
-	documents, err := df.findDocumentsInCol(ctx, query, terms, col_gloss_file)
+	documents, err := df.findDocumentsInCol(ctx, query, terms, colFile)
 	if err != nil {
 		return nil, err
 	}
@@ -682,7 +681,7 @@ func (df docFinder) FindDocumentsInCol(ctx context.Context,
 		query, len(terms), 1, nDoc)
 	return &QueryResults{
 		Query:          query,
-		CollectionFile: col_gloss_file,
+		CollectionFile: colFile,
 		NumCollections: 1,
 		NumDocuments:   nDoc,
 		Collections:    []Collection{},
@@ -1145,7 +1144,7 @@ func (df *mysqlTitleFinder) initTitleStatements(ctx context.Context) error {
 	return nil
 }
 
-// Merge a list of documents with map of similar docs, adding the similarity
+// mergeDocList merges a list of documents with map of similar docs, adding the similarity
 // for docs that are in both lists
 func mergeDocList(df TitleFinder, simDocMap map[string]Document, docList []Document) {
 	for _, simDoc := range docList {

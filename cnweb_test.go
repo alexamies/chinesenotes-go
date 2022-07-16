@@ -429,20 +429,44 @@ func TestEnforceValidSession(t *testing.T) {
 	}
 }
 
-// Mock for testing findDocs by title
-type mockDocTitleFinder struct {
-	Query     string
-	Documents []find.Document
+type mockTitleFinder struct {
+	collections []find.Collection
+	documents   []find.Document
+	colMap      *map[string]string
+	docMap      *map[string]find.DocInfo
 }
 
-func (f mockDocTitleFinder) FindDocuments(ctx context.Context,
-	query string) (*find.QueryResults, error) {
-	qr := find.QueryResults{
-		Query:        f.Query,
-		NumDocuments: len(f.Documents),
-		Documents:    f.Documents,
+func newMockTitleFinder(collections []find.Collection, documents []find.Document, colMap *map[string]string, docMap *map[string]find.DocInfo) find.TitleFinder {
+	return mockTitleFinder{
+		collections: collections,
+		documents:   documents,
+		colMap:      colMap,
+		docMap:      docMap,
 	}
-	return &qr, nil
+}
+
+func (m mockTitleFinder) CountCollections(ctx context.Context, query string) (int, error) {
+	return 0, nil
+}
+
+func (m mockTitleFinder) FindCollections(ctx context.Context, query string) []find.Collection {
+	return m.collections
+}
+
+func (m mockTitleFinder) FindDocsByTitle(ctx context.Context, query string) ([]find.Document, error) {
+	return m.documents, nil
+}
+
+func (m mockTitleFinder) FindDocsByTitleInCol(ctx context.Context, query, col_gloss_file string) ([]find.Document, error) {
+	return m.documents, nil
+}
+
+func (m mockTitleFinder) ColMap() *map[string]string {
+	return m.colMap
+}
+
+func (m mockTitleFinder) DocMap() *map[string]find.DocInfo {
+	return m.docMap
 }
 
 func TestFindDocs(t *testing.T) {
@@ -563,11 +587,16 @@ func TestFindDocs(t *testing.T) {
 				u += fmt.Sprintf("%s=%s&", k, v)
 			}
 		}
-		docTitleFinder = mockDocTitleFinder{
-			Query:     tc.query["query"],
-			Documents: tc.docs,
+		collections := []find.Collection{}
+		colMap := map[string]string{}
+		docMap := map[string]find.DocInfo{}
+		titleFinder := newMockTitleFinder(collections, tc.docs, &colMap, &docMap)
+		b = &backends{
+			docTitleFinder: titleFinder,
 		}
+
 		dict := dictionary.NewDictionary(mockSmallDict())
+
 		extractor, err := dictionary.NewNotesExtractor("")
 		if err != nil {
 			t.Fatalf("TestFindDocs %s: not able to create extractor: %v", tc.name, err)
@@ -592,7 +621,7 @@ func TestFindDocs(t *testing.T) {
 			t.Errorf("TestFindDocs %s: got %q but want contains %q", tc.name, result, tc.expectContains)
 		}
 	}
-	docTitleFinder = nil
+	b = nil
 }
 
 func TestHighlightMatches(t *testing.T) {
