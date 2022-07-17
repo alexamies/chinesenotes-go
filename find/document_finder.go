@@ -710,7 +710,7 @@ func (df *databaseDocFinder) initFind(ctx context.Context) error {
 // Open database connection and prepare statements. Allows for re-initialization
 // at most every minute
 func (df *mysqlTitleFinder) initMysqlTitleFinder(ctx context.Context) error {
-	log.Println("find.initMysqlTitleFinder Initializing document_finder")
+	log.Println("find.initMysqlTitleFinder Initializing MysqlTitleFinder")
 	err := df.initTitleStatements(ctx)
 	if err != nil {
 		conString := config.DBConfig()
