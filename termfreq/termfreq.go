@@ -57,6 +57,7 @@ type fsDocFinder struct {
 
 // NewFirestoreDocFinder creates a TermFreqDocFinder implemented with a Firestore client
 func NewFirestoreDocFinder(client fsClient, corpus string, generation int) find.TermFreqDocFinder {
+	log.Printf("NewFirestoreDocFinder: instantiating new instance with corpus %s, generation %d", corpus, generation)
 	return fsDocFinder{
 		client:     client,
 		corpus:     corpus,
