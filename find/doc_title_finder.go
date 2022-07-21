@@ -35,6 +35,7 @@ type fileTitleFinder struct {
 // Params
 //   infoCache: key to the map is the Chinese part of the title
 func NewFileTitleFinder(colMap *map[string]string, dInfoCN, docMap *map[string]DocInfo) TitleFinder {
+	log.Printf("NewFileTitleFinder len(colMap): %d, len(dInfoCN): %d, len(docMap): %d",  len(*colMap), len(*dInfoCN), len(*docMap))
 	return fileTitleFinder{
 		colMap:  colMap,
 		dInfoCN: dInfoCN,
@@ -80,7 +81,7 @@ func (f fileTitleFinder) DocMap() *map[string]DocInfo {
 }
 
 // Load title info for all documents
-func LoadDocInfo(r io.Reader) (map[string]DocInfo, map[string]DocInfo) {
+func LoadDocInfo(r io.Reader) (*map[string]DocInfo, *map[string]DocInfo) {
 	reader := csv.NewReader(r)
 	reader.FieldsPerRecord = 8
 	reader.Comma = rune('\t')
@@ -90,7 +91,7 @@ func LoadDocInfo(r io.Reader) (map[string]DocInfo, map[string]DocInfo) {
 	records, err := reader.ReadAll()
 	if err != nil {
 		log.Printf("loadDocInfo, error reading doc titles: %v", err)
-		return dInfoCN, dInfoGlossFN
+		return &dInfoCN, &dInfoGlossFN
 	}
 	log.Printf("loadDocInfo, reading collections")
 	for _, r := range records {
@@ -108,5 +109,5 @@ func LoadDocInfo(r io.Reader) (map[string]DocInfo, map[string]DocInfo) {
 		dInfoCN[titleCN] = d
 		dInfoGlossFN[glossFN] = d
 	}
-	return dInfoCN, dInfoGlossFN
+	return &dInfoCN, &dInfoGlossFN
 }

@@ -60,12 +60,12 @@ var (
 	b             *backends
 	authenticator *identity.Authenticator
 	mediaSearcher *media.MediaSearcher
-	docMap        map[string]find.DocInfo
 )
 
 // backends holds dependencies that access remote resources
 type backends struct {
 	database                                              *sql.DB
+	docMap        																				*map[string]find.DocInfo
 	df                                                    find.DocFinder
 	dict                                                  *dictionary.Dictionary
 	parser                                                find.QueryParser
@@ -156,25 +156,24 @@ func initApp(ctx context.Context) (*backends, error) {
 	parser := find.NewQueryParser(dict.Wdict)
 	var tms transmemory.Searcher
 	var titleFinder find.TitleFinder
+	var docMap *map[string]find.DocInfo
+	titleFinder, err = initDocTitleFinder()
+	if err != nil {
+		log.Printf("main.initApp() unable to load titleFinder: %v", err)
+	} else {
+		docMap = titleFinder.DocMap()
+	}
+	log.Printf("main.initApp() doc map loaded with %d items", len(*docMap))
 	if database != nil {
 		tms, err = transmemory.NewSearcher(ctx, database)
 		if err != nil {
 			return nil, fmt.Errorf("main.initApp() unable to create new TM searcher: %v", err)
 		}
-		titleFinder, err = find.NewMysqlTitleFinder(ctx, database, &docMap)
+		titleFinder, err = find.NewMysqlTitleFinder(ctx, database, docMap)
 		if err != nil {
 			log.Printf("main.initApp() unable to initialize MysqlTitleFinder: %v", err)
 		}
 	}
-	if titleFinder == nil {
-		titleFinder, err = initDocTitleFinder()
-		if err != nil {
-			log.Printf("main.initApp() unable to load titleFinder: %v", err)
-		} else {
-			docMap = *titleFinder.DocMap()
-		}
-	}
-	log.Printf("main.initApp() doc map loaded with %d items", len(docMap))
 	extractor, err := dictionary.NewNotesExtractor(webConfig.NotesExtractorPattern())
 	if err != nil {
 		log.Printf("initApp, non-fatal error, unable to initialize NotesExtractor: %v", err)
@@ -202,6 +201,7 @@ func initApp(ctx context.Context) (*backends, error) {
 	}
 	bends := &backends{
 		database:     database,
+		docMap: 			docMap,
 		df:           find.NewDocFinder(tfDocFinder, titleFinder),
 		dict:         dict,
 		parser:       parser,
@@ -232,10 +232,11 @@ func initDocTitleFinder() (find.TitleFinder, error) {
 			titleFileName, err)
 	}
 	defer r.Close()
-	var dInfoCN map[string]find.DocInfo
+	var dInfoCN, docMap *map[string]find.DocInfo
 	dInfoCN, docMap = find.LoadDocInfo(r)
-	colMap := map[string]string{}
-	docTitleFinder := find.NewFileTitleFinder(&colMap, &dInfoCN, &docMap)
+	log.Printf("initDocTitleFinder loaded %d docs", len(*docMap))
+	colMap := make(map[string]string)
+	docTitleFinder := find.NewFileTitleFinder(&colMap, dInfoCN, docMap)
 	if b != nil {
 		b.docTitleFinder = docTitleFinder
 	}

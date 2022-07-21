@@ -162,7 +162,7 @@ func NewMysqlTitleFinder(ctx context.Context, database *sql.DB, docMap *map[stri
 			return nil, fmt.Errorf("NewDocFinder, Error: %v", err)
 		}
 	}
-	log.Println("NewMysqlTitleFinder initialized")
+	log.Printf("NewMysqlTitleFinder initialized with %d doc entries", len(*docMap))
 	return &df, nil
 }
 

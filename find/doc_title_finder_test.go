@@ -101,11 +101,12 @@ func TestLoadDocInfo(t *testing.T) {
 	for _, tc := range tests {
 		buf := bytes.NewBufferString(tc.input)
 		_, docInfoMap := LoadDocInfo(buf)
-		if len(docInfoMap) != tc.wantNum {
-			t.Fatalf("TestLoadDocInfo %s, got %d, want %d", tc.name, len(docInfoMap),
+		if len(*docInfoMap) != tc.wantNum {
+			t.Fatalf("TestLoadDocInfo %s, got %d, want %d", tc.name, len(*docInfoMap),
 				tc.wantNum)
 		}
-		d := docInfoMap[tc.GlossFile]
+		dMap := *docInfoMap
+		d := dMap[tc.GlossFile]
 		if d.CorpusFile != tc.wantCorpusFile {
 			t.Fatalf("TestLoadDocInfo %s, got %s, want %s", tc.name, d.CorpusFile,
 				tc.wantCorpusFile)
