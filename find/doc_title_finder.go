@@ -35,7 +35,7 @@ type fileTitleFinder struct {
 // Params
 //   infoCache: key to the map is the Chinese part of the title
 func NewFileTitleFinder(colMap *map[string]string, dInfoCN, docMap *map[string]DocInfo) TitleFinder {
-	log.Printf("NewFileTitleFinder len(colMap): %d, len(dInfoCN): %d, len(docMap): %d",  len(*colMap), len(*dInfoCN), len(*docMap))
+	log.Printf("NewFileTitleFinder len(colMap): %d, len(dInfoCN): %d, len(docMap): %d", len(*colMap), len(*dInfoCN), len(*docMap))
 	return fileTitleFinder{
 		colMap:  colMap,
 		dInfoCN: dInfoCN,
@@ -78,6 +78,34 @@ func (f fileTitleFinder) ColMap() *map[string]string {
 
 func (f fileTitleFinder) DocMap() *map[string]DocInfo {
 	return f.docMap
+}
+
+// LoadColMap gets the list of titles of collections in the corpus
+// key: gloss_file, value: title
+func LoadColMap(r io.Reader) (*map[string]string, error) {
+	reader := csv.NewReader(r)
+	reader.FieldsPerRecord = -1
+	reader.Comma = rune('\t')
+	reader.Comment = rune('#')
+	rawCSVdata, err := reader.ReadAll()
+	if err != nil {
+		return nil, fmt.Errorf("LoadColMap, could not read collections: %v", err)
+	}
+	collections := map[string]string{}
+	log.Printf("loadColMap, reading collections")
+	for i, row := range rawCSVdata {
+		//log.Printf("LoadColMap, i = %d, len(row) = %d", i, len(row))
+		if len(row) < 9 {
+			return nil, fmt.Errorf("LoadColMap: not enough fields in file line %d: %d",
+				i, len(row))
+		}
+		glossFile := row[1]
+		title := row[2]
+		// log.Printf("corpus.Collections: Read collection %s in corpus %s\n",
+		//	collectionFile, corpus)
+		collections[glossFile] = title
+	}
+	return &collections, nil
 }
 
 // Load title info for all documents

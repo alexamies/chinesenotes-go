@@ -1,4 +1,4 @@
-package main
+package templates
 
 import (
 	"bytes"
@@ -9,6 +9,11 @@ import (
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/find"
 )
+
+type htmlContent struct {
+	Title   string
+	Results find.QueryResults
+}
 
 // TestNewTemplateMap building the template map
 func TestNewTemplateMap(t *testing.T) {
@@ -79,7 +84,7 @@ func TestNewTemplateMap(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		templates := newTemplateMap(config.WebAppConfig{})
+		templates := NewTemplateMap(config.WebAppConfig{})
 		tmpl, ok := templates[tc.templateName]
 		if !ok {
 			t.Errorf("%s, template not found: %s", tc.name, tc.templateName)

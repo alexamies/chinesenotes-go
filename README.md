@@ -92,6 +92,7 @@ Then cd into the directory cloned:
 
 ```shell
 cd chinesenotes-go
+export CNWEB_HOME=${PWD}
 ```
 
 Build the app

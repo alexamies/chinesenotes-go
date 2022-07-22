@@ -39,6 +39,7 @@ import (
 	"github.com/alexamies/chinesenotes-go/fulltext"
 	"github.com/alexamies/chinesenotes-go/identity"
 	"github.com/alexamies/chinesenotes-go/media"
+	"github.com/alexamies/chinesenotes-go/templates"
 	"github.com/alexamies/chinesenotes-go/termfreq"
 	"github.com/alexamies/chinesenotes-go/transmemory"
 	"github.com/alexamies/chinesenotes-go/transtools"
@@ -51,6 +52,7 @@ const (
 	defTitle             = "Chinese Notes Translation Portal"
 	glossaryKeyName      = "TRANSLATION_GLOSSARY" // Google Translation API glossary
 	projectIDKey         = "PROJECT_ID"           // For GCP project
+	colFileName          = "collections.csv"
 	titleIndexFN         = "documents.tsv"
 	translationTemplFile = "web-resources/translation.html"
 )
@@ -65,7 +67,7 @@ var (
 // backends holds dependencies that access remote resources
 type backends struct {
 	database                                              *sql.DB
-	docMap        																				*map[string]find.DocInfo
+	docMap                                                *map[string]find.DocInfo
 	df                                                    find.DocFinder
 	dict                                                  *dictionary.Dictionary
 	parser                                                find.QueryParser
@@ -162,8 +164,8 @@ func initApp(ctx context.Context) (*backends, error) {
 		log.Printf("main.initApp() unable to load titleFinder: %v", err)
 	} else {
 		docMap = titleFinder.DocMap()
+		log.Printf("main.initApp() doc map loaded with %d items", len(*docMap))
 	}
-	log.Printf("main.initApp() doc map loaded with %d items", len(*docMap))
 	if database != nil {
 		tms, err = transmemory.NewSearcher(ctx, database)
 		if err != nil {
@@ -201,13 +203,13 @@ func initApp(ctx context.Context) (*backends, error) {
 	}
 	bends := &backends{
 		database:     database,
-		docMap: 			docMap,
+		docMap:       docMap,
 		df:           find.NewDocFinder(tfDocFinder, titleFinder),
 		dict:         dict,
 		parser:       parser,
 		reverseIndex: reverseIndex,
 		substrIndex:  substrIndex,
-		templates:    newTemplateMap(webConfig),
+		templates:    templates.NewTemplateMap(webConfig),
 		tmSearcher:   tms,
 		webConfig:    webConfig,
 	}
@@ -225,18 +227,26 @@ func initDocTitleFinder() (find.TitleFinder, error) {
 	if b != nil && b.docTitleFinder != nil {
 		return b.docTitleFinder, nil
 	}
+	colFileName := appConfig.CorpusDataDir() + "/" + titleIndexFN
+	cr, err := os.Open(colFileName)
+	if err != nil {
+		return nil, fmt.Errorf("initDocTitleFinder: Error opening %s: %v", colFileName, err)
+	}
+	defer cr.Close()
+	colMap, err := find.LoadColMap(cr)
+	if err != nil {
+		return nil, fmt.Errorf("initDocTitleFinder: Error loading col map: %v", err)
+	}
 	titleFileName := appConfig.IndexDir() + "/" + titleIndexFN
 	r, err := os.Open(titleFileName)
 	if err != nil {
-		return nil, fmt.Errorf("initDocTitleFinder: Error opening %s: %v",
-			titleFileName, err)
+		return nil, fmt.Errorf("initDocTitleFinder: Error opening %s: %v", titleFileName, err)
 	}
 	defer r.Close()
 	var dInfoCN, docMap *map[string]find.DocInfo
 	dInfoCN, docMap = find.LoadDocInfo(r)
 	log.Printf("initDocTitleFinder loaded %d docs", len(*docMap))
-	colMap := make(map[string]string)
-	docTitleFinder := find.NewFileTitleFinder(&colMap, dInfoCN, docMap)
+	docTitleFinder := find.NewFileTitleFinder(colMap, dInfoCN, docMap)
 	if b != nil {
 		b.docTitleFinder = docTitleFinder
 	}

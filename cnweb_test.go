@@ -17,6 +17,7 @@ import (
 	"github.com/alexamies/chinesenotes-go/find"
 	"github.com/alexamies/chinesenotes-go/fulltext"
 	"github.com/alexamies/chinesenotes-go/identity"
+	"github.com/alexamies/chinesenotes-go/templates"
 	"github.com/alexamies/chinesenotes-go/transmemory"
 )
 
@@ -214,7 +215,7 @@ func TestMain(m *testing.M) {
 // TestDisplayHome tests the default HTTP handler.
 func TestDisplayHome(t *testing.T) {
 	b = &backends{
-		templates: newTemplateMap(config.WebAppConfig{}),
+		templates: templates.NewTemplateMap(config.WebAppConfig{}),
 	}
 	t.Logf("TestDisplayHome: Begin unit tests\n")
 	type test struct {
@@ -343,7 +344,7 @@ func TestChangePasswordFormHandler(t *testing.T) {
 
 func TestCustom404(t *testing.T) {
 	b = &backends{
-		templates: newTemplateMap(config.WebAppConfig{}),
+		templates: templates.NewTemplateMap(config.WebAppConfig{}),
 	}
 	type test struct {
 		name           string
@@ -370,7 +371,7 @@ func TestCustom404(t *testing.T) {
 
 func TestDisplayPage(t *testing.T) {
 	b := &backends{
-		templates: newTemplateMap(config.WebAppConfig{}),
+		templates: templates.NewTemplateMap(config.WebAppConfig{}),
 	}
 	const query = "邃古"
 	tMContent := htmlContent{
@@ -610,7 +611,7 @@ func TestFindDocs(t *testing.T) {
 			tmSearcher: mockTMSearcher{},
 			dict:       dict,
 			parser:     find.NewQueryParser(dict.Wdict),
-			templates:  newTemplateMap(config.WebAppConfig{}),
+			templates:  templates.NewTemplateMap(config.WebAppConfig{}),
 		}
 		r := httptest.NewRequest(http.MethodGet, u, nil)
 		r.Header.Add("Accept", tc.acceptHeader)
@@ -716,7 +717,7 @@ func TestFindFullText(t *testing.T) {
 			tmSearcher: mockTMSearcher{},
 			dict:       dictionary.NewDictionary(wdict),
 			parser:     find.NewQueryParser(wdict),
-			templates:  newTemplateMap(config.WebAppConfig{}),
+			templates:  templates.NewTemplateMap(config.WebAppConfig{}),
 		}
 		r := httptest.NewRequest(http.MethodGet, u, nil)
 		r.Header.Add("Accept", tc.acceptHeader)
@@ -861,7 +862,7 @@ func TestHealthcheck(t *testing.T) {
 
 func TestLibrary(t *testing.T) {
 	b = &backends{
-		templates: newTemplateMap(config.WebAppConfig{}),
+		templates: templates.NewTemplateMap(config.WebAppConfig{}),
 	}
 	type test struct {
 		name           string
@@ -889,7 +890,7 @@ func TestLibrary(t *testing.T) {
 
 func TestLoginFormHandler(t *testing.T) {
 	b = &backends{
-		templates: newTemplateMap(config.WebAppConfig{}),
+		templates: templates.NewTemplateMap(config.WebAppConfig{}),
 	}
 	type test struct {
 		name           string
@@ -917,7 +918,7 @@ func TestLoginFormHandler(t *testing.T) {
 
 func TestLoginHandler(t *testing.T) {
 	b = &backends{
-		templates: newTemplateMap(config.WebAppConfig{}),
+		templates: templates.NewTemplateMap(config.WebAppConfig{}),
 	}
 	authenticator = &identity.Authenticator{}
 	type test struct {
@@ -947,7 +948,7 @@ func TestLoginHandler(t *testing.T) {
 
 func TestShowQueryResults(t *testing.T) {
 	b := &backends{
-		templates: newTemplateMap(config.WebAppConfig{}),
+		templates: templates.NewTemplateMap(config.WebAppConfig{}),
 	}
 	type test struct {
 		name           string
@@ -1165,7 +1166,7 @@ func TestTranslationHome(t *testing.T) {
 			tmSearcher:   mockTMSearcher{},
 			dict:         dictionary.NewDictionary(tc.wdict),
 			parser:       find.NewQueryParser(tc.wdict),
-			templates:    newTemplateMap(webConfig),
+			templates:    templates.NewTemplateMap(webConfig),
 			webConfig:    webConfig,
 		}
 		r := httptest.NewRequest(http.MethodPost, "/translate", nil)
@@ -1212,7 +1213,7 @@ func TestProcessTranslation(t *testing.T) {
 			tmSearcher:        mockTMSearcher{},
 			dict:              dictionary.NewDictionary(tc.wdict),
 			parser:            find.NewQueryParser(tc.wdict),
-			templates:         newTemplateMap(webConfig),
+			templates:         templates.NewTemplateMap(webConfig),
 			webConfig:         webConfig,
 			glossaryApiClient: mockApiClient{},
 		}
@@ -1296,7 +1297,7 @@ func TestWordDetail(t *testing.T) {
 			tmSearcher:   mockTMSearcher{},
 			dict:         dictionary.NewDictionary(tc.wdict),
 			parser:       find.NewQueryParser(tc.wdict),
-			templates:    newTemplateMap(webConfig),
+			templates:    templates.NewTemplateMap(webConfig),
 			webConfig:    webConfig,
 		}
 		r := httptest.NewRequest(http.MethodGet, u, nil)

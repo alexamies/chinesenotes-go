@@ -71,7 +71,43 @@ func TestFindDocsByTitle(t *testing.T) {
 	}
 }
 
-// Test for loadDocInfo
+// Test for LoadColMap
+func TestLoadColMap(t *testing.T) {
+	line := `x/y.csv	x/y.html	Classic Title 經	A classic.	x/y_00.txt	A Collection	Classics	100	Ancient\n`
+	tests := []struct {
+		name      string
+		input     string
+		wantNum   int
+		GlossFile string
+		wantTitle string
+	}{
+		{
+			name:      "One record",
+			input:     line,
+			wantNum:   1,
+			GlossFile: "x/y.html",
+			wantTitle: "Classic Title 經",
+		},
+	}
+	for _, tc := range tests {
+		buf := bytes.NewBufferString(tc.input)
+		cMap, err := LoadColMap(buf)
+		if err != nil {
+			t.Fatalf("TestLoadColMap %s, unexpected error %v", tc.name, err)
+		}
+		if len(*cMap) != tc.wantNum {
+			t.Fatalf("TestLoadDocInfo %s, got %d, want %d", tc.name, len(*cMap),
+				tc.wantNum)
+		}
+		cm := *cMap
+		title := cm[tc.GlossFile]
+		if title != tc.wantTitle {
+			t.Fatalf("TestLoadColMap %s, got %s, want %s", tc.name, title, tc.wantTitle)
+		}
+	}
+}
+
+// Test for LoadDocInfo
 func TestLoadDocInfo(t *testing.T) {
 	line := `guanhuazhinan.txt	guanhuazhinan.html	` +
 		`官話指南 A Guide to Mandarin	官話指南	A Guide to Mandarin	xyz.html	` +

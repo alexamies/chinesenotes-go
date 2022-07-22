@@ -1,4 +1,4 @@
-package main
+package templates
 
 import (
 	"fmt"
@@ -698,7 +698,7 @@ const translationTmpl = `
 `
 
 // newTemplateMap builds the template map
-func newTemplateMap(webConfig config.WebAppConfig) map[string]*template.Template {
+func NewTemplateMap(webConfig config.WebAppConfig) map[string]*template.Template {
 	tNames := map[string]string{
 		"404.html":                         notFoundTmpl,
 		"admin_portal.html":                adminPortalTmpl,
