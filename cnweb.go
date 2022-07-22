@@ -227,7 +227,7 @@ func initDocTitleFinder() (find.TitleFinder, error) {
 	if b != nil && b.docTitleFinder != nil {
 		return b.docTitleFinder, nil
 	}
-	colFileName := appConfig.CorpusDataDir() + "/" + titleIndexFN
+	colFileName := appConfig.CorpusDataDir() + "/" + colFileName
 	cr, err := os.Open(colFileName)
 	if err != nil {
 		return nil, fmt.Errorf("initDocTitleFinder: Error opening %s: %v", colFileName, err)
