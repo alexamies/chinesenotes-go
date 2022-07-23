@@ -83,17 +83,21 @@ func (loader GCSLoader) GetMatching(plainTextFile string, queryTerms []string) (
 	ctx := context.Background()
 	r, err := loader.client.Bucket(loader.bucket).Object(plainTextFile).NewReader(ctx)
 	if err != nil {
-		return MatchingText{}, fmt.Errorf("GCSLoader.GetMatching error loading %s: %v", plainTextFile, err)
+		return MatchingText{}, fmt.Errorf("GCSLoader.GetMatching error loading for %s: %v", plainTextFile, err)
 	}
 	defer r.Close()
 
 	bs, err := ioutil.ReadAll(r)
 	if err != nil {
-		return MatchingText{}, fmt.Errorf("GCSLoader.GetMatching error reading %s: %v", plainTextFile, err)
+		return MatchingText{}, fmt.Errorf("GCSLoader.GetMatching error reading for %s: %v", plainTextFile, err)
 	}
 	txt := string(bs)
-	log.Printf("GCSLoader.GetMatching for %s, got len(txt) %d", plainTextFile, len(txt))
-	return getMatch(txt, queryTerms), nil
+	match, err := getMatch(txt, queryTerms), nil
+	if err != nil {
+		return MatchingText{}, fmt.Errorf("GCSLoader.GetMatching error finding snippet for %s: %v", plainTextFile, err)
+	}
+	log.Printf("GCSLoader.GetMatching for %s, got len(txt) %d, snippet: %s", plainTextFile, len(txt), match.Snippet)
+	return match, nil
 }
 
 // Uses the environment variableS GOOGLE_APPLICATION_CREDENTIALS and TEXT_BUCKET
@@ -179,7 +183,7 @@ func getMatch(txt string, queryTerms []string) MatchingText {
 		}
 		snippet = txt[start:end]
 	}
-	// log.Printf("fulltext.getMatch, snippet = %s", snippet)
+	// log.Printf("fulltext.getMatch, query = %s, snippet = %s", query, snippet)
 	mt := MatchingText{
 		Snippet:      snippet,
 		LongestMatch: longest,

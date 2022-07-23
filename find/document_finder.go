@@ -1182,18 +1182,18 @@ func mergeDocList(df TitleFinder, simDocMap map[string]Document, docList []Docum
 	}
 }
 
-// Organizes the contains terms found of the document in a form that helps
-// the user.
+// setMatchDetails organizes the contains terms found of the document in a form
+// that helps the user.
 //
 // doc.ContainsWords is a contained list of terms found in the query and doc
 // doc.ContainsBigrams is a contained list of bigrams found in the query and doc
 // doc.ContainsTerms is a list of terms found both in the query and the doc
 // sorted in the same order as the query terms with words merged to bigrams
 func setMatchDetails(doc Document, terms []string, docMatch fulltext.DocMatch) Document {
-	log.Printf("sortContainsWords: %v", terms)
+	log.Printf("setMatchDetails: terms %v, doc %s, snippet: %s", terms, doc.GlossFile, docMatch.MT.Snippet)
 	containsTems := []string{}
 	for i, term := range terms {
-		//fmt.Printf("sortContainsWords: i = %d", i)
+		// log.Printf("sortContainsWords: i = %d", i)
 		bigram := ""
 		if i > 0 {
 			bigram = terms[i-1] + terms[i]
