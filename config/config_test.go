@@ -1,12 +1,14 @@
 package config
 
 import (
+	"os"
 	"reflect"
 	"testing"
 )
 
 // TestCorpusDataDir is a trivial query with empty chunk
 func TestCorpusDataDir(t *testing.T) {
+	os.Unsetenv("CNREADER_HOME")
 	t.Logf("TestCorpusDataDir: Begin unit tests\n")
 	appConfig := InitConfig()
 	result := appConfig.CorpusDataDir()

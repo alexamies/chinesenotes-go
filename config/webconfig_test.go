@@ -50,6 +50,33 @@ func TestNotesExtractorPattern(t *testing.T) {
 	}
 }
 
+func TestAddDirectoryToCol(t *testing.T) {
+	testCases := []struct {
+		name  string
+		input string
+		want  bool
+	}{
+		{
+			name:  "Empty",
+			input: "",
+			want:  false,
+		},
+		{
+			name:  "Set to True",
+			input: `AddDirectoryToCol: True`,
+			want:  true,
+		},
+	}
+	for _, tc := range testCases {
+		r := strings.NewReader(tc.input)
+		c := InitWeb(r)
+		got := c.AddDirectoryToCol()
+		if got != tc.want {
+			t.Errorf("TestAddDirectoryToCol %s: got %t vs want %t", tc.name, got, tc.want)
+		}
+	}
+}
+
 // TestGetFromEmail tests config of from email
 func TestGetFromEmail(t *testing.T) {
 	const email = "do_not_reply@example.org"

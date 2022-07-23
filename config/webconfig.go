@@ -64,6 +64,15 @@ func (c WebAppConfig) NotesExtractorPattern() string {
 	return val
 }
 
+// AddDirectoryToCol gets whether to add a directory prefix to collection names in full text search
+func (c WebAppConfig) AddDirectoryToCol() bool {
+	val, ok := c.ConfigVars["AddDirectoryToCol"]
+	if ok && strings.TrimSpace(val) == "True" {
+		return true
+	}
+	return false
+}
+
 // GetVar gets a configuration variable value, default empty string
 func (c WebAppConfig) GetVar(key string) string {
 	val, ok := c.ConfigVars[key]

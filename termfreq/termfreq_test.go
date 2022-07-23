@@ -104,7 +104,7 @@ func TestFindDocsTermFreq(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		_, err := findDocsTermFreq(ctx, client, tc.path, []string{})
+		_, err := findDocsTermFreq(ctx, client, tc.path, []string{}, false)
 		if !tc.wantError && err != nil {
 			t.Fatalf("TestFindDocsTermFreq.%s: unexpected error: %v", tc.name, err)
 		}
@@ -130,12 +130,41 @@ func TestFindDocsCol(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		_, err := findDocsCol(ctx, client, tc.path, []string{}, "x")
+		_, err := findDocsCol(ctx, client, tc.path, []string{}, "x", false)
 		if !tc.wantError && err != nil {
 			t.Fatalf("TestFindDocsCol.%s: unexpected error: %v", tc.name, err)
 		}
 		if tc.wantError && err == nil {
 			t.Fatalf("TestFindDocsCol.%s: expected error but got none", tc.name)
+		}
+	}
+}
+
+func TestAddDirectoryToCol(t *testing.T) {
+	type test struct {
+		name string
+		col  string
+		doc  string
+		want string
+	}
+	tests := []test{
+		{
+			name: "No prefix needed",
+			col:  "b.html",
+			doc:  "z.html",
+			want: "b.html",
+		},
+		{
+			name: "Prefix is needed",
+			col:  "b.html",
+			doc:  "a/z.html",
+			want: "a/b.html",
+		},
+	}
+	for _, tc := range tests {
+		got := addDirectoryToCol(tc.col, tc.doc)
+		if got != tc.want {
+			t.Errorf("TestAddDirectoryToCol.%s: got %s but want: %s", tc.name, got, tc.want)
 		}
 	}
 }

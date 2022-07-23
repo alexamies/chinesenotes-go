@@ -200,7 +200,8 @@ func initApp(ctx context.Context) (*backends, error) {
 				log.Print("Cannot find value for IndexCorpus")
 			} else {
 				indexGen := appConfig.IndexGen()
-				tfDocFinder = termfreq.NewFirestoreDocFinder(client, indexCorpus, indexGen)
+				addDirectory := webConfig.AddDirectoryToCol()
+				tfDocFinder = termfreq.NewFirestoreDocFinder(client, indexCorpus, indexGen, addDirectory)
 			}
 		}
 	}
