@@ -19,92 +19,68 @@ import (
 	"testing"
 )
 
-func TestGetMatch0(t *testing.T) {
-	t.Log("fulltext.TestgetMatch0: Begin unit test")
-	txt := "厚人倫，美教化，移風俗。故詩有六義焉：一曰風，二曰賦，三曰比，四曰興，五曰雅，六曰頌。"
-	queryTerms := []string{"曰", "風"}
-	mt := getMatch(txt, queryTerms)
-	if mt.Snippet == "" {
-		t.Errorf("TestgetMatch0: snippet empty")
+func TestGetMatch(t *testing.T) {
+	const txt = "厚人倫，美教化，移風俗。故詩有六義焉：一曰風，二曰賦，三曰比，四曰興，五曰雅，六曰頌。"
+	tests := []struct {
+		name        string
+		txt         string
+		queryTerms  []string
+		wantLM      string
+		wantEM      bool
+		wantSnippet string
+	}{
+		{
+			name:        "Happy path 1",
+			txt:         txt,
+			queryTerms:  []string{"曰", "風"},
+			wantLM:      "曰風",
+			wantEM:      true,
+			wantSnippet: txt,
+		},
+		{
+			name:        "Happy path 2",
+			txt:         txt,
+			queryTerms:  []string{"一", "曰風"},
+			wantLM:      "一曰風",
+			wantEM:      true,
+			wantSnippet: txt,
+		},
+		{
+			name:        "Happy path 3",
+			txt:         txt,
+			queryTerms:  []string{"故", "詩", "一"},
+			wantLM:      "故詩",
+			wantEM:      false,
+			wantSnippet: txt,
+		},
+		{
+			name:        "Happy path 4",
+			txt:         txt,
+			queryTerms:  []string{"一", "詩", "有"},
+			wantLM:      "詩有",
+			wantEM:      false,
+			wantSnippet: txt,
+		},
+		{
+			name:        "Snippet empty",
+			txt:         txt,
+			queryTerms:  []string{"美", "移", "故"},
+			wantLM:      "故",
+			wantEM:      false,
+			wantSnippet: txt,
+		},
 	}
-	expectLM := "曰風"
-	if mt.LongestMatch != expectLM {
-		t.Errorf("TestgetMatch0: expect %s. got %s", expectLM, mt.LongestMatch)
-	}
-	expectEM := true
-	if mt.ExactMatch != expectEM {
-		t.Errorf("TestgetMatch0: expect %v. got %v", expectEM, mt.ExactMatch)
-	}
-}
-
-func TestGetMatch1(t *testing.T) {
-	t.Log("fulltext.TestgetMatch0: Begin unit test")
-	txt := "厚人倫，美教化，移風俗。故詩有六義焉：一曰風，二曰賦，三曰比，四曰興，五曰雅，六曰頌。"
-	queryTerms := []string{"一", "曰風"}
-	mt := getMatch(txt, queryTerms)
-	if mt.Snippet == "" {
-		t.Errorf("TestgetMatch1: snippet empty")
-	}
-	expectLM := "一曰風"
-	if mt.LongestMatch != expectLM {
-		t.Errorf("TestgetMatch1: expect %s. got %s", expectLM, mt.LongestMatch)
-	}
-	expectEM := true
-	if mt.ExactMatch != expectEM {
-		t.Errorf("TestgetMatch1: expect %v. got %v", expectEM, mt.ExactMatch)
-	}
-}
-
-func TestGetMatch2(t *testing.T) {
-	t.Log("fulltext.TestgetMatch0: Begin unit test")
-	txt := "厚人倫，美教化，移風俗。故詩有六義焉：一曰風，二曰賦，三曰比，四曰興，五曰雅，六曰頌。"
-	queryTerms := []string{"故", "詩", "一"}
-	mt := getMatch(txt, queryTerms)
-	if mt.Snippet == "" {
-		t.Errorf("TestgetMatch2: snippet empty")
-	}
-	expectLM := "故詩"
-	if mt.LongestMatch != expectLM {
-		t.Errorf("TestgetMatch2: expect %s. got %s", expectLM, mt.LongestMatch)
-	}
-	expectEM := false
-	if mt.ExactMatch != expectEM {
-		t.Errorf("TestgetMatch2: expect %v. got %v", expectEM, mt.ExactMatch)
-	}
-}
-
-func TestGetMatch3(t *testing.T) {
-	t.Log("fulltext.TestgetMatch0: Begin unit test")
-	txt := "厚人倫，美教化，移風俗。故詩有六義焉：一曰風，二曰賦，三曰比，四曰興，五曰雅，六曰頌。"
-	queryTerms := []string{"一", "詩", "有"}
-	mt := getMatch(txt, queryTerms)
-	if mt.Snippet == "" {
-		t.Errorf("TestgetMatch3: snippet empty")
-	}
-	expectLM := "詩有"
-	if mt.LongestMatch != expectLM {
-		t.Errorf("TestgetMatch3: expect %s. got %s", expectLM, mt.LongestMatch)
-	}
-	expectEM := false
-	if mt.ExactMatch != expectEM {
-		t.Errorf("TestgetMatch3: expect %v. got %v", expectEM, mt.ExactMatch)
-	}
-}
-
-func TestGetMatch4(t *testing.T) {
-	t.Log("fulltext.TestgetMatch0: Begin unit test")
-	txt := "厚人倫，美教化，移風俗。故詩有六義焉：一曰風，二曰賦，三曰比，四曰興，五曰雅，六曰頌。"
-	queryTerms := []string{"美", "移", "故"}
-	mt := getMatch(txt, queryTerms)
-	if mt.Snippet == "" {
-		t.Errorf("TestgetMatch4: snippet empty")
-	}
-	if mt.LongestMatch == "" {
-		t.Errorf("TestgetMatch4: LongestMatch empty")
-	}
-	expectEM := false
-	if mt.ExactMatch != expectEM {
-		t.Errorf("TestgetMatch4: expect %v. got %v", expectEM, mt.ExactMatch)
+	for _, tc := range tests {
+		mt := getMatch(tc.txt, tc.queryTerms)
+		if mt.LongestMatch != tc.wantLM {
+			t.Errorf("TestGetMatch.%s: got LM %s but want %s", tc.name, mt.LongestMatch, tc.wantLM)
+		}
+		if mt.ExactMatch != tc.wantEM {
+			t.Errorf("TestgetMatch.%s: got ExactMatch %t but want %t", tc.name, mt.ExactMatch, tc.wantEM)
+		}
+		if mt.Snippet != tc.wantSnippet {
+			t.Errorf("TestGetMatch.%s: got snippet %q but want %q", tc.name, mt.Snippet, tc.wantSnippet)
+		}
 	}
 }
 

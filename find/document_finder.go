@@ -525,7 +525,7 @@ func (df docFinder) findDocuments(ctx context.Context, query string, terms []Tex
 	sortedDocs := toSortedDocList(simDocMap)
 	log.Printf("findDocuments, len(sortedDocs): %s, %d", query, len(sortedDocs))
 	relevantDocs := toRelevantDocList(df.titleFinder, sortedDocs, queryTerms)
-	log.Printf("findDocuments, len(relevantDocs): %s, %d", query, len(relevantDocs))
+	log.Printf("findDocuments, query: %s,len(relevantDocs):, %d", query, len(relevantDocs))
 	return relevantDocs, nil
 }
 

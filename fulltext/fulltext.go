@@ -173,13 +173,19 @@ func getMatch(txt string, queryTerms []string) MatchingText {
 		end := e
 		// Make sure that snippet falls on a proper unicode boundary
 		for j, _ := range txt {
-			if (start == 0) && (j > s) {
+			if (start == 0) && (s != 0) && (j > s) {
 				start = j
 			}
 			if j > e {
 				end = j
 				break
 			}
+		}
+		// degenerate cases
+		if start == 0 && len(txt) <= SNIPPET_LEN {
+			end = len(txt)
+		} else if start == 0 && len(txt) > SNIPPET_LEN {
+			end = SNIPPET_LEN
 		}
 		snippet = txt[start:end]
 	}
