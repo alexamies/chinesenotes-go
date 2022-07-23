@@ -38,7 +38,7 @@ func TestFindDocsByTitle(t *testing.T) {
 	documents := []Document{}
 	colMap := map[string]string{}
 	docMap := map[string]DocInfo{}
-	titleFinder := newMockTitleFinder(collections, documents, &colMap, &docMap)
+	titleFinder := newMockTitleFinder(collections, documents, colMap, docMap)
 	tests := []struct {
 		name    string
 		finder  TitleFinder
@@ -53,7 +53,7 @@ func TestFindDocsByTitle(t *testing.T) {
 		},
 		{
 			name:    "Find one doc",
-			finder:  newMockTitleFinder(collections, []Document{doc}, &colMap, &infoCache),
+			finder:  newMockTitleFinder(collections, []Document{doc}, colMap, infoCache),
 			query:   "官話指南",
 			wantNum: 1,
 		},
@@ -95,12 +95,11 @@ func TestLoadColMap(t *testing.T) {
 		if err != nil {
 			t.Fatalf("TestLoadColMap %s, unexpected error %v", tc.name, err)
 		}
-		if len(*cMap) != tc.wantNum {
-			t.Fatalf("TestLoadDocInfo %s, got %d, want %d", tc.name, len(*cMap),
+		if len(cMap) != tc.wantNum {
+			t.Fatalf("TestLoadDocInfo %s, got %d, want %d", tc.name, len(cMap),
 				tc.wantNum)
 		}
-		cm := *cMap
-		title := cm[tc.GlossFile]
+		title := cMap[tc.GlossFile]
 		if title != tc.wantTitle {
 			t.Fatalf("TestLoadColMap %s, got %s, want %s", tc.name, title, tc.wantTitle)
 		}
@@ -137,11 +136,11 @@ func TestLoadDocInfo(t *testing.T) {
 	for _, tc := range tests {
 		buf := bytes.NewBufferString(tc.input)
 		_, docInfoMap := LoadDocInfo(buf)
-		if len(*docInfoMap) != tc.wantNum {
-			t.Fatalf("TestLoadDocInfo %s, got %d, want %d", tc.name, len(*docInfoMap),
+		if len(docInfoMap) != tc.wantNum {
+			t.Fatalf("TestLoadDocInfo %s, got %d, want %d", tc.name, len(docInfoMap),
 				tc.wantNum)
 		}
-		dMap := *docInfoMap
+		dMap := docInfoMap
 		d := dMap[tc.GlossFile]
 		if d.CorpusFile != tc.wantCorpusFile {
 			t.Fatalf("TestLoadDocInfo %s, got %s, want %s", tc.name, d.CorpusFile,

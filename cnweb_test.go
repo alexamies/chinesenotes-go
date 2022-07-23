@@ -433,11 +433,11 @@ func TestEnforceValidSession(t *testing.T) {
 type mockTitleFinder struct {
 	collections []find.Collection
 	documents   []find.Document
-	colMap      *map[string]string
-	docMap      *map[string]find.DocInfo
+	colMap      map[string]string
+	docMap      map[string]find.DocInfo
 }
 
-func newMockTitleFinder(collections []find.Collection, documents []find.Document, colMap *map[string]string, docMap *map[string]find.DocInfo) find.TitleFinder {
+func newMockTitleFinder(collections []find.Collection, documents []find.Document, colMap map[string]string, docMap map[string]find.DocInfo) find.TitleFinder {
 	return mockTitleFinder{
 		collections: collections,
 		documents:   documents,
@@ -462,11 +462,11 @@ func (m mockTitleFinder) FindDocsByTitleInCol(ctx context.Context, query, col_gl
 	return m.documents, nil
 }
 
-func (m mockTitleFinder) ColMap() *map[string]string {
+func (m mockTitleFinder) ColMap() map[string]string {
 	return m.colMap
 }
 
-func (m mockTitleFinder) DocMap() *map[string]find.DocInfo {
+func (m mockTitleFinder) DocMap() map[string]find.DocInfo {
 	return m.docMap
 }
 
@@ -591,7 +591,7 @@ func TestFindDocs(t *testing.T) {
 		collections := []find.Collection{}
 		colMap := map[string]string{}
 		docMap := map[string]find.DocInfo{}
-		titleFinder := newMockTitleFinder(collections, tc.docs, &colMap, &docMap)
+		titleFinder := newMockTitleFinder(collections, tc.docs, colMap, docMap)
 		b = &backends{
 			docTitleFinder: titleFinder,
 		}

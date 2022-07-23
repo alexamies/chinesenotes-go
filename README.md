@@ -395,6 +395,16 @@ curl http://localhost:8080/find/?query=antiquity
 
 You should see JSON returned.
 
+### Run against Firestore
+
+```
+export CNREADER_HOME=$PWD
+export PROJECT_ID=[your project]
+export GOOGLE_APPLICATION_CREDENTIALS=[your JSON service-account-file ]
+export TEXT_BUCKET=[your GCS text bucket]
+./chinesenotes-go
+```
+
 ### Updating the dictionary
 
 If you add more words to the dictionary, you can update it with the SQ commands:

@@ -62,11 +62,11 @@ func (m mockDocFinder) FindDocsBigramCo(ctx context.Context, bigrams []string, c
 type mockTitleFinder struct {
 	collections []Collection
 	documents   []Document
-	colMap      *map[string]string
-	docMap      *map[string]DocInfo
+	colMap      map[string]string
+	docMap      map[string]DocInfo
 }
 
-func newMockTitleFinder(collections []Collection, documents []Document, colMap *map[string]string, docMap *map[string]DocInfo) TitleFinder {
+func newMockTitleFinder(collections []Collection, documents []Document, colMap map[string]string, docMap map[string]DocInfo) TitleFinder {
 	return mockTitleFinder{
 		collections: collections,
 		documents:   documents,
@@ -91,11 +91,11 @@ func (m mockTitleFinder) FindDocsByTitleInCol(ctx context.Context, query, col_gl
 	return m.documents, nil
 }
 
-func (m mockTitleFinder) ColMap() *map[string]string {
+func (m mockTitleFinder) ColMap() map[string]string {
 	return m.colMap
 }
 
-func (m mockTitleFinder) DocMap() *map[string]DocInfo {
+func (m mockTitleFinder) DocMap() map[string]DocInfo {
 	return m.docMap
 }
 
@@ -172,7 +172,7 @@ func TestFindDocuments(t *testing.T) {
 	documents := []Document{}
 	colMap := map[string]string{}
 	docMap := map[string]DocInfo{}
-	titleFinder := newMockTitleFinder(collections, documents, &colMap, &docMap)
+	titleFinder := newMockTitleFinder(collections, documents, colMap, docMap)
 	dFinder := docFinder{
 		tfDocFinder: df,
 		titleFinder: titleFinder,
@@ -250,7 +250,7 @@ func TestFindDocumentsInCol(t *testing.T) {
 	documents := []Document{}
 	colMap := map[string]string{}
 	docMap := map[string]DocInfo{}
-	titleFinder := newMockTitleFinder(collections, documents, &colMap, &docMap)
+	titleFinder := newMockTitleFinder(collections, documents, colMap, docMap)
 	dFinder := docFinder{
 		tfDocFinder: df,
 		titleFinder: titleFinder,
@@ -399,7 +399,7 @@ func TestMergeDocList(t *testing.T) {
 			CollectionFile: "collection.html",
 		},
 	}
-	titleFinder := newMockTitleFinder(collections, documents, &colMap, &docMap)
+	titleFinder := newMockTitleFinder(collections, documents, colMap, docMap)
 
 	// Test data
 	type test struct {
@@ -644,7 +644,7 @@ func TestToRelevantDocList(t *testing.T) {
 	documents := []Document{}
 	colMap := map[string]string{}
 	docMap := map[string]DocInfo{}
-	titleFinder := newMockTitleFinder(collections, documents, &colMap, &docMap)
+	titleFinder := newMockTitleFinder(collections, documents, colMap, docMap)
 
 	similarDocMap := map[string]Document{}
 	doc1 := Document{

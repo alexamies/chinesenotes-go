@@ -26,16 +26,16 @@ type DocInfo struct {
 
 // docTitleFinder implements the TitleFinder interface
 type fileTitleFinder struct {
-	colMap  *map[string]string
-	dInfoCN *map[string]DocInfo
-	docMap  *map[string]DocInfo
+	colMap  map[string]string
+	dInfoCN map[string]DocInfo
+	docMap  map[string]DocInfo
 }
 
 // NewDocTitleFinder initializes a DocTitleFinder implementation
 // Params
 //   infoCache: key to the map is the Chinese part of the title
-func NewFileTitleFinder(colMap *map[string]string, dInfoCN, docMap *map[string]DocInfo) TitleFinder {
-	log.Printf("NewFileTitleFinder len(colMap): %d, len(dInfoCN): %d, len(docMap): %d", len(*colMap), len(*dInfoCN), len(*docMap))
+func NewFileTitleFinder(colMap map[string]string, dInfoCN, docMap map[string]DocInfo) TitleFinder {
+	log.Printf("NewFileTitleFinder len(colMap): %d, len(dInfoCN): %d, len(docMap): %d", len(colMap), len(dInfoCN), len(docMap))
 	return fileTitleFinder{
 		colMap:  colMap,
 		dInfoCN: dInfoCN,
@@ -46,7 +46,7 @@ func NewFileTitleFinder(colMap *map[string]string, dInfoCN, docMap *map[string]D
 // FileDocTitleFinder finds documents by title using an index loaded from file.
 func (f fileTitleFinder) FindDocsByTitle(ctx context.Context, query string) ([]Document, error) {
 	results := []Document{}
-	dInfoCN := *f.dInfoCN
+	dInfoCN := f.dInfoCN
 	if i, ok := dInfoCN[query]; ok {
 		d := Document{
 			GlossFile:       i.GlossFile,
@@ -72,17 +72,17 @@ func (f fileTitleFinder) FindDocsByTitleInCol(ctx context.Context, query, col_gl
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (f fileTitleFinder) ColMap() *map[string]string {
+func (f fileTitleFinder) ColMap() map[string]string {
 	return f.colMap
 }
 
-func (f fileTitleFinder) DocMap() *map[string]DocInfo {
+func (f fileTitleFinder) DocMap() map[string]DocInfo {
 	return f.docMap
 }
 
 // LoadColMap gets the list of titles of collections in the corpus
 // key: gloss_file, value: title
-func LoadColMap(r io.Reader) (*map[string]string, error) {
+func LoadColMap(r io.Reader) (map[string]string, error) {
 	reader := csv.NewReader(r)
 	reader.FieldsPerRecord = -1
 	reader.Comma = rune('\t')
@@ -105,11 +105,11 @@ func LoadColMap(r io.Reader) (*map[string]string, error) {
 		//	collectionFile, corpus)
 		collections[glossFile] = title
 	}
-	return &collections, nil
+	return collections, nil
 }
 
 // Load title info for all documents
-func LoadDocInfo(r io.Reader) (*map[string]DocInfo, *map[string]DocInfo) {
+func LoadDocInfo(r io.Reader) (map[string]DocInfo, map[string]DocInfo) {
 	reader := csv.NewReader(r)
 	reader.FieldsPerRecord = 8
 	reader.Comma = rune('\t')
@@ -119,7 +119,7 @@ func LoadDocInfo(r io.Reader) (*map[string]DocInfo, *map[string]DocInfo) {
 	records, err := reader.ReadAll()
 	if err != nil {
 		log.Printf("loadDocInfo, error reading doc titles: %v", err)
-		return &dInfoCN, &dInfoGlossFN
+		return dInfoCN, dInfoGlossFN
 	}
 	log.Printf("loadDocInfo, reading collections")
 	for _, r := range records {
@@ -137,5 +137,5 @@ func LoadDocInfo(r io.Reader) (*map[string]DocInfo, *map[string]DocInfo) {
 		dInfoCN[titleCN] = d
 		dInfoGlossFN[glossFN] = d
 	}
-	return &dInfoCN, &dInfoGlossFN
+	return dInfoCN, dInfoGlossFN
 }

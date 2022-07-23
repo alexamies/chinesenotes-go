@@ -67,7 +67,7 @@ var (
 // backends holds dependencies that access remote resources
 type backends struct {
 	database                                              *sql.DB
-	docMap                                                *map[string]find.DocInfo
+	docMap                                                map[string]find.DocInfo
 	df                                                    find.DocFinder
 	dict                                                  *dictionary.Dictionary
 	parser                                                find.QueryParser
@@ -125,6 +125,7 @@ func initApp(ctx context.Context) (*backends, error) {
 		webConfig = config.InitWeb(configFile)
 	}
 	var database *sql.DB
+	log.Printf("initApp UseDatabase %t", config.UseDatabase())
 	if config.UseDatabase() {
 		database, err = initDBCon()
 		if err != nil {
@@ -158,20 +159,22 @@ func initApp(ctx context.Context) (*backends, error) {
 	parser := find.NewQueryParser(dict.Wdict)
 	var tms transmemory.Searcher
 	var titleFinder find.TitleFinder
-	var docMap *map[string]find.DocInfo
+	var colMap map[string]string
+	var docMap map[string]find.DocInfo
 	titleFinder, err = initDocTitleFinder()
 	if err != nil {
 		log.Printf("main.initApp() unable to load titleFinder: %v", err)
 	} else {
+		colMap = titleFinder.ColMap()
 		docMap = titleFinder.DocMap()
-		log.Printf("main.initApp() doc map loaded with %d items", len(*docMap))
+		log.Printf("main.initApp() doc map loaded with %d cols and %d docs", len(colMap), len(docMap))
 	}
 	if database != nil {
 		tms, err = transmemory.NewSearcher(ctx, database)
 		if err != nil {
 			return nil, fmt.Errorf("main.initApp() unable to create new TM searcher: %v", err)
 		}
-		titleFinder, err = find.NewMysqlTitleFinder(ctx, database, docMap)
+		titleFinder, err = find.NewMysqlTitleFinder(ctx, database, colMap, docMap)
 		if err != nil {
 			log.Printf("main.initApp() unable to initialize MysqlTitleFinder: %v", err)
 		}
@@ -243,9 +246,9 @@ func initDocTitleFinder() (find.TitleFinder, error) {
 		return nil, fmt.Errorf("initDocTitleFinder: Error opening %s: %v", titleFileName, err)
 	}
 	defer r.Close()
-	var dInfoCN, docMap *map[string]find.DocInfo
+	var dInfoCN, docMap map[string]find.DocInfo
 	dInfoCN, docMap = find.LoadDocInfo(r)
-	log.Printf("initDocTitleFinder loaded %d docs", len(*docMap))
+	log.Printf("initDocTitleFinder loaded %d cols and  %d docs", len(colMap), len(docMap))
 	docTitleFinder := find.NewFileTitleFinder(colMap, dInfoCN, docMap)
 	if b != nil {
 		b.docTitleFinder = docTitleFinder

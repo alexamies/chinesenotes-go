@@ -133,15 +133,15 @@ type TitleFinder interface {
 	FindCollections(ctx context.Context, query string) []Collection
 	FindDocsByTitle(ctx context.Context, query string) ([]Document, error)
 	FindDocsByTitleInCol(ctx context.Context, query, col_gloss_file string) ([]Document, error)
-	ColMap() *map[string]string
-	DocMap() *map[string]DocInfo
+	ColMap() map[string]string
+	DocMap() map[string]DocInfo
 }
 
 // mysqlTitleFinder holds stateful items needed for title search in database.
 type mysqlTitleFinder struct {
 	database             *sql.DB
-	colMap               *map[string]string
-	docMap               *map[string]DocInfo
+	colMap               map[string]string
+	docMap               map[string]DocInfo
 	countColStmt         *sql.Stmt
 	findColStmt          *sql.Stmt
 	findDocStmt          *sql.Stmt
@@ -150,10 +150,10 @@ type mysqlTitleFinder struct {
 	findDocInColStmt     *sql.Stmt
 }
 
-func NewMysqlTitleFinder(ctx context.Context, database *sql.DB, docMap *map[string]DocInfo) (TitleFinder, error) {
+func NewMysqlTitleFinder(ctx context.Context, database *sql.DB, colMap map[string]string, docMap map[string]DocInfo) (TitleFinder, error) {
 	df := mysqlTitleFinder{
 		database: database,
-		colMap:   &map[string]string{},
+		colMap:   colMap,
 		docMap:   docMap,
 	}
 	if database != nil {
@@ -162,17 +162,15 @@ func NewMysqlTitleFinder(ctx context.Context, database *sql.DB, docMap *map[stri
 			return nil, fmt.Errorf("NewDocFinder, Error: %v", err)
 		}
 	}
-	if df.docMap != nil {
-		log.Printf("NewMysqlTitleFinder initialized with %d doc entries", len(*df.docMap))
-	}
+	log.Printf("NewMysqlTitleFinder initialized with %d colMap entries and %d doc entries", len(colMap), len(docMap))
 	return &df, nil
 }
 
-func (m mysqlTitleFinder) ColMap() *map[string]string {
+func (m mysqlTitleFinder) ColMap() map[string]string {
 	return m.colMap
 }
 
-func (m mysqlTitleFinder) DocMap() *map[string]DocInfo {
+func (m mysqlTitleFinder) DocMap() map[string]DocInfo {
 	return m.docMap
 }
 
@@ -215,29 +213,6 @@ func (doc Document) String() string {
 		doc.GlossFile, doc.CollectionFile, doc.SimTitle, doc.SimWords,
 		doc.SimBigram, doc.SimBitVector, doc.Similarity, doc.ContainsWords,
 		doc.ContainsBigrams, doc.MatchDetails)
-}
-
-// Cache the details of all collecitons by target file name
-func (df *mysqlTitleFinder) cacheColDetails(ctx context.Context) *map[string]string {
-	if df.findAllColTitlesStmt == nil {
-		return &map[string]string{}
-	}
-	colMap := map[string]string{}
-	results, err := df.findAllColTitlesStmt.QueryContext(ctx)
-	if err != nil {
-		log.Printf("cacheColDetails, Error for query: %v", err)
-		return &colMap
-	}
-	defer results.Close()
-
-	for results.Next() {
-		var gloss_file, title string
-		results.Scan(&gloss_file, &title)
-		colMap[gloss_file] = title
-	}
-	log.Printf("cacheColDetails, len(colMap) = %d", len(colMap))
-	df.colMap = &colMap
-	return &colMap
 }
 
 // Compute the combined similarity based on logistic regression of document
@@ -721,7 +696,6 @@ func (df *mysqlTitleFinder) initMysqlTitleFinder(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	df.colMap = df.cacheColDetails(ctx)
 	return nil
 }
 
@@ -1151,8 +1125,8 @@ func (df *mysqlTitleFinder) initTitleStatements(ctx context.Context) error {
 func mergeDocList(df TitleFinder, simDocMap map[string]Document, docList []Document) {
 	for _, simDoc := range docList {
 		sDoc, ok := simDocMap[simDoc.GlossFile]
-		colMap := *df.ColMap()
-		docMap := *df.DocMap()
+		colMap := df.ColMap()
+		docMap := df.DocMap()
 		if ok {
 			sDoc.SimTitle += simDoc.SimTitle
 			sDoc.SimWords += simDoc.SimWords
@@ -1187,8 +1161,7 @@ func mergeDocList(df TitleFinder, simDocMap map[string]Document, docList []Docum
 				}
 				simDocMap[simDoc.GlossFile] = doc
 			} else if ok2 {
-				log.Println("mergeDocList, collection title not found: ",
-					simDoc)
+				log.Printf("mergeDocList, collection title %s not found: %v", simDoc.CollectionFile, simDoc)
 				doc := Document{CollectionFile: "",
 					CollectionTitle: "",
 					GlossFile:       simDoc.GlossFile,
@@ -1203,7 +1176,7 @@ func mergeDocList(df TitleFinder, simDocMap map[string]Document, docList []Docum
 				}
 				simDocMap[simDoc.GlossFile] = doc
 			} else {
-				log.Printf("mergeDocList, doc title not found: %v", simDoc)
+				log.Printf("mergeDocList, doc title %s not found: %v", simDoc.GlossFile, simDoc)
 				simDocMap[simDoc.GlossFile] = simDoc
 			}
 		}
@@ -1260,9 +1233,9 @@ func toRelevantDocList(df TitleFinder, docs []Document, terms []string) []Docume
 		return docs
 	}
 	keys := []string{}
-	docMap := *df.DocMap()
+	docMap := df.DocMap()
 	for _, doc := range docs {
-		d, ok := docMap[doc.GlossFile]
+		d, ok := df.DocMap()[doc.GlossFile]
 		if !ok {
 			log.Printf("find.toRelevantDocList could not find %s", doc.GlossFile)
 			continue
