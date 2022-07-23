@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 //
 // Unit tests for the fulltext package
 //
@@ -20,7 +19,7 @@ import (
 	"testing"
 )
 
-func TestgetMatch0(t *testing.T) {
+func TestGetMatch0(t *testing.T) {
 	t.Log("fulltext.TestgetMatch0: Begin unit test")
 	txt := "厚人倫，美教化，移風俗。故詩有六義焉：一曰風，二曰賦，三曰比，四曰興，五曰雅，六曰頌。"
 	queryTerms := []string{"曰", "風"}
@@ -38,7 +37,7 @@ func TestgetMatch0(t *testing.T) {
 	}
 }
 
-func TestgetMatch1(t *testing.T) {
+func TestGetMatch1(t *testing.T) {
 	t.Log("fulltext.TestgetMatch0: Begin unit test")
 	txt := "厚人倫，美教化，移風俗。故詩有六義焉：一曰風，二曰賦，三曰比，四曰興，五曰雅，六曰頌。"
 	queryTerms := []string{"一", "曰風"}
@@ -56,7 +55,7 @@ func TestgetMatch1(t *testing.T) {
 	}
 }
 
-func TestgetMatch2(t *testing.T) {
+func TestGetMatch2(t *testing.T) {
 	t.Log("fulltext.TestgetMatch0: Begin unit test")
 	txt := "厚人倫，美教化，移風俗。故詩有六義焉：一曰風，二曰賦，三曰比，四曰興，五曰雅，六曰頌。"
 	queryTerms := []string{"故", "詩", "一"}
@@ -74,7 +73,7 @@ func TestgetMatch2(t *testing.T) {
 	}
 }
 
-func TestgetMatch3(t *testing.T) {
+func TestGetMatch3(t *testing.T) {
 	t.Log("fulltext.TestgetMatch0: Begin unit test")
 	txt := "厚人倫，美教化，移風俗。故詩有六義焉：一曰風，二曰賦，三曰比，四曰興，五曰雅，六曰頌。"
 	queryTerms := []string{"一", "詩", "有"}
@@ -92,7 +91,7 @@ func TestgetMatch3(t *testing.T) {
 	}
 }
 
-func TestgetMatch4(t *testing.T) {
+func TestGetMatch4(t *testing.T) {
 	t.Log("fulltext.TestgetMatch0: Begin unit test")
 	txt := "厚人倫，美教化，移風俗。故詩有六義焉：一曰風，二曰賦，三曰比，四曰興，五曰雅，六曰頌。"
 	queryTerms := []string{"美", "移", "故"}

@@ -10,9 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 //
-// Functions for retrieving text text matches in parallel from text that are 
+// Functions for retrieving text text matches in parallel from text that are
 // either the file or in a remote object store
 //
 package fulltext
@@ -22,16 +21,16 @@ import (
 )
 
 type Job struct {
-	key string
+	key     string
 	results chan<- Result
 }
 
 type Result struct {
 	key string
-	dm DocMatch
+	dm  DocMatch
 }
 
- // A long operation, needs to be done in parallel
+// A long operation, needs to be done in parallel
 func (job Job) Do(loader TextLoader, queryTerms []string) {
 	dm := DocMatch{
 		PlainTextFile: job.key,
@@ -45,7 +44,7 @@ func (job Job) Do(loader TextLoader, queryTerms []string) {
 	}
 	result := Result{
 		key: job.key,
-		dm: dm,
+		dm:  dm,
 	}
 	job.results <- result
 }
@@ -53,7 +52,7 @@ func (job Job) Do(loader TextLoader, queryTerms []string) {
 func addJobs(jobs chan<- Job, keys []string, results chan<- Result) {
 	for _, key := range keys {
 		job := Job{
-			key: key,
+			key:     key,
 			results: results,
 		}
 		jobs <- job
@@ -67,7 +66,7 @@ func collectDocs(done <-chan struct{}, results chan Result, keys []string) map[s
 	workers := len(keys)
 	for working := workers; working > 0; {
 		select {
-		case result := <- results:
+		case result := <-results:
 			matches[result.key] = result.dm
 			log.Printf("fulltext.collectDocs: %s: %v", result.key, result.dm)
 		case <-done:
@@ -77,11 +76,11 @@ func collectDocs(done <-chan struct{}, results chan Result, keys []string) map[s
 DONE:
 	for {
 		select {
-			case result := <- results:
-				matches[result.key] = result.dm
-				log.Printf("fulltext.collectDocs done, %s: %v", result.key, result.dm)
-			default:
-				break DONE 
+		case result := <-results:
+			matches[result.key] = result.dm
+			log.Printf("fulltext.collectDocs done, %s: %v", result.key, result.dm)
+		default:
+			break DONE
 		}
 	}
 	return matches
@@ -96,7 +95,7 @@ func getDoc(done chan struct{}, loader TextLoader, key string, queryTerms []stri
 }
 
 func GetMatches(keys []string, queryTerms []string) map[string]DocMatch {
-	log.Println("GetMatches")
+	log.Printf("GetMatches, queryTerms: %v", queryTerms)
 	loader := getLoader()
 	jobs := make(chan Job, len(keys))
 	results := make(chan Result, len(keys))

@@ -486,7 +486,7 @@ func (df mysqlTitleFinder) FindDocsByTitleInCol(ctx context.Context, query, col_
 
 // findDocuments find documents by both title and contents, and merge the lists
 func (df docFinder) findDocuments(ctx context.Context, query string, terms []TextSegment, advanced bool) ([]Document, error) {
-	log.Printf("findDocuments, enter: %s", query)
+	log.Printf("findDocuments, enter: %s, advanced: %t", query, advanced)
 	docs, err := df.titleFinder.FindDocsByTitle(ctx, query)
 	if err != nil {
 		return nil, err
@@ -582,12 +582,11 @@ func (df docFinder) findDocumentsInCol(ctx context.Context, query string, terms 
 // then the Chinese word senses matching the English or Pinyin will be included
 // in the TextSegment.Senses field.
 func (df docFinder) FindDocuments(ctx context.Context, reverseIndex dictionary.ReverseIndex, parser QueryParser, query string, advanced bool) (*QueryResults, error) {
-	log.Printf("FindDocuments, query: %q df.titleFinder: %v", query, df.titleFinder)
 	if query == "" {
 		return nil, fmt.Errorf("FindDocuments, Empty query string")
 	}
 	terms := parser.ParseQuery(query)
-	log.Printf("FindDocuments, got: %d terms", len(terms))
+	log.Printf("FindDocuments, query: %q with %d terms, advanced: %t", query, len(terms), advanced)
 	if (len(terms) == 1) && (terms[0].DictEntry.HeadwordId == 0) {
 		q := strings.ToLower(query)
 		senses, err := reverseIndex.Find(ctx, q)

@@ -14,12 +14,14 @@
 package fulltext
 
 import (
-	"cloud.google.com/go/storage"
 	"context"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
+
+	"cloud.google.com/go/storage"
 )
 
 const (
@@ -27,15 +29,15 @@ const (
 )
 
 // Details of best matching text for the query terms
-type DocMatch struct{
+type DocMatch struct {
 	PlainTextFile string
-	MT MatchingText
+	MT            MatchingText
 }
 
 // Details of best matching text for the query terms
-type MatchingText struct{
+type MatchingText struct {
 	Snippet, LongestMatch string
-	ExactMatch bool
+	ExactMatch            bool
 }
 
 // Interface for plain text retrieval
@@ -53,11 +55,11 @@ type TextLoader interface {
 // mounted on the application server
 // Params:
 //   corpusDir - The top level directory for the plain text files
-type LocalTextLoader struct{corpusDir string}
+type LocalTextLoader struct{ corpusDir string }
 
 // Gets the matching text from a local file and find the best match
 func (loader LocalTextLoader) GetMatching(plainTextFile string,
-		queryTerms []string) (MatchingText, error) {
+	queryTerms []string) (MatchingText, error) {
 	fullPath := loader.corpusDir + "/" + plainTextFile
 	bs, err := ioutil.ReadFile(fullPath)
 	if err != nil {
@@ -70,28 +72,27 @@ func (loader LocalTextLoader) GetMatching(plainTextFile string,
 // Storage.
 // Params:
 //   Bucket - The base URL for the location of the plain text files
-type GCSLoader struct{
+type GCSLoader struct {
 	bucket string
 	client *storage.Client
 }
 
 // Gets the matching text from a local file and find the best match
-func (loader GCSLoader) GetMatching(plainTextFile string,
-		queryTerms []string) (MatchingText, error) {
+func (loader GCSLoader) GetMatching(plainTextFile string, queryTerms []string) (MatchingText, error) {
 	log.Printf("GCSLoader.GetMatching %s", plainTextFile)
 	ctx := context.Background()
 	r, err := loader.client.Bucket(loader.bucket).Object(plainTextFile).NewReader(ctx)
 	if err != nil {
-        return MatchingText{}, err
+		return MatchingText{}, fmt.Errorf("GCSLoader.GetMatching error loading %s: %v", plainTextFile, err)
 	}
 	defer r.Close()
 
 	bs, err := ioutil.ReadAll(r)
 	if err != nil {
-        return MatchingText{}, err
+		return MatchingText{}, fmt.Errorf("GCSLoader.GetMatching error reading %s: %v", plainTextFile, err)
 	}
 	txt := string(bs)
-	log.Printf("GCSLoader.GetMatching len(txt) %d", len(txt))
+	log.Printf("GCSLoader.GetMatching for %s, got len(txt) %d", plainTextFile, len(txt))
 	return getMatch(txt, queryTerms), nil
 }
 
@@ -156,11 +157,11 @@ func getMatch(txt string, queryTerms []string) MatchingText {
 		}
 	}
 	if i > -1 {
-		s := i - SNIPPET_LEN / 2
+		s := i - SNIPPET_LEN/2
 		if s < 0 {
 			s = 0
 		}
-		e := i + SNIPPET_LEN / 2
+		e := i + SNIPPET_LEN/2
 		if e > (len(txt) - 1) {
 			e = len(txt) - 1
 		}
@@ -175,16 +176,16 @@ func getMatch(txt string, queryTerms []string) MatchingText {
 				end = j
 				break
 			}
-    	}
+		}
 		snippet = txt[start:end]
 	}
 	// log.Printf("fulltext.getMatch, snippet = %s", snippet)
 	mt := MatchingText{
-		Snippet: 		snippet,
-		LongestMatch:	longest,
-		ExactMatch:		match,
+		Snippet:      snippet,
+		LongestMatch: longest,
+		ExactMatch:   match,
 	}
-	return	mt
+	return mt
 }
 
 // Creates and initiates a new GCSLoader object
@@ -193,8 +194,8 @@ func NewGCSLoader(bucket string) (GCSLoader, error) {
 	ctx := context.Background()
 	client, err := storage.NewClient(ctx)
 	if err != nil {
-    	log.Printf("fulltext.NewGCSLoader error getting client %v", err)
-    	return GCSLoader{}, err 
+		log.Printf("fulltext.NewGCSLoader error getting client %v", err)
+		return GCSLoader{}, err
 	}
 	return GCSLoader{bucket, client}, nil
 }

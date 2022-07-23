@@ -201,7 +201,6 @@ func findDocsCol(ctx context.Context, client fsClient, fbCol string, terms []str
 		if err != nil {
 			return nil, fmt.Errorf("findDocsCol type conversion error: %v", err)
 		}
-		log.Printf("FindDocsTermFreq %s: freq: %d, idf: %0.3f in doc:%s, col:%s", tf.Term, tf.Freq, tf.IDF, tf.Document, tf.Collection)
 		d, ok := docs[tf.Document]
 		if ok {
 			d = append(d, &tf)
@@ -223,11 +222,14 @@ func findDocsCol(ctx context.Context, client fsClient, fbCol string, terms []str
 		if addDirectory {
 			col = addDirectoryToCol(col, k)
 		}
+		bm25Score := bm25(v)
+		bvScore := bitvector(v)
+		log.Printf("FindDocsTermFreq terms %s: bm25: %0.3f, BitVector: %0.3f, containsTerms: %v in doc:%s, col:%s", terms, bm25Score, bvScore, containsTerms, k, col)
 		d := find.BM25Score{
 			Document:      k,
 			Collection:    col,
-			Score:         bm25(v),
-			BitVector:     bitvector(v),
+			Score:         bm25Score,
+			BitVector:     bvScore,
 			ContainsTerms: containsTerms,
 		}
 		scores = append(scores, d)
