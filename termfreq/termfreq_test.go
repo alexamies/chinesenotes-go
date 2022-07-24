@@ -88,6 +88,62 @@ func TestBM25(t *testing.T) {
 	}
 }
 
+func TestBitVector(t *testing.T) {
+	empty := []*TermFreqDoc{}
+	er := TermFreqDoc{
+		Term:   "而",
+		Freq:   1,
+		IDF:    0.22184874961635637,
+		DocLen: 3,
+	}
+	bai := TermFreqDoc{
+		Term:   "敗",
+		Freq:   1,
+		IDF:    0.3979400086720376,
+		DocLen: 3,
+	}
+	one := []*TermFreqDoc{
+		&er,
+	}
+	terms := []string{"而", "敗"}
+	two := []*TermFreqDoc{
+		&er,
+		&bai,
+	}
+	type test struct {
+		name    string
+		terms   []string
+		entries []*TermFreqDoc
+		want    float64
+	}
+	tests := []test{
+		{
+			name:    "Empty",
+			terms:   []string{},
+			entries: empty,
+			want:    0.0,
+		},
+		{
+			name:    "One",
+			terms:   terms,
+			entries: one,
+			want:    0.5,
+		},
+		{
+			name:    "two",
+			terms:   terms,
+			entries: two,
+			want:    1.0,
+		},
+	}
+	for _, tc := range tests {
+		got := bitvector(tc.terms, tc.entries)
+		if got != tc.want {
+			t.Errorf("TestBitVector.%s: with terms %v, entries %v got %0.3f, want %0.3f", tc.name, tc.terms, tc.entries, got, tc.want)
+		}
+	}
+}
+
 func TestFindDocsTermFreq(t *testing.T) {
 	ctx := context.Background()
 	client := mockFsClient{}
