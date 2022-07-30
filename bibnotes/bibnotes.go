@@ -10,12 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package for 
+// Package for
 package bibnotes
 
 import (
-  "encoding/csv"
-  "fmt"
+	"encoding/csv"
+	"fmt"
 	"io"
 	"log"
 )
@@ -33,123 +33,123 @@ type BibNotesClient interface {
 // TransRef holds information on references for English translations of texts
 type TransRef struct {
 	Kind string // full or partial
-	Ref string // Harvard style citation, may have markup
+	Ref  string // Harvard style citation, may have markup
 }
 
 // ParellelRef holds information on references for parallel versions of texts
-// These may be Chinese-Chinese, Chinese-Sanskrit, etc) 
+// These may be Chinese-Chinese, Chinese-Sanskrit, etc)
 type ParellelRef struct {
 	Lang string // Parallel language
-	Ref string // Harvard style citation, may have markup
+	Ref  string // Harvard style citation, may have markup
 }
 
 type bibNotesClient struct {
-	file2Ref map[string]string
+	file2Ref       map[string]string
 	refNo2Parallel map[string][]ParellelRef
-	refNo2Trans map[string][]TransRef
+	refNo2Trans    map[string][]TransRef
 }
 
 // Load the bibliographic notes database
 func LoadBibNotes(file2RefReader, refNo2ParallelReader, refNo2TransReader io.Reader) (BibNotesClient, error) {
-    file2Ref, err := loadFile2Ref(file2RefReader)
-    if err != nil {
-        return nil, fmt.Errorf("error reading bib notes ref no's, %v", err)
-    }
-    refNo2Parallel, err := loadParallelRef(refNo2ParallelReader)
-    if err != nil {
-        return nil, fmt.Errorf("error reading bib notes parallels, %v", err)
-    }
-    refNo2Trans, err := loadTransRef(refNo2TransReader)
-    if err != nil {
-        return nil, fmt.Errorf("error reading bib notes translations, %v", err)
-    }
-		return bibNotesClient{
-			file2Ref: *file2Ref,
-			refNo2Parallel: *refNo2Parallel,
-			refNo2Trans: *refNo2Trans,
-		}, nil
+	file2Ref, err := loadFile2Ref(file2RefReader)
+	if err != nil {
+		return nil, fmt.Errorf("error reading bib notes ref no's, %v", err)
+	}
+	refNo2Parallel, err := loadParallelRef(refNo2ParallelReader)
+	if err != nil {
+		return nil, fmt.Errorf("error reading bib notes parallels, %v", err)
+	}
+	refNo2Trans, err := loadTransRef(refNo2TransReader)
+	if err != nil {
+		return nil, fmt.Errorf("error reading bib notes translations, %v", err)
+	}
+	return bibNotesClient{
+		file2Ref:       *file2Ref,
+		refNo2Parallel: *refNo2Parallel,
+		refNo2Trans:    *refNo2Trans,
+	}, nil
 }
 
 // Load the filename to reference number data
 func loadFile2Ref(f io.Reader) (*map[string]string, error) {
-    r := csv.NewReader(f)
-    r.Comma = ','
-    rows, err := r.ReadAll()
-    if err != nil {
-        return nil, fmt.Errorf("error reading file 2 ref num: , %v", err)
-    }
-    file2Ref := make(map[string]string)
-    for i, row := range rows {
-    	if len(row) < 2 {
-    		log.Printf("loadFile2Ref: row %d, expected 2 elements but got %d", i,
-    				len(row))
-    		continue
-    	}
-    	file2Ref[row[1]] = row[0]
-    }
-		return &file2Ref, nil
+	r := csv.NewReader(f)
+	r.Comma = ','
+	rows, err := r.ReadAll()
+	if err != nil {
+		return nil, fmt.Errorf("error reading file 2 ref num: , %v", err)
+	}
+	file2Ref := make(map[string]string)
+	for i, row := range rows {
+		if len(row) < 2 {
+			log.Printf("loadFile2Ref: row %d, expected 2 elements but got %d", i,
+				len(row))
+			continue
+		}
+		file2Ref[row[1]] = row[0]
+	}
+	return &file2Ref, nil
 }
 
 // Load the parallel publication references
 func loadParallelRef(f io.Reader) (*map[string][]ParellelRef, error) {
-    r := csv.NewReader(f)
-    r.Comma = ','
-    rows, err := r.ReadAll()
-    if err != nil {
-        return nil, fmt.Errorf("error reading parallel ref: , %v", err)
-    }
-    refNo2Parallel := make(map[string][]ParellelRef)
-    for i, row := range rows {
-    	if len(row) < 3 {
-    		log.Printf("loadParallelRef: row %d, expected 3 elements but got %d", i,
-    				len(row))
-    		continue
-    	}
-    	key := row[0]
-    	ref := ParellelRef{
-    		Lang: row[1],
-    		Ref: row[2],
-    	}
-    	refs, ok := refNo2Parallel[key]
-    	if ok {
-    		refs = append(refs, ref)
-    	} else {
-    		refs = []ParellelRef{ref}
-    	}
-    	refNo2Parallel[key] = refs
-    }
-		return &refNo2Parallel, nil
+	r := csv.NewReader(f)
+	r.Comma = ','
+	rows, err := r.ReadAll()
+	if err != nil {
+		return nil, fmt.Errorf("error reading parallel ref: , %v", err)
+	}
+	refNo2Parallel := make(map[string][]ParellelRef)
+	for i, row := range rows {
+		if len(row) < 3 {
+			log.Printf("loadParallelRef: row %d, expected 3 elements but got %d", i,
+				len(row))
+			continue
+		}
+		key := row[0]
+		ref := ParellelRef{
+			Lang: row[1],
+			Ref:  row[2],
+		}
+		refs, ok := refNo2Parallel[key]
+		if ok {
+			refs = append(refs, ref)
+		} else {
+			refs = []ParellelRef{ref}
+		}
+		refNo2Parallel[key] = refs
+	}
+	return &refNo2Parallel, nil
 }
 
 // Load the English translation publication references
 func loadTransRef(f io.Reader) (*map[string][]TransRef, error) {
-    r := csv.NewReader(f)
-    r.Comma = ','
-    rows, err := r.ReadAll()
-    if err != nil {
-        return nil, fmt.Errorf("error reading Eng trans ref: , %v", err)
-    }
-    refNo2Trans := make(map[string][]TransRef)
-    for i, row := range rows {
-    	if len(row) < 3 {
-    		log.Printf("loadTransRef: row %d, expected 3 elements but got %d", i,
-    				len(row))
-    		continue
-    	}
-    	key := row[0]
-    	ref := TransRef{
-    		Kind: row[1],
-    		Ref: row[2],
-    	}
-    	refs, ok := refNo2Trans[key]
-    	if ok {
-    		refs = append(refs, ref)
-    	} else {
-    		refs = []TransRef{ref}
-    	}
-    	refNo2Trans[key] = refs
-    }
-		return &refNo2Trans, nil
+	r := csv.NewReader(f)
+	r.Comma = ','
+	rows, err := r.ReadAll()
+	if err != nil {
+		return nil, fmt.Errorf("error reading Eng trans ref: %v", err)
+	}
+	refNo2Trans := make(map[string][]TransRef)
+	for i, row := range rows {
+		if len(row) < 3 {
+			log.Printf("loadTransRef: row %d, expected 3 elements but got %d", i,
+				len(row))
+			continue
+		}
+		key := row[0]
+		ref := TransRef{
+			Kind: row[1],
+			Ref:  row[2],
+		}
+		refs, ok := refNo2Trans[key]
+		if ok {
+			refs = append(refs, ref)
+		} else {
+			refs = []TransRef{ref}
+		}
+		refNo2Trans[key] = refs
+	}
+	return &refNo2Trans, nil
 }
 
 func (client bibNotesClient) GetParallelRefs(fileName string) []ParellelRef {

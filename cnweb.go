@@ -188,8 +188,7 @@ func initApp(ctx context.Context) (*backends, error) {
 	var tfDocFinder find.TermFreqDocFinder
 	projectID, ok := os.LookupEnv(projectIDKey)
 	if !ok {
-		log.Printf("%s not set, falling back to mysql TermFreqDocFinder", projectIDKey)
-		tfDocFinder = find.NewMysqlDocFinder(ctx, database)
+		log.Printf("%s not set, not able to perform full text search", projectIDKey)
 	} else {
 		client, err := firestore.NewClient(ctx, projectID)
 		if err != nil {
