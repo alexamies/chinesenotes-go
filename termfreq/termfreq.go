@@ -34,7 +34,7 @@ const (
 	k          float64 = 1.5
 	b          float64 = 0.65
 	avDocLen           = 4497
-	queryLimit         = 150
+	queryLimit         = 200
 )
 
 // fsClient defines Firestore interfaces needed
@@ -130,14 +130,14 @@ func findDocsTermFreq(ctx context.Context, client fsClient, fbCol string, terms 
 			break
 		}
 		if err != nil {
-			return nil, fmt.Errorf("FindDocsTermFreq iteration error: %v", err)
+			return nil, fmt.Errorf("findDocsTermFreq iteration error: %v", err)
 		}
 		var tf TermFreqDoc
 		err = ds.DataTo(&tf)
 		if err != nil {
-			return nil, fmt.Errorf("FindDocsTermFreq type conversion error: %v", err)
+			return nil, fmt.Errorf("findDocsTermFreq type conversion error: %v", err)
 		}
-		log.Printf("FindDocsTermFreq %s: freq: %d, idf: %0.3f, DocLen: %d in doc:%s, col:%s", tf.Term, tf.Freq, tf.IDF, tf.DocLen, tf.Document, tf.Collection)
+		log.Printf("findDocsTermFreq %s: freq: %d, idf: %0.3f, DocLen: %d in doc:%s, col:%s", tf.Term, tf.Freq, tf.IDF, tf.DocLen, tf.Document, tf.Collection)
 		d, ok := docs[tf.Document]
 		if ok {
 			d = append(d, &tf)
@@ -168,7 +168,7 @@ func findDocsTermFreq(ctx context.Context, client fsClient, fbCol string, terms 
 		}
 		scores = append(scores, d)
 	}
-	log.Printf("FindDocsTermFreq: for terms %v, found %d matching docs", terms, len(scores))
+	log.Printf("findDocsTermFreq: for terms %v, found %d matching docs", terms, len(scores))
 	return scores, nil
 }
 
