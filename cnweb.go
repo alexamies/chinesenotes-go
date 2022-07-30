@@ -58,7 +58,6 @@ const (
 )
 
 var (
-	appConfig     config.AppConfig
 	b             *backends
 	authenticator *identity.Authenticator
 	mediaSearcher *media.MediaSearcher
@@ -66,6 +65,7 @@ var (
 
 // backends holds dependencies that access remote resources
 type backends struct {
+	appConfig                                             config.AppConfig
 	database                                              *sql.DB
 	docMap                                                map[string]find.DocInfo
 	df                                                    find.DocFinder
@@ -108,7 +108,7 @@ type translationPage struct {
 
 func initApp(ctx context.Context) (*backends, error) {
 	log.Println("initApp Initializing cnweb")
-	appConfig = config.InitConfig()
+	appConfig := config.InitConfig()
 	cnwebHome := config.GetCnWebHome()
 	fileName := fmt.Sprintf("%s/webconfig.yaml", cnwebHome)
 	webConfig := config.WebAppConfig{}
@@ -161,7 +161,7 @@ func initApp(ctx context.Context) (*backends, error) {
 	var titleFinder find.TitleFinder
 	var colMap map[string]string
 	var docMap map[string]find.DocInfo
-	titleFinder, err = initDocTitleFinder()
+	titleFinder, err = initDocTitleFinder(appConfig)
 	if err != nil {
 		log.Printf("main.initApp() unable to load titleFinder: %v", err)
 	} else {
@@ -205,6 +205,7 @@ func initApp(ctx context.Context) (*backends, error) {
 		}
 	}
 	bends := &backends{
+		appConfig:    appConfig,
 		database:     database,
 		docMap:       docMap,
 		df:           find.NewDocFinder(tfDocFinder, titleFinder),
@@ -226,7 +227,7 @@ func initApp(ctx context.Context) (*backends, error) {
 }
 
 // Initialize the document title finder
-func initDocTitleFinder() (find.TitleFinder, error) {
+func initDocTitleFinder(appConfig config.AppConfig) (find.TitleFinder, error) {
 	if b != nil && b.docTitleFinder != nil {
 		return b.docTitleFinder, nil
 	}
@@ -528,7 +529,7 @@ func findDocs(ctx context.Context, response http.ResponseWriter, request *http.R
 	if len(c) > 0 {
 		results, err = b.df.FindDocumentsInCol(ctx, b.reverseIndex, b.parser, q, c)
 	} else if len(findTitle) > 0 {
-		docTitleFinder, err := initDocTitleFinder()
+		docTitleFinder, err := initDocTitleFinder(b.appConfig)
 		if err == nil {
 			docs, err := docTitleFinder.FindDocsByTitle(ctx, q)
 			results = &find.QueryResults{
@@ -817,7 +818,7 @@ func processTranslation(w http.ResponseWriter, r *http.Request) {
 // showQueryResults displays query results on a HTML page
 func showQueryResults(w io.Writer, b *backends, results find.QueryResults, templateFile string) error {
 	res := results
-	staticDir := appConfig.GetVar("GoStaticDir")
+	staticDir := b.appConfig.GetVar("GoStaticDir")
 	if len(staticDir) > 0 && len(results.Documents) > 0 {
 		log.Printf("showQueryResults, len(Documents): %d", len(results.Documents))
 		docs := []find.Document{}

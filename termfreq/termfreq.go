@@ -31,9 +31,10 @@ import (
 )
 
 const (
-	k        float64 = 1.5
-	b        float64 = 0.65
-	avDocLen         = 4497
+	k          float64 = 1.5
+	b          float64 = 0.65
+	avDocLen           = 4497
+	queryLimit         = 150
 )
 
 // fsClient defines Firestore interfaces needed
@@ -119,7 +120,7 @@ func findDocsTermFreq(ctx context.Context, client fsClient, fbCol string, terms 
 	if col == nil {
 		return nil, fmt.Errorf("findDocsTermFreq collection is empty")
 	}
-	q := col.Where("term", "in", terms).OrderBy("freq", firestore.Desc).Limit(100)
+	q := col.Where("term", "in", terms).OrderBy("freq", firestore.Desc).Limit(queryLimit)
 	iter := q.Documents(ctx)
 	defer iter.Stop()
 	docs := map[string][]*TermFreqDoc{}
@@ -167,6 +168,7 @@ func findDocsTermFreq(ctx context.Context, client fsClient, fbCol string, terms 
 		}
 		scores = append(scores, d)
 	}
+	log.Printf("FindDocsTermFreq: for terms %v, found %d matching docs", terms, len(scores))
 	return scores, nil
 }
 
@@ -188,7 +190,7 @@ func findDocsCol(ctx context.Context, client fsClient, fbCol string, terms []str
 	if col == nil {
 		return nil, fmt.Errorf("findDocsCol collection is empty")
 	}
-	q := col.Where("term", "in", terms).Where("collection", "==", colName).Limit(100)
+	q := col.Where("term", "in", terms).Where("collection", "==", colName).Limit(queryLimit)
 	iter := q.Documents(ctx)
 	defer iter.Stop()
 	docs := map[string][]*TermFreqDoc{}

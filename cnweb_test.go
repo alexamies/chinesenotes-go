@@ -262,7 +262,8 @@ func TestInitDocTitleFinder(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		_, err := initDocTitleFinder()
+		appConfig := config.AppConfig{}
+		_, err := initDocTitleFinder(appConfig)
 		if tc.expectError && err == nil {
 			t.Errorf("TestInitDocTitleFinder %s: expectError but got nil", tc.name)
 		} else if !tc.expectError && err != nil {
