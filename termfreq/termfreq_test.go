@@ -195,7 +195,7 @@ func TestFindDocsTermFreq(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		_, err := findDocsTermFreq(ctx, client, tc.path, []string{}, false)
+		_, err := findDocsTermFreq(ctx, client, tc.path, []string{}, false, QueryLimit)
 		if !tc.wantError && err != nil {
 			t.Fatalf("TestFindDocsTermFreq.%s: unexpected error: %v", tc.name, err)
 		}
@@ -221,7 +221,7 @@ func TestFindDocsCol(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		_, err := findDocsCol(ctx, client, tc.path, []string{}, "x", false)
+		_, err := findDocsCol(ctx, client, tc.path, []string{}, "x", false, QueryLimit)
 		if !tc.wantError && err != nil {
 			t.Fatalf("TestFindDocsCol.%s: unexpected error: %v", tc.name, err)
 		}

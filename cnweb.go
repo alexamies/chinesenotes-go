@@ -200,7 +200,7 @@ func initApp(ctx context.Context) (*backends, error) {
 			} else {
 				indexGen := appConfig.IndexGen()
 				addDirectory := webConfig.AddDirectoryToCol()
-				tfDocFinder = termfreq.NewFirestoreDocFinder(client, indexCorpus, indexGen, addDirectory)
+				tfDocFinder = termfreq.NewFirestoreDocFinder(client, indexCorpus, indexGen, addDirectory, termfreq.QueryLimit)
 			}
 		}
 	}

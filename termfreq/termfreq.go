@@ -34,7 +34,7 @@ const (
 	k          float64 = 1.5
 	b          float64 = 0.65
 	avDocLen           = 4497
-	queryLimit         = 300
+	QueryLimit         = 400
 )
 
 // fsClient defines Firestore interfaces needed
@@ -51,22 +51,25 @@ type TermFreqDoc struct {
 	DocLen     int64   `firestore:"doclen"`
 }
 
+// fsDocFinder holds parameters needed to communicate with Firestore
 type fsDocFinder struct {
 	client       fsClient
 	corpus       string
 	generation   int
 	addDirectory bool
+	queryLimit   int
 }
 
 // NewFirestoreDocFinder creates a TermFreqDocFinder implemented with a Firestore client
 // Set addDirectory if you need to add a directory prefix to the collection names
-func NewFirestoreDocFinder(client fsClient, corpus string, generation int, addDirectory bool) find.TermFreqDocFinder {
+func NewFirestoreDocFinder(client fsClient, corpus string, generation int, addDirectory bool, queryLimit int) find.TermFreqDocFinder {
 	log.Printf("NewFirestoreDocFinder: instantiating new instance with corpus %s, generation %d", corpus, generation)
 	return fsDocFinder{
 		client:       client,
 		corpus:       corpus,
 		generation:   generation,
 		addDirectory: addDirectory,
+		queryLimit:   queryLimit,
 	}
 }
 
@@ -104,19 +107,19 @@ func bitvector(terms []string, entries []*TermFreqDoc) float64 {
 
 // FindDocsBigramFreq finds documents with occurences of any of the bigram given in the corpus ordered by BM25 score
 func (f fsDocFinder) FindDocsBigramFreq(ctx context.Context, bigrams []string) ([]find.BM25Score, error) {
-	fbCol := fmt.Sprintf("%s_bigram_doc_freq%d", f.corpus, f.generation)
-	return findDocsTermFreq(ctx, f.client, fbCol, bigrams, f.addDirectory)
+	fsCol := fmt.Sprintf("%s_bigram_doc_freq%d", f.corpus, f.generation)
+	return findDocsTermFreq(ctx, f.client, fsCol, bigrams, f.addDirectory, f.queryLimit)
 }
 
 // FindDocsTermFreq finds documents with occurences of any of the terms given in the corpus ordered by BM25 score
 func (f fsDocFinder) FindDocsTermFreq(ctx context.Context, terms []string) ([]find.BM25Score, error) {
-	fbCol := fmt.Sprintf("%s_wordfreqdoc%d", f.corpus, f.generation)
-	return findDocsTermFreq(ctx, f.client, fbCol, terms, f.addDirectory)
+	fsCol := fmt.Sprintf("%s_wordfreqdoc%d", f.corpus, f.generation)
+	return findDocsTermFreq(ctx, f.client, fsCol, terms, f.addDirectory, f.queryLimit)
 }
 
 // findDocsTermFreq finds documents with occurences of any of the terms or bigrams
-func findDocsTermFreq(ctx context.Context, client fsClient, fbCol string, terms []string, addDirectory bool) ([]find.BM25Score, error) {
-	col := client.Collection(fbCol)
+func findDocsTermFreq(ctx context.Context, client fsClient, fsCol string, terms []string, addDirectory bool, queryLimit int) ([]find.BM25Score, error) {
+	col := client.Collection(fsCol)
 	if col == nil {
 		return nil, fmt.Errorf("findDocsTermFreq collection is empty")
 	}
@@ -153,19 +156,19 @@ func findDocsTermFreq(ctx context.Context, client fsClient, fbCol string, terms 
 
 // FindDocsTermCo finds documents within the scope of a corpus collection
 func (f fsDocFinder) FindDocsBigramCo(ctx context.Context, bigrams []string, col string) ([]find.BM25Score, error) {
-	fbCol := fmt.Sprintf("%s_bigram_doc_freq%d", f.corpus, f.generation)
-	return findDocsCol(ctx, f.client, fbCol, bigrams, col, f.addDirectory)
+	fsCol := fmt.Sprintf("%s_bigram_doc_freq%d", f.corpus, f.generation)
+	return findDocsCol(ctx, f.client, fsCol, bigrams, col, f.addDirectory, f.queryLimit)
 }
 
 // FindDocsTermCo finds documents within the scope of a corpus collection
 func (f fsDocFinder) FindDocsTermCo(ctx context.Context, terms []string, col string) ([]find.BM25Score, error) {
-	fbCol := fmt.Sprintf("%s_wordfreqdoc%d", f.corpus, f.generation)
-	return findDocsCol(ctx, f.client, fbCol, terms, col, f.addDirectory)
+	fsCol := fmt.Sprintf("%s_wordfreqdoc%d", f.corpus, f.generation)
+	return findDocsCol(ctx, f.client, fsCol, terms, col, f.addDirectory, f.queryLimit)
 }
 
 // findDocsCol finds documents within the scope of a corpus collection
-func findDocsCol(ctx context.Context, client fsClient, fbCol string, terms []string, colName string, addDirectory bool) ([]find.BM25Score, error) {
-	col := client.Collection(fbCol)
+func findDocsCol(ctx context.Context, client fsClient, fsCol string, terms []string, colName string, addDirectory bool, queryLimit int) ([]find.BM25Score, error) {
+	col := client.Collection(fsCol)
 	if col == nil {
 		return nil, fmt.Errorf("findDocsCol collection is empty")
 	}
