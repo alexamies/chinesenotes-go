@@ -24,6 +24,19 @@ type DocInfo struct {
 	CorpusFile, GlossFile, Title, TitleCN, TitleEN, CollectionFile, CollectionTitle string
 }
 
+// DocTitleRecord holds expanded document title information
+// plain_text_file", "gloss_file", "title", "title_cn", "title_en", "col_gloss_file", "col_title", "col_plus_doc_title
+type DocTitleRecord struct {
+	RawFile         string `firestore:"plain_text_file"`
+	GlossFile       string `firestore:"gloss_file"`
+	DocTitle        string `firestore:"title"`
+	DocTitleZh      string `firestore:"title_zh"`
+	DocTitleEn      string `firestore:"title_en"`
+	ColGlossFile    string `firestore:"col_gloss_file"`
+	ColTitle        string `firestore:"col_title"`
+	ColPlusDocTitle string `firestore:"col_plus_doc_title"`
+}
+
 // docTitleFinder implements the TitleFinder interface
 type fileTitleFinder struct {
 	colMap  map[string]string
