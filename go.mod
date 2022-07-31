@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go/firestore v1.6.1
 	cloud.google.com/go/storage v1.22.1
 	cloud.google.com/go/translate v1.2.0
+	github.com/google/go-cmp v0.5.8
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/sendgrid/sendgrid-go v3.5.0+incompatible
 	golang.org/x/text v0.3.7
@@ -19,7 +20,6 @@ require (
 	cloud.google.com/go/iam v0.3.0 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/googleapis/gax-go/v2 v2.4.0 // indirect
 	github.com/googleapis/go-type-adapters v1.0.0 // indirect

@@ -34,7 +34,7 @@ const (
 	k          float64 = 1.5
 	b          float64 = 0.65
 	avDocLen           = 4497
-	queryLimit         = 200
+	queryLimit         = 300
 )
 
 // fsClient defines Firestore interfaces needed
