@@ -146,28 +146,7 @@ func findDocsTermFreq(ctx context.Context, client fsClient, fbCol string, terms 
 			docs[tf.Document] = []*TermFreqDoc{&tf}
 		}
 	}
-	scores := []find.BM25Score{}
-	for k, v := range docs {
-		col := ""
-		if len(v) > 0 {
-			col = v[0].Collection
-		}
-		containsTerms := ""
-		for _, tf := range v {
-			containsTerms = containsTerms + tf.Term
-		}
-		if addDirectory {
-			col = addDirectoryToCol(col, k)
-		}
-		d := find.BM25Score{
-			Document:      k,
-			Collection:    col,
-			Score:         bm25(v),
-			BitVector:     bitvector(terms, v),
-			ContainsTerms: containsTerms,
-		}
-		scores = append(scores, d)
-	}
+	scores := findScores(docs, terms, addDirectory)
 	log.Printf("findDocsTermFreq: for terms %v, found %d matching docs", terms, len(scores))
 	return scores, nil
 }
@@ -215,6 +194,22 @@ func findDocsCol(ctx context.Context, client fsClient, fbCol string, terms []str
 			docs[tf.Document] = []*TermFreqDoc{&tf}
 		}
 	}
+	scores := findScores(docs, terms, addDirectory)
+	log.Printf("findDocsCol: for terms %v, found %d matching docs", terms, len(scores))
+	return scores, nil
+}
+
+// addDirectoryToCol adds a directory prefix matching the doc to col
+func addDirectoryToCol(col, doc string) string {
+	i := strings.Index(doc, "/")
+	if i > 0 {
+		dir := doc[:i]
+		return dir + "/" + col
+	}
+	return col
+}
+
+func findScores(docs map[string][]*TermFreqDoc, terms []string, addDirectory bool) []find.BM25Score {
 	scores := []find.BM25Score{}
 	for k, v := range docs {
 		col := ""
@@ -228,27 +223,14 @@ func findDocsCol(ctx context.Context, client fsClient, fbCol string, terms []str
 		if addDirectory {
 			col = addDirectoryToCol(col, k)
 		}
-		bm25Score := bm25(v)
-		bvScore := bitvector(terms, v)
-		log.Printf("FindDocsTermFreq terms %s: bm25: %0.3f, BitVector: %0.3f, containsTerms: %v in doc:%s, col:%s", terms, bm25Score, bvScore, containsTerms, k, col)
 		d := find.BM25Score{
 			Document:      k,
 			Collection:    col,
-			Score:         bm25Score,
-			BitVector:     bvScore,
+			Score:         bm25(v),
+			BitVector:     bitvector(terms, v),
 			ContainsTerms: containsTerms,
 		}
 		scores = append(scores, d)
 	}
-	return scores, nil
-}
-
-// addDirectoryToCol adds a directory prefix matching the doc to col
-func addDirectoryToCol(col, doc string) string {
-	i := strings.Index(doc, "/")
-	if i > 0 {
-		dir := doc[:i]
-		return dir + "/" + col
-	}
-	return col
+	return scores
 }

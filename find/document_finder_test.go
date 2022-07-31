@@ -43,6 +43,131 @@ func newMockDocFinder(scores []BM25Score) TermFreqDocFinder {
 	}
 }
 
+func mockSmallDict() map[string]*dicttypes.Word {
+	s1 := "繁体中文"
+	t1 := "繁體中文"
+	hw1 := dicttypes.Word{
+		HeadwordId:  1,
+		Simplified:  s1,
+		Traditional: t1,
+		Pinyin:      "fántǐ zhōngwén",
+		Senses:      []dicttypes.WordSense{},
+	}
+	s2 := "前"
+	t2 := "\\N"
+	hw2 := dicttypes.Word{
+		HeadwordId:  2,
+		Simplified:  s2,
+		Traditional: t2,
+		Pinyin:      "qián",
+		Senses:      []dicttypes.WordSense{},
+	}
+	s3 := "不见"
+	t3 := "不見"
+	hw3 := dicttypes.Word{
+		HeadwordId:  3,
+		Simplified:  s3,
+		Traditional: t3,
+		Pinyin:      "bújiàn",
+		Senses:      []dicttypes.WordSense{},
+	}
+	s4 := "古人"
+	t4 := "\\N"
+	hw4 := dicttypes.Word{
+		HeadwordId:  4,
+		Simplified:  s4,
+		Traditional: t4,
+		Pinyin:      "gǔrén",
+		Senses:      []dicttypes.WordSense{},
+	}
+	s5 := "夫"
+	t5 := "\\N"
+	hw5 := dicttypes.Word{
+		HeadwordId:  5,
+		Simplified:  s5,
+		Traditional: t5,
+		Pinyin:      "fú fū",
+		Senses:      []dicttypes.WordSense{},
+	}
+	s6 := "起信论"
+	t6 := "起信論"
+	hw6 := dicttypes.Word{
+		HeadwordId:  6,
+		Simplified:  s6,
+		Traditional: t6,
+		Pinyin:      "Qǐ Xìn Lùn",
+		Senses:      []dicttypes.WordSense{},
+	}
+	s7 := "者"
+	t7 := "\\N"
+	hw7 := dicttypes.Word{
+		HeadwordId:  7,
+		Simplified:  s7,
+		Traditional: t7,
+		Pinyin:      "zhě zhuó",
+		Senses:      []dicttypes.WordSense{},
+	}
+	s8 := "乃是"
+	t8 := "\\N"
+	hw8 := dicttypes.Word{
+		HeadwordId:  8,
+		Simplified:  s8,
+		Traditional: t8,
+		Pinyin:      "nǎishì",
+		Senses:      []dicttypes.WordSense{},
+	}
+	s9 := "莲花"
+	t9 := "蓮花"
+	hw9 := dicttypes.Word{
+		HeadwordId:  9,
+		Simplified:  s9,
+		Traditional: t9,
+		Pinyin:      "liánhuā",
+		Senses: []dicttypes.WordSense{
+			{
+				HeadwordId:  9,
+				Simplified:  s9,
+				Traditional: t9,
+				Pinyin:      "liánhuā",
+				English:     "lotus",
+			},
+		},
+	}
+	s10 := "北京"
+	t10 := "\\N"
+	hw10 := dicttypes.Word{
+		HeadwordId:  10,
+		Simplified:  s10,
+		Traditional: t10,
+		Pinyin:      "běijīng",
+		Senses: []dicttypes.WordSense{
+			{
+				HeadwordId:  10,
+				Simplified:  s10,
+				Traditional: t10,
+				Pinyin:      "běijīng",
+				English:     "Beijing",
+			},
+		},
+	}
+	return map[string]*dicttypes.Word{
+		s1:  &hw1,
+		t1:  &hw1,
+		s2:  &hw2,
+		s3:  &hw3,
+		t3:  &hw3,
+		s4:  &hw4,
+		s5:  &hw5,
+		s6:  &hw6,
+		t6:  &hw6,
+		s7:  &hw7,
+		s8:  &hw8,
+		s9:  &hw9,
+		t9:  &hw9,
+		s10: &hw10,
+	}
+}
+
 func (m mockDocFinder) FindDocsTermFreq(ctx context.Context, terms []string) ([]BM25Score, error) {
 	return m.scores, nil
 }
@@ -167,55 +292,115 @@ func TestCombineByWeight(t *testing.T) {
 func TestFindDocuments(t *testing.T) {
 
 	// Setup
-	df := newMockDocFinder([]BM25Score{})
+	zeroDocFinder := newMockDocFinder([]BM25Score{})
+	oneDocFinder := newMockDocFinder([]BM25Score{
+		{
+			Document:      "a.html",
+			Collection:    "c.html",
+			Score:         0.12345,
+			BitVector:     1.0,
+			ContainsTerms: "前",
+		},
+	})
 	collections := []Collection{}
 	documents := []Document{}
 	colMap := map[string]string{}
-	docMap := map[string]DocInfo{}
-	titleFinder := newMockTitleFinder(collections, documents, colMap, docMap)
-	dFinder := docFinder{
-		tfDocFinder: df,
-		titleFinder: titleFinder,
+	zeroDocMap := map[string]DocInfo{}
+	zeroTitleFinder := newMockTitleFinder(collections, documents, colMap, zeroDocMap)
+	oneDocMap := map[string]DocInfo{
+		"a.html": {
+			GlossFile: "a.html",
+		},
 	}
+	oneTitleFinder := newMockTitleFinder(collections, documents, colMap, oneDocMap)
 	ctx := context.Background()
 	reverseIndex := mockReverseIndex{}
-	dict := map[string]*dicttypes.Word{}
-	parser := NewQueryParser(dict)
+	emptyDict := map[string]*dicttypes.Word{}
+	smallDict := mockSmallDict()
 
 	// Test data
 	type test struct {
 		name           string
 		query          string
+		dict           map[string]*dicttypes.Word
+		fullText       bool
 		expectError    bool
+		tdDocFinder    TermFreqDocFinder
+		titleFinder    TitleFinder
 		expectNoTerms  int
 		expectNoSenses int
+		expectNDoc     int
 	}
 	tests := []test{
 		{
 			name:           "Happy pass",
 			query:          "Assembly",
+			dict:           emptyDict,
+			fullText:       false,
+			tdDocFinder:    zeroDocFinder,
+			titleFinder:    zeroTitleFinder,
 			expectError:    false,
 			expectNoTerms:  1,
 			expectNoSenses: 0,
+			expectNDoc:     0,
 		},
 		{
 			name:           "Empty query",
 			query:          "",
+			dict:           emptyDict,
+			fullText:       false,
+			tdDocFinder:    zeroDocFinder,
+			titleFinder:    zeroTitleFinder,
 			expectError:    true,
 			expectNoTerms:  0,
 			expectNoSenses: 1,
+			expectNDoc:     0,
 		},
 		{
 			name:           "No word senses",
 			query:          "hello",
+			dict:           emptyDict,
+			fullText:       false,
+			tdDocFinder:    zeroDocFinder,
+			titleFinder:    zeroTitleFinder,
 			expectError:    false,
 			expectNoTerms:  1,
 			expectNoSenses: 0,
+			expectNDoc:     0,
+		},
+		{
+			name:           "One term query",
+			query:          "前",
+			dict:           smallDict,
+			fullText:       true,
+			tdDocFinder:    oneDocFinder,
+			titleFinder:    oneTitleFinder,
+			expectError:    false,
+			expectNoTerms:  1,
+			expectNoSenses: 0,
+			expectNDoc:     1,
+		},
+		{
+			name:           "Two term query",
+			query:          "前者",
+			dict:           smallDict,
+			fullText:       true,
+			tdDocFinder:    oneDocFinder,
+			titleFinder:    oneTitleFinder,
+			expectError:    false,
+			expectNoTerms:  2,
+			expectNoSenses: 0,
+			expectNDoc:     1,
 		},
 	}
 
 	for _, tc := range tests {
-		qr, err := dFinder.FindDocuments(ctx, reverseIndex, parser, tc.query, false)
+		dFinder := docFinder{
+			tfDocFinder: tc.tdDocFinder,
+			titleFinder: tc.titleFinder,
+		}
+		parser := NewQueryParser(tc.dict)
+		qr, err := dFinder.FindDocuments(ctx, reverseIndex, parser, tc.query, tc.fullText)
 		gotError := (err != nil)
 		if tc.expectError != gotError {
 			t.Errorf("TestFindDocuments.%s: expectError: %t vs got %t",
@@ -230,16 +415,17 @@ func TestFindDocuments(t *testing.T) {
 		}
 		gotNoTerms := len(qr.Terms)
 		if gotNoTerms != tc.expectNoTerms {
-			t.Errorf("TestFindDocuments.%s: gotNoTerms %d, want: %d, details: %v",
-				tc.name, gotNoTerms, tc.expectNoTerms, qr.Terms)
+			t.Errorf("TestFindDocuments.%s: gotNoTerms %d, want: %d, details: %v", tc.name, gotNoTerms, tc.expectNoTerms, qr.Terms)
 		}
 		if gotNoTerms > 0 {
 			senses := qr.Terms[0].Senses
 			gotNoSenses := len(senses)
 			if gotNoSenses != tc.expectNoSenses {
-				t.Errorf("TestFindDocuments.%s: gotNoSenses %d, want: %d, details: %v",
-					tc.name, gotNoSenses, tc.expectNoSenses, senses)
+				t.Errorf("TestFindDocuments.%s: gotNoSenses %d, want: %d, details: %v", tc.name, gotNoSenses, tc.expectNoSenses, senses)
 			}
+		}
+		if qr.NumDocuments != tc.expectNDoc {
+			t.Errorf("TestFindDocuments.%s: qr.NumDocuments %d, want: %d, details: %v", tc.name, qr.NumDocuments, tc.expectNDoc, qr.Documents)
 		}
 	}
 }

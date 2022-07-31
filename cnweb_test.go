@@ -212,12 +212,42 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+// TestInitApp tests app initialization.
+func TestInitApp(t *testing.T) {
+	b = &backends{
+		templates: templates.NewTemplateMap(config.WebAppConfig{}),
+	}
+	type test struct {
+		name        string
+		expectError bool
+	}
+	tests := []test{
+		{
+			name:        "Give it nothing",
+			expectError: false,
+		},
+	}
+	for _, tc := range tests {
+		ctx := context.Background()
+		b, err := initApp(ctx)
+		if err != nil {
+			if !tc.expectError {
+				t.Fatalf("TestInitApp %s: unexpected error: %v", tc.name, err)
+			}
+		} else if tc.expectError {
+			t.Fatalf("TestInitApp %s: no error but expected one", tc.name)
+		}
+		if b == nil {
+			t.Fatalf("TestInitApp %s: b == nil", tc.name)
+		}
+	}
+}
+
 // TestDisplayHome tests the default HTTP handler.
 func TestDisplayHome(t *testing.T) {
 	b = &backends{
 		templates: templates.NewTemplateMap(config.WebAppConfig{}),
 	}
-	t.Logf("TestDisplayHome: Begin unit tests\n")
 	type test struct {
 		name           string
 		acceptHeader   string

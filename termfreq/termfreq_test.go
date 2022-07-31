@@ -20,6 +20,39 @@ import (
 	"testing"
 
 	"cloud.google.com/go/firestore"
+	"github.com/alexamies/chinesenotes-go/find"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+)
+
+var (
+	er = TermFreqDoc{
+		Term:       "而",
+		Document:   "sampletest3.html",
+		Collection: "testcollection.html",
+		Freq:       1,
+		IDF:        0.22184874961635637,
+		DocLen:     3,
+	}
+	bu = TermFreqDoc{
+		Term:       "不",
+		Document:   "sampletest3.html",
+		Collection: "testcollection.html",
+		Freq:       1,
+		IDF:        0.3979400086720376,
+		DocLen:     3,
+	}
+	bai = TermFreqDoc{
+		Term:       "敗",
+		Document:   "sampletest3.html",
+		Collection: "testcollection.html",
+		Freq:       1,
+		IDF:        0.3979400086720376,
+		DocLen:     3,
+	}
+	oneBM25   = (k + 1.0) * float64(er.Freq) / (float64(er.Freq) + k*(1.0-b+float64(er.DocLen)/float64(avDocLen))) * er.IDF
+	twoBM25   = oneBM25 + (k+1.0)*float64(bu.Freq)/(float64(bu.Freq)+k*(1.0-b+float64(bu.DocLen)/float64(avDocLen)))*bu.IDF
+	threeBM25 = twoBM25 + (k+1.0)*float64(bai.Freq)/(float64(bai.Freq)+k*(1.0-b+float64(bai.DocLen)/float64(avDocLen)))*bai.IDF
 )
 
 type mockFsClient struct {
@@ -37,27 +70,18 @@ func (m mockFsClient) Collection(path string) *firestore.CollectionRef {
 
 func TestBM25(t *testing.T) {
 	empty := []*TermFreqDoc{}
-	er := TermFreqDoc{
-		Term:   "而",
-		Freq:   1,
-		IDF:    0.22184874961635637,
-		DocLen: 3,
-	}
-	bai := TermFreqDoc{
-		Term:   "敗",
-		Freq:   1,
-		IDF:    0.3979400086720376,
-		DocLen: 3,
-	}
 	one := []*TermFreqDoc{
 		&er,
 	}
-	oneBM25 := (k + 1.0) * float64(er.Freq) / (float64(er.Freq) + k*(1.0-b+float64(er.DocLen)/float64(avDocLen))) * er.IDF
 	two := []*TermFreqDoc{
 		&er,
+		&bu,
+	}
+	three := []*TermFreqDoc{
+		&er,
+		&bu,
 		&bai,
 	}
-	twoBM25 := oneBM25 + (k+1.0)*float64(bai.Freq)/(float64(bai.Freq)+k*(1.0-b+float64(bai.DocLen)/float64(avDocLen)))*bai.IDF
 	type test struct {
 		name    string
 		entries []*TermFreqDoc
@@ -79,6 +103,11 @@ func TestBM25(t *testing.T) {
 			entries: two,
 			want:    twoBM25,
 		},
+		{
+			name:    "three",
+			entries: three,
+			want:    threeBM25,
+		},
 	}
 	for _, tc := range tests {
 		got := bm25(tc.entries)
@@ -90,24 +119,18 @@ func TestBM25(t *testing.T) {
 
 func TestBitVector(t *testing.T) {
 	empty := []*TermFreqDoc{}
-	er := TermFreqDoc{
-		Term:   "而",
-		Freq:   1,
-		IDF:    0.22184874961635637,
-		DocLen: 3,
-	}
-	bai := TermFreqDoc{
-		Term:   "敗",
-		Freq:   1,
-		IDF:    0.3979400086720376,
-		DocLen: 3,
-	}
 	one := []*TermFreqDoc{
 		&er,
 	}
 	terms := []string{"而", "敗"}
 	two := []*TermFreqDoc{
 		&er,
+		&bai,
+	}
+	t3 := []string{"而", "不", "敗"}
+	three := []*TermFreqDoc{
+		&er,
+		&bu,
 		&bai,
 	}
 	type test struct {
@@ -124,15 +147,27 @@ func TestBitVector(t *testing.T) {
 			want:    0.0,
 		},
 		{
-			name:    "One",
+			name:    "Partial",
 			terms:   terms,
 			entries: one,
 			want:    0.5,
 		},
 		{
-			name:    "two",
+			name:    "Two",
 			terms:   terms,
 			entries: two,
+			want:    1.0,
+		},
+		{
+			name:    "Three",
+			terms:   t3,
+			entries: three,
+			want:    1.0,
+		},
+		{
+			name:    "three",
+			terms:   t3,
+			entries: three,
 			want:    1.0,
 		},
 	}
@@ -221,6 +256,129 @@ func TestAddDirectoryToCol(t *testing.T) {
 		got := addDirectoryToCol(tc.col, tc.doc)
 		if got != tc.want {
 			t.Errorf("TestAddDirectoryToCol.%s: got %s but want: %s", tc.name, got, tc.want)
+		}
+	}
+}
+
+func TestFindScores(t *testing.T) {
+	opt := cmp.Comparer(func(x, y []find.BM25Score) bool {
+		if len(x) != len(y) {
+			return false
+		}
+		for i, s1 := range x {
+			s2 := y[i]
+			if s1.Document != s2.Document {
+				return false
+			}
+			if s1.Collection != s2.Collection {
+				return false
+			}
+			approx := cmpopts.EquateApprox(0.00001, 0.00001)
+			if !cmp.Equal(s1.Score, s2.Score, approx) {
+				return false
+			}
+			if !cmp.Equal(s1.BitVector, s2.BitVector, approx) {
+				return false
+			}
+			if s1.ContainsTerms != s2.ContainsTerms {
+				return false
+			}
+		}
+		return true
+	})
+	noDocs := map[string][]*TermFreqDoc{}
+	noTerms := []string{}
+	one := []*TermFreqDoc{
+		&er,
+	}
+	oneDoc := map[string][]*TermFreqDoc{
+		er.Document: one,
+	}
+	oneTerm := []string{"而"}
+	oneS := find.BM25Score{
+		Document:      er.Document,
+		Collection:    er.Collection,
+		Score:         oneBM25,
+		BitVector:     1.0,
+		ContainsTerms: "而",
+	}
+	oneScore := []find.BM25Score{
+		oneS,
+	}
+	two := []*TermFreqDoc{
+		&er,
+		&bu,
+	}
+	twoDocs := map[string][]*TermFreqDoc{
+		er.Document: two,
+	}
+	twoTerms := []string{"而", "不"}
+	twoS := find.BM25Score{
+		Document:      bu.Document,
+		Collection:    bu.Collection,
+		Score:         twoBM25,
+		BitVector:     1.0,
+		ContainsTerms: "而不",
+	}
+	twoScores := []find.BM25Score{
+		twoS,
+	}
+	three := []*TermFreqDoc{
+		&er,
+		&bu,
+		&bai,
+	}
+	threeDocs := map[string][]*TermFreqDoc{
+		er.Document: three,
+	}
+	threeTerms := []string{"而", "不", "敗"}
+	threeS := find.BM25Score{
+		Document:      bu.Document,
+		Collection:    bu.Collection,
+		Score:         threeBM25,
+		BitVector:     1.0,
+		ContainsTerms: "而不敗",
+	}
+	threeScores := []find.BM25Score{
+		threeS,
+	}
+	const addDirectory = false
+	type test struct {
+		name  string
+		docs  map[string][]*TermFreqDoc
+		terms []string
+		want  []find.BM25Score
+	}
+	tests := []test{
+		{
+			name:  "Empty",
+			docs:  noDocs,
+			terms: noTerms,
+			want:  []find.BM25Score{},
+		},
+		{
+			name:  "One",
+			docs:  oneDoc,
+			terms: oneTerm,
+			want:  oneScore,
+		},
+		{
+			name:  "Two",
+			docs:  twoDocs,
+			terms: twoTerms,
+			want:  twoScores,
+		},
+		{
+			name:  "Three",
+			docs:  threeDocs,
+			terms: threeTerms,
+			want:  threeScores,
+		},
+	}
+	for _, tc := range tests {
+		got := findScores(tc.docs, tc.terms, addDirectory)
+		if !cmp.Equal(got, tc.want, opt) {
+			t.Errorf("TestFindScores.%s: got %v but want: %v", tc.name, got, tc.want)
 		}
 	}
 }
