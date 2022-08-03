@@ -18,6 +18,7 @@ import (
 	"log"
 
 	"cloud.google.com/go/firestore"
+	"google.golang.org/api/iterator"
 )
 
 // DocTitleRecord holds expanded document title information
@@ -68,11 +69,34 @@ func (f firestoreTitleFinder) FindDocsByTitle(ctx context.Context, query string)
 	results := []Document{}
 	col := f.client.Collection(fsCol)
 	if col == nil {
-		return nil, fmt.Errorf("findDocsTermFreq collection is empty")
+		return nil, fmt.Errorf("FindDocsByTitle collection is empty")
 	}
-	q := col.Where("substring", "array-contains", query).OrderBy("freq", firestore.Desc).Limit(100)
+	q := col.Where("substrings", "array-contains", query).Limit(100)
 	iter := q.Documents(ctx)
 	defer iter.Stop()
+	for {
+		ds, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("FindDocsByTitle iteration error: %v", err)
+		}
+		var d DocTitleRecord
+		err = ds.DataTo(&d)
+		if err != nil {
+			return nil, fmt.Errorf("FindDocsByTitle type conversion error: %v", err)
+		}
+		doc := Document{
+			GlossFile:       d.GlossFile,
+			Title:           d.DocTitle,
+			CollectionFile:  d.ColGlossFile,
+			CollectionTitle: d.ColTitle,
+			TitleCNMatch:    true,
+		}
+		results = append(results, doc)
+	}
+	log.Printf("FindDocsByTitle got %d records with query %s", len(results), query)
 	return results, nil
 }
 
