@@ -161,7 +161,11 @@ func initApp(ctx context.Context) (*backends, error) {
 	var titleFinder find.TitleFinder
 	var colMap map[string]string
 	var docMap map[string]find.DocInfo
-	titleFinder, err = initDocTitleFinder(appConfig)
+	projectID, ok := os.LookupEnv(projectIDKey)
+	if !ok {
+		log.Println("PROJECT_ID not set not set")
+	}
+	titleFinder, err = initDocTitleFinder(ctx, appConfig, projectID)
 	if err != nil {
 		log.Printf("main.initApp() unable to load titleFinder: %v", err)
 	} else {
@@ -186,10 +190,8 @@ func initApp(ctx context.Context) (*backends, error) {
 	reverseIndex := dictionary.NewReverseIndex(dict, extractor)
 
 	var tfDocFinder find.TermFreqDocFinder
-	projectID, ok := os.LookupEnv(projectIDKey)
-	if !ok {
-		log.Printf("%s not set, not able to perform full text search", projectIDKey)
-	} else {
+	if len(projectID) > 0 {
+		log.Println("projectID set, configuring full text search")
 		client, err := firestore.NewClient(ctx, projectID)
 		if err != nil {
 			log.Printf("Cannot instantiate Firestore TermFreqDocFinder: %v", err)
@@ -227,7 +229,7 @@ func initApp(ctx context.Context) (*backends, error) {
 }
 
 // Initialize the document title finder
-func initDocTitleFinder(appConfig config.AppConfig) (find.TitleFinder, error) {
+func initDocTitleFinder(ctx context.Context, appConfig config.AppConfig, project string) (find.TitleFinder, error) {
 	if b != nil && b.docTitleFinder != nil {
 		return b.docTitleFinder, nil
 	}
@@ -250,7 +252,28 @@ func initDocTitleFinder(appConfig config.AppConfig) (find.TitleFinder, error) {
 	var dInfoCN, docMap map[string]find.DocInfo
 	dInfoCN, docMap = find.LoadDocInfo(r)
 	log.Printf("initDocTitleFinder loaded %d cols and  %d docs", len(colMap), len(docMap))
-	docTitleFinder := find.NewFileTitleFinder(colMap, dInfoCN, docMap)
+	var docTitleFinder find.TitleFinder
+	if len(project) > 0 {
+		log.Println("initDocTitleFinder creating a FirebaseTitleFinder")
+		client, err := firestore.NewClient(ctx, project)
+		if err != nil {
+			log.Printf("initDocTitleFinder, failed to create firestore client: %v", err)
+		} else {
+			indexCorpus, ok := appConfig.IndexCorpus()
+			if !ok {
+				log.Printf("initDocTitleFinder, IndexCorpus must be set in config.yaml")
+			} else {
+				indexGen := appConfig.IndexGen()
+				docTitleFinder = find.NewFirebaseTitleFinder(client, indexCorpus, indexGen, colMap, dInfoCN, docMap)
+				if b != nil {
+					b.docTitleFinder = docTitleFinder
+				}
+				return docTitleFinder, nil
+			}
+		}
+	}
+	log.Println("initDocTitleFinder fall back to a file based TitleFinder")
+	docTitleFinder = find.NewFileTitleFinder(colMap, dInfoCN, docMap)
 	if b != nil {
 		b.docTitleFinder = docTitleFinder
 	}
@@ -529,7 +552,11 @@ func findDocs(ctx context.Context, response http.ResponseWriter, request *http.R
 	if len(c) > 0 {
 		results, err = b.df.FindDocumentsInCol(ctx, b.reverseIndex, b.parser, q, c)
 	} else if len(findTitle) > 0 {
-		docTitleFinder, err := initDocTitleFinder(b.appConfig)
+		projectID, ok := os.LookupEnv(projectIDKey)
+		if !ok {
+			log.Printf("main.findDocs, %s not set", projectIDKey)
+		}
+		docTitleFinder, err := initDocTitleFinder(ctx, b.appConfig, projectID)
 		if err == nil {
 			docs, err := docTitleFinder.FindDocsByTitle(ctx, q)
 			results = &find.QueryResults{

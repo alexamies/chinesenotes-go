@@ -312,6 +312,9 @@ func (df docFinder) findDocuments(ctx context.Context, query string, terms []Tex
 	// For more than one term find docs that are similar body and merge
 	simDocMap := toSimilarDocMap(docs) // similarity = 1.0
 	log.Printf("findDocuments, len(docMap): %s, %d", query, len(simDocMap))
+	if df.tfDocFinder == nil {
+		return nil, fmt.Errorf("full text search is not configured")
+	}
 	termScores, err := df.tfDocFinder.FindDocsTermFreq(ctx, queryTerms)
 	if err != nil {
 		return nil, err
