@@ -49,6 +49,7 @@ type TermFreqDoc struct {
 	Document   string  `firestore:"document"`
 	IDF        float64 `firestore:"idf"`
 	DocLen     int64   `firestore:"doclen"`
+	TFIDF      float64 `firestore:"tfidf"`
 }
 
 // fsDocFinder holds parameters needed to communicate with Firestore
