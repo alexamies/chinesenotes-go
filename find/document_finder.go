@@ -32,11 +32,12 @@ const (
 	maxReturned   = 50
 	minSimilarity = -4.75
 	avDocLen      = 4497
-	intercept     = -4.75 // From logistic regression
+	intercept     = -5.80042096 // From logistic regression
 )
 
 //  From logistic regression
-var WEIGHT = []float64{0.080, 2.327, 3.040} // [BM25 words, BM25 bigrams, bit vector]
+var WEIGHT = []float64{0.3606522, 2.4427158, 3.84494291, 2.74137199} // [BM25 words, BM25 bigrams, bit vector, similar title]
+// []float64{0.080, 2.327, 3.040} // old model, did not include similarity of title
 
 // DocFinder finds documents.
 type DocFinder interface {
@@ -193,7 +194,8 @@ func combineByWeight(doc Document, maxSimWords, maxSimBigram float64) Document {
 		similarity = intercept +
 			WEIGHT[0]*doc.SimWords/maxSimWords +
 			WEIGHT[1]*doc.SimBigram/maxSimBigram +
-			WEIGHT[2]*doc.SimBitVector
+			WEIGHT[2]*doc.SimBitVector +
+			WEIGHT[3]*doc.SimTitle
 	}
 	simDoc := Document{
 		GlossFile:       doc.GlossFile,
@@ -311,7 +313,7 @@ func (df docFinder) findDocuments(ctx context.Context, query string, terms []Tex
 
 	// For more than one term find docs that are similar body and merge
 	simDocMap := toSimilarDocMap(docs) // similarity = 1.0
-	log.Printf("findDocuments, len(docMap): %s, %d", query, len(simDocMap))
+	log.Printf("findDocuments, len(simDocMap): %d, query: %s", len(simDocMap), query)
 	if df.tfDocFinder == nil {
 		return nil, fmt.Errorf("full text search is not configured")
 	}
@@ -325,8 +327,7 @@ func (df docFinder) findDocuments(ctx context.Context, query string, terms []Tex
 	// If less than 2 terms then do not need to check bigrams
 	if len(terms) < 2 {
 		sortedDocs := toSortedDocList(simDocMap)
-		log.Printf("findDocuments, < 2 len(sortedDocs): %s, %d", query,
-			len(sortedDocs))
+		log.Printf("findDocuments, < 2 len(sortedDocs): %s, %d", query, len(sortedDocs))
 		relevantDocs := toRelevantDocList(df.titleFinder, sortedDocs, queryTerms)
 		return relevantDocs, nil
 	}
@@ -558,6 +559,7 @@ func (df *mysqlTitleFinder) initTitleStatements(ctx context.Context) error {
 // mergeDocList merges a list of documents with map of similar docs, adding the similarity
 // for docs that are in both lists
 func mergeDocList(df TitleFinder, simDocMap map[string]Document, docList []Document) {
+	log.Printf("mergeDocList, len(simDocMap) = %d len(docList) = %d", len(simDocMap), len(docList))
 	for _, simDoc := range docList {
 		sDoc, ok := simDocMap[simDoc.GlossFile]
 		colMap := df.ColMap()
@@ -616,6 +618,7 @@ func mergeDocList(df TitleFinder, simDocMap map[string]Document, docList []Docum
 			}
 		}
 	}
+	log.Printf("mergeDocList, exit with len(simDocMap) = %d len(docList) = %d", len(simDocMap), len(docList))
 }
 
 // setMatchDetails organizes the contains terms found of the document in a form

@@ -279,13 +279,13 @@ func TestCombineByWeight(t *testing.T) {
 	similarity := intercept +
 		WEIGHT[0]*doc.SimWords/maxSimWords +
 		WEIGHT[1]*doc.SimBigram/maxBigram +
-		WEIGHT[2]*doc.SimBitVector
+		WEIGHT[2]*doc.SimBitVector +
+		WEIGHT[3]*doc.SimTitle
 	expectedMin := 0.99 * similarity
 	expectedMax := 1.01 * similarity
 	if (expectedMin > simDoc.Similarity) ||
 		(simDoc.Similarity > expectedMax) {
-		t.Errorf("TestCombineByWeight: result out of expected range %v\n",
-			simDoc)
+		t.Errorf("TestCombineByWeight: result out of expected range, got %.4f, want in range (%.4f, %.4f), details:  %v\n", simDoc.Similarity, expectedMin, expectedMax, simDoc)
 	}
 }
 
@@ -862,66 +862,105 @@ func TestToRelevantDocList(t *testing.T) {
 	}
 }
 
-func TestToSortedDocList1(t *testing.T) {
-	similarDocMap := map[string]Document{}
-	doc1 := Document{
+func TestToSortedDocList(t *testing.T) {
+	similarDocMap1 := map[string]Document{}
+	doc11 := Document{
 		GlossFile: "f1.html",
 		Title:     "Good doc",
 		SimWords:  1.0,
 		SimBigram: 1.0,
 	}
-	similarDocMap[doc1.GlossFile] = doc1
-	doc2 := Document{
+	similarDocMap1[doc11.GlossFile] = doc11
+	doc12 := Document{
 		GlossFile: "f2.html",
 		Title:     "Very Good doc",
 		SimWords:  1.5,
 		SimBigram: 1.5,
 	}
-	similarDocMap[doc2.GlossFile] = doc2
-	doc3 := Document{
+	similarDocMap1[doc12.GlossFile] = doc12
+	doc13 := Document{
 		GlossFile: "f3.html",
 		Title:     "Reasonable doc",
 		SimWords:  0.5,
 		SimBigram: 0.5,
 	}
-	similarDocMap[doc3.GlossFile] = doc3
-	docs := toSortedDocList(similarDocMap)
-	expected := doc2.GlossFile
-	result := docs[0]
-	if result.Similarity == 0.0 {
-		t.Error("TestToSortedDocList1: result.Similarity == 0.0")
-	}
-	if result.GlossFile != expected {
-		t.Errorf("TestToSortedDocList1: expected %s, got, %v", expected, result)
-	}
-}
+	similarDocMap1[doc13.GlossFile] = doc13
 
-func TestToSortedDocList2(t *testing.T) {
-	similarDocMap := map[string]Document{}
-	doc1 := Document{
+	similarDocMap2 := map[string]Document{}
+	doc21 := Document{
 		GlossFile: "f1.html",
 		Title:     "Good doc",
 		SimWords:  0.5,
 		SimBigram: 1.0,
 	}
-	similarDocMap[doc1.GlossFile] = doc1
-	doc2 := Document{
+	similarDocMap2[doc21.GlossFile] = doc21
+	doc22 := Document{
 		GlossFile: "f2.html",
 		Title:     "Very Good doc",
 		SimWords:  0.5,
 		SimBigram: 1.5,
 	}
-	similarDocMap[doc2.GlossFile] = doc2
-	doc3 := Document{
+	similarDocMap2[doc22.GlossFile] = doc22
+	doc23 := Document{
 		GlossFile: "f3.html",
 		Title:     "Reasonable doc",
 		SimWords:  0.5,
 	}
-	similarDocMap[doc3.GlossFile] = doc3
-	docs := toSortedDocList(similarDocMap)
-	expected := doc2.GlossFile
-	result := docs[0]
-	if result.GlossFile != expected {
-		t.Errorf("TestToSortedDocList2: expected %s, got, %v", expected, result)
+	similarDocMap2[doc23.GlossFile] = doc23
+
+	similarDocMap3 := map[string]Document{}
+	doc31 := Document{
+		GlossFile: "f1.html",
+		Title:     "Good doc",
+		SimWords:  0.5,
+		SimBigram: 0.0,
+		SimTitle:  1.0,
+	}
+	similarDocMap3[doc31.GlossFile] = doc31
+	doc32 := Document{
+		GlossFile: "f2.html",
+		Title:     "Very Good doc",
+		SimWords:  0.5,
+		SimBigram: 0.5,
+	}
+	similarDocMap3[doc32.GlossFile] = doc32
+	doc33 := Document{
+		GlossFile: "f3.html",
+		Title:     "Reasonable doc",
+		SimWords:  0.5,
+	}
+	similarDocMap3[doc33.GlossFile] = doc33
+
+	type test struct {
+		name          string
+		similarDocMap map[string]Document
+		want          string
+	}
+	tests := []test{
+		{
+			name:          "Strong match for both terms and bigrams",
+			similarDocMap: similarDocMap1,
+			want:          doc12.GlossFile,
+		},
+		{
+			name:          "Bigrams win",
+			similarDocMap: similarDocMap2,
+			want:          doc22.GlossFile,
+		},
+		{
+			name:          "Similar title wins",
+			similarDocMap: similarDocMap3,
+			want:          doc31.GlossFile,
+		},
+	}
+	for _, tc := range tests {
+		docs := toSortedDocList(tc.similarDocMap)
+		result := docs[0]
+		if result.Similarity == 0.0 {
+			t.Error("TestToSortedDocList: result.Similarity == 0.0")
+		}
+		if result.GlossFile != tc.want {
+			t.Errorf("TestToSortedDocList %s: got, %s but want %s, details: %v", tc.name, result.GlossFile, tc.want, result)
+		}
 	}
 }

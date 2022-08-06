@@ -65,11 +65,12 @@ func NewFirebaseTitleFinder(client fsClient, corpus string, generation int, colM
 
 // FileDocTitleFinder finds documents by title using a using Firestore substring query
 func (f firestoreTitleFinder) FindDocsByTitle(ctx context.Context, query string) ([]Document, error) {
+	log.Printf("firestoreTitleFinder.FindDocsByTitle query %s", query)
 	fsCol := fmt.Sprintf("%s_doc_title_%d", f.corpus, f.generation)
 	results := []Document{}
 	col := f.client.Collection(fsCol)
 	if col == nil {
-		return nil, fmt.Errorf("FindDocsByTitle collection is empty")
+		return nil, fmt.Errorf("firestoreTitleFinder.FindDocsByTitle collection is empty")
 	}
 	q := col.Where("substrings", "array-contains", query).Limit(100)
 	iter := q.Documents(ctx)
@@ -80,12 +81,12 @@ func (f firestoreTitleFinder) FindDocsByTitle(ctx context.Context, query string)
 			break
 		}
 		if err != nil {
-			return nil, fmt.Errorf("FindDocsByTitle iteration error: %v", err)
+			return nil, fmt.Errorf("firestoreTitleFinder.FindDocsByTitle iteration error: %v", err)
 		}
 		var d DocTitleRecord
 		err = ds.DataTo(&d)
 		if err != nil {
-			return nil, fmt.Errorf("FindDocsByTitle type conversion error: %v", err)
+			return nil, fmt.Errorf("firestoreTitleFinder.FindDocsByTitle type conversion error: %v", err)
 		}
 		doc := Document{
 			GlossFile:       d.GlossFile,

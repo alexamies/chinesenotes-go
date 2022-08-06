@@ -178,10 +178,6 @@ func initApp(ctx context.Context) (*backends, error) {
 		if err != nil {
 			return nil, fmt.Errorf("main.initApp() unable to create new TM searcher: %v", err)
 		}
-		titleFinder, err = find.NewMysqlTitleFinder(ctx, database, colMap, docMap)
-		if err != nil {
-			log.Printf("main.initApp() unable to initialize MysqlTitleFinder: %v", err)
-		}
 	}
 	extractor, err := dictionary.NewNotesExtractor(webConfig.NotesExtractorPattern())
 	if err != nil {
@@ -228,7 +224,7 @@ func initApp(ctx context.Context) (*backends, error) {
 	return bends, nil
 }
 
-// Initialize the document title finder
+// initDocTitleFinder initializes the document title finder
 func initDocTitleFinder(ctx context.Context, appConfig config.AppConfig, project string) (find.TitleFinder, error) {
 	if b != nil && b.docTitleFinder != nil {
 		return b.docTitleFinder, nil
