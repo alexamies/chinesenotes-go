@@ -88,6 +88,7 @@ func (f firestoreTitleFinder) FindDocsByTitle(ctx context.Context, query string)
 		if err != nil {
 			return nil, fmt.Errorf("firestoreTitleFinder.FindDocsByTitle type conversion error: %v", err)
 		}
+		log.Printf("FindDocsByTitle got %s with title %s, col %s", d.GlossFile, d.DocTitle, d.ColTitle)
 		doc := Document{
 			GlossFile:       d.GlossFile,
 			Title:           d.DocTitle,

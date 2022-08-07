@@ -742,6 +742,9 @@ func toSortedDocList(similarDocMap map[string]Document) []Document {
 	simDocs := []Document{}
 	for _, doc := range docs {
 		simDoc := combineByWeight(doc, maxSimWords, maxSimBigram)
+		if simDoc.SimTitle > 0.0 {
+			log.Printf("find.toSortedDocList doc %s SimTitle = %.4f, Similarity = %.4f", doc.GlossFile, simDoc.SimTitle, simDoc.Similarity)
+		}
 		simDocs = append(simDocs, simDoc)
 	}
 	// Sort again by combined similarity
@@ -749,6 +752,7 @@ func toSortedDocList(similarDocMap map[string]Document) []Document {
 		return simDocs[i].Similarity > simDocs[j].Similarity
 	})
 	if len(simDocs) > maxReturned {
+		log.Printf("find.toSortedDocList got %d results, truncating to = %d with min Similarity = %.4f", len(simDocs), maxReturned, simDocs[maxReturned-1].Similarity)
 		return simDocs[:maxReturned]
 	}
 	return simDocs
