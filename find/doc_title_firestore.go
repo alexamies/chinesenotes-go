@@ -95,6 +95,7 @@ func (f firestoreTitleFinder) FindDocsByTitle(ctx context.Context, query string)
 			CollectionFile:  d.ColGlossFile,
 			CollectionTitle: d.ColTitle,
 			TitleCNMatch:    true,
+			SimTitle:        1.0,
 		}
 		results = append(results, doc)
 	}
