@@ -31,10 +31,11 @@ import (
 )
 
 const (
-	k          float64 = 1.5
-	b          float64 = 0.65
-	avDocLen           = 4497
-	QueryLimit         = 1000
+	k           float64 = 1.5
+	b           float64 = 0.65
+	avDocLen            = 4497
+	QueryLimit          = 1000
+	maxQueryLen         = 10
 )
 
 // fsClient defines Firestore interfaces needed
@@ -120,6 +121,9 @@ func (f fsDocFinder) FindDocsTermFreq(ctx context.Context, terms []string) ([]fi
 
 // findDocsTermFreq finds documents with occurences of any of the terms or bigrams
 func findDocsTermFreq(ctx context.Context, client fsClient, fsCol string, terms []string, addDirectory bool, queryLimit int) ([]find.BM25Score, error) {
+	if len(terms) > maxQueryLen {
+		terms = terms[:maxQueryLen]
+	}
 	col := client.Collection(fsCol)
 	if col == nil {
 		return nil, fmt.Errorf("findDocsTermFreq collection is empty")
