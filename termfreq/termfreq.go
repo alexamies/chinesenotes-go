@@ -124,7 +124,7 @@ func findDocsTermFreq(ctx context.Context, client fsClient, fsCol string, terms 
 	if col == nil {
 		return nil, fmt.Errorf("findDocsTermFreq collection is empty")
 	}
-	q := col.Where("term", "in", terms).OrderBy("freq", firestore.Desc).Limit(queryLimit)
+	q := col.Where("term", "in", terms).OrderBy("tfidf", firestore.Desc).Limit(queryLimit)
 	iter := q.Documents(ctx)
 	defer iter.Stop()
 	docs := map[string][]*TermFreqDoc{}
