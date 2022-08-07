@@ -17,6 +17,7 @@ package find
 import (
 	"context"
 	"log"
+	"math"
 	"reflect"
 	"testing"
 
@@ -261,31 +262,68 @@ func TestBigrams(t *testing.T) {
 }
 
 func TestCombineByWeight(t *testing.T) {
-	doc := Document{
-		GlossFile:    "f2.html",
+	doc1 := Document{
+		GlossFile:    "f1.html",
 		Title:        "Very Good doc",
 		SimTitle:     1.0,
 		SimWords:     0.5,
 		SimBigram:    1.5,
 		SimBitVector: 1.0,
 	}
-	maxSimWords := doc.SimWords
-	maxBigram := doc.SimBigram
-	simDoc := combineByWeight(doc, maxSimWords, maxBigram)
-	if simDoc.Similarity == 0.0 {
-		t.Error("TestCombineByWeight: simDoc.Similarity == 0.0")
+	maxSimWords1 := doc1.SimWords
+	maxBigram1 := doc1.SimBigram
+	similarity1 := intercept +
+		WEIGHT[0]*doc1.SimWords/maxSimWords1 +
+		WEIGHT[1]*doc1.SimBigram/maxBigram1 +
+		WEIGHT[2]*doc1.SimBitVector +
+		WEIGHT[3]*doc1.SimTitle
+	doc2 := Document{
+		GlossFile:    "f2.html",
+		Title:        "Title matchs",
+		SimTitle:     1.0,
+		SimWords:     0.0,
+		SimBigram:    0.0,
+		SimBitVector: 0.0,
 	}
-	t.Logf("TestCacheColDetails: simDoc %v\n", simDoc)
-	similarity := intercept +
-		WEIGHT[0]*doc.SimWords/maxSimWords +
-		WEIGHT[1]*doc.SimBigram/maxBigram +
-		WEIGHT[2]*doc.SimBitVector +
-		WEIGHT[3]*doc.SimTitle
-	expectedMin := 0.99 * similarity
-	expectedMax := 1.01 * similarity
-	if (expectedMin > simDoc.Similarity) ||
-		(simDoc.Similarity > expectedMax) {
-		t.Errorf("TestCombineByWeight: result out of expected range, got %.4f, want in range (%.4f, %.4f), details:  %v\n", simDoc.Similarity, expectedMin, expectedMax, simDoc)
+	maxSimWords2 := doc2.SimWords
+	maxBigram2 := doc2.SimBigram
+	similarity2 := intercept +
+		WEIGHT[2]*doc2.SimBitVector +
+		WEIGHT[3]*doc2.SimTitle
+	type test struct {
+		name        string
+		doc         Document
+		maxSimWords float64
+		maxBigram   float64
+		want        float64
+	}
+	tests := []test{
+		{
+			name:        "All nonzero",
+			doc:         doc1,
+			maxSimWords: maxSimWords1,
+			maxBigram:   maxBigram1,
+			want:        math.Abs(similarity1),
+		},
+		{
+			name:        "Title only nonzero",
+			doc:         doc2,
+			maxSimWords: maxSimWords2,
+			maxBigram:   maxBigram2,
+			want:        math.Abs(similarity2),
+		},
+	}
+	for _, tc := range tests {
+		simDoc := combineByWeight(tc.doc, tc.maxSimWords, tc.maxBigram)
+		if simDoc.Similarity == 0.0 {
+			t.Errorf("TestCombineByWeight %s: simDoc.Similarity == 0.0", tc.name)
+		}
+		expectedMin := 0.99 * math.Abs(tc.want)
+		expectedMax := 1.01 * math.Abs(tc.want)
+		s := math.Abs(simDoc.Similarity)
+		if (s < expectedMin) || (expectedMax < s) {
+			t.Errorf("TestCombineByWeight %s: result out of expected range, got %.4f, want abs in range (%.4f, %.4f), details:  %v", tc.name, s, expectedMin, expectedMax, simDoc)
+		}
 	}
 }
 

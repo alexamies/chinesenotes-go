@@ -189,14 +189,14 @@ func (doc Document) String() string {
 // relevance for BM25 for words, BM25 for bigrams, and bit vector dot product.
 // Raw BM25 values are scaled with 1.0 being the top value
 func combineByWeight(doc Document, maxSimWords, maxSimBigram float64) Document {
-	similarity := minSimilarity
-	if maxSimWords != 0.0 && maxSimBigram != 0.0 {
-		similarity = intercept +
-			WEIGHT[0]*doc.SimWords/maxSimWords +
-			WEIGHT[1]*doc.SimBigram/maxSimBigram +
-			WEIGHT[2]*doc.SimBitVector +
-			WEIGHT[3]*doc.SimTitle
+	similarity := intercept
+	if maxSimWords != 0.0 {
+		similarity += WEIGHT[0] * doc.SimWords / maxSimWords
 	}
+	if maxSimBigram != 0.0 {
+		similarity += WEIGHT[1] * doc.SimBigram / maxSimBigram
+	}
+	similarity += WEIGHT[2]*doc.SimBitVector + WEIGHT[3]*doc.SimTitle
 	simDoc := Document{
 		GlossFile:       doc.GlossFile,
 		Title:           doc.Title,
