@@ -683,9 +683,7 @@ func toRelevantDocList(df TitleFinder, docs []Document, terms []string) []Docume
 	docMatches := fulltext.GetMatches(keys, terms)
 	relDocs := []Document{}
 	for _, doc := range docs {
-		log.Printf("toRelevantDocList, check Similarity %f, min %f, gloss %s, "+
-			"title: %s", doc.Similarity, minSimilarity, doc.GlossFile,
-			doc.Title)
+		// log.Printf("toRelevantDocList, check Similarity %f, min %f, gloss %s, title: %s", doc.Similarity, minSimilarity, doc.GlossFile,doc.Title)
 		d, ok := docMap[doc.GlossFile]
 		if !ok {
 			log.Printf("find.toRelevantDocList 2 could not find %s", doc.GlossFile)
@@ -707,7 +705,7 @@ func toRelevantDocList(df TitleFinder, docs []Document, terms []string) []Docume
 func toSimilarDocMap(docs []Document) map[string]Document {
 	similarDocMap := map[string]Document{}
 	for _, doc := range docs {
-		log.Printf("find.toSimilarDocMap find %s, SimTitle = %4f", doc.GlossFile, doc.SimTitle)
+		// log.Printf("find.toSimilarDocMap find %s, SimTitle = %4f", doc.GlossFile, doc.SimTitle)
 		simDoc := Document{
 			GlossFile:       doc.GlossFile,
 			Title:           doc.Title,
@@ -744,7 +742,7 @@ func toSortedDocList(similarDocMap map[string]Document) []Document {
 	simDocs := []Document{}
 	for _, doc := range docs {
 		simDoc := combineByWeight(doc, maxSimWords, maxSimBigram)
-		log.Printf("find.toSortedDocList doc %s SimTitle = %.4f, Similarity = %.4f", doc.GlossFile, simDoc.SimTitle, simDoc.Similarity)
+		// log.Printf("find.toSortedDocList doc %s SimTitle = %.4f, Similarity = %.4f", doc.GlossFile, simDoc.SimTitle, simDoc.Similarity)
 		simDocs = append(simDocs, simDoc)
 	}
 	// Sort again by combined similarity
