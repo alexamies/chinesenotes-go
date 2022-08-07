@@ -260,7 +260,7 @@ func initDocTitleFinder(ctx context.Context, appConfig config.AppConfig, project
 				log.Printf("initDocTitleFinder, IndexCorpus must be set in config.yaml")
 			} else {
 				indexGen := appConfig.IndexGen()
-				docTitleFinder = find.NewFirebaseTitleFinder(client, indexCorpus, indexGen, colMap, dInfoCN, docMap)
+				docTitleFinder = find.NewFirestoreTitleFinder(client, indexCorpus, indexGen, colMap, dInfoCN, docMap)
 				if b != nil {
 					b.docTitleFinder = docTitleFinder
 				}

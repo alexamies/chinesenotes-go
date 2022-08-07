@@ -694,6 +694,7 @@ func toRelevantDocList(df TitleFinder, docs []Document, terms []string) []Docume
 		docMatch := docMatches[d.CorpusFile]
 		doc = setMatchDetails(doc, terms, docMatch)
 		if doc.Similarity < minSimilarity {
+			log.Printf("find.toRelevantDocList doc %s Similarity %4f < minSimilarity %4f, returning %d docs", doc.GlossFile, doc.Similarity, minSimilarity, len(relDocs))
 			return relDocs
 		}
 		relDocs = append(relDocs, doc)
@@ -706,6 +707,7 @@ func toRelevantDocList(df TitleFinder, docs []Document, terms []string) []Docume
 func toSimilarDocMap(docs []Document) map[string]Document {
 	similarDocMap := map[string]Document{}
 	for _, doc := range docs {
+		log.Printf("find.toSimilarDocMap find %s, SimTitle = %4f", doc.GlossFile, doc.SimTitle)
 		simDoc := Document{
 			GlossFile:       doc.GlossFile,
 			Title:           doc.Title,
@@ -742,9 +744,7 @@ func toSortedDocList(similarDocMap map[string]Document) []Document {
 	simDocs := []Document{}
 	for _, doc := range docs {
 		simDoc := combineByWeight(doc, maxSimWords, maxSimBigram)
-		if simDoc.SimTitle > 0.0 {
-			log.Printf("find.toSortedDocList doc %s SimTitle = %.4f, Similarity = %.4f", doc.GlossFile, simDoc.SimTitle, simDoc.Similarity)
-		}
+		log.Printf("find.toSortedDocList doc %s SimTitle = %.4f, Similarity = %.4f", doc.GlossFile, simDoc.SimTitle, simDoc.Similarity)
 		simDocs = append(simDocs, simDoc)
 	}
 	// Sort again by combined similarity

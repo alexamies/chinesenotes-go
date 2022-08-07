@@ -145,7 +145,7 @@ func findDocsTermFreq(ctx context.Context, client fsClient, fsCol string, terms 
 		if err != nil {
 			return nil, fmt.Errorf("findDocsTermFreq type conversion error: %v", err)
 		}
-		log.Printf("findDocsTermFreq %s: freq: %d, idf: %0.3f, DocLen: %d in doc:%s, col:%s", tf.Term, tf.Freq, tf.IDF, tf.DocLen, tf.Document, tf.Collection)
+		log.Printf("findDocsTermFreq %s: freq: %d, idf: %0.3f, tfidf: %0.3f, DocLen: %d in doc:%s, col:%s", tf.Term, tf.Freq, tf.IDF, tf.TFIDF, tf.DocLen, tf.Document, tf.Collection)
 		d, ok := docs[tf.Document]
 		if ok {
 			d = append(d, &tf)

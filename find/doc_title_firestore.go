@@ -40,7 +40,7 @@ type fsClient interface {
 	Collection(path string) *firestore.CollectionRef
 }
 
-// firebaseTitleFinder implements the TitleFinder interface with Firestore queries
+// firestoreTitleFinder implements the TitleFinder interface with Firestore queries
 type firestoreTitleFinder struct {
 	client     fsClient
 	corpus     string
@@ -50,9 +50,9 @@ type firestoreTitleFinder struct {
 	docMap     map[string]DocInfo
 }
 
-// NewFirebaseTitleFinder initializes a DocTitleFinder implementation using Firestore queries
-func NewFirebaseTitleFinder(client fsClient, corpus string, generation int, colMap map[string]string, dInfoCN, docMap map[string]DocInfo) TitleFinder {
-	log.Printf("NewFirebaseTitleFinder len(colMap): %d, len(dInfoCN): %d, len(docMap): %d", len(colMap), len(dInfoCN), len(docMap))
+// NewFirestoreTitleFinder initializes a DocTitleFinder implementation using Firestore queries
+func NewFirestoreTitleFinder(client fsClient, corpus string, generation int, colMap map[string]string, dInfoCN, docMap map[string]DocInfo) TitleFinder {
+	log.Printf("NewFirestoreTitleFinder len(colMap): %d, len(dInfoCN): %d, len(docMap): %d", len(colMap), len(dInfoCN), len(docMap))
 	return firestoreTitleFinder{
 		client:     client,
 		corpus:     corpus,
