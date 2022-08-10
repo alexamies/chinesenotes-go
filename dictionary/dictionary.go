@@ -134,3 +134,26 @@ func stripParen(t string) string {
 	}
 	return t
 }
+
+// Ngrams finds the set of all substrings in the array longer than minLen characters
+func Ngrams(chars []string, minLen int) []string {
+	// log.Printf("ngrams, chars %v", chars)
+	if len(chars) < 2 {
+		return []string{}
+	}
+	ss := []string{}
+	for i := range chars {
+		for j := len(chars); j > 1; j-- {
+			if i < j {
+				x := chars[i:j]
+				w := strings.Join(x, "")
+				if len(x) >= minLen {
+					// log.Printf("ngrams i=%d: j=%d, w=%s\n", i, j, w)
+					ss = append(ss, w)
+				}
+			}
+		}
+	}
+	// log.Printf("ngrams, ss %v\n", ss)
+	return ss
+}
