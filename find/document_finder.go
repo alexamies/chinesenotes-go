@@ -15,15 +15,11 @@ package find
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"sort"
 	"strings"
 
-	_ "github.com/go-sql-driver/mysql"
-
-	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dictionary"
 	"github.com/alexamies/chinesenotes-go/fulltext"
 )
@@ -107,43 +103,6 @@ type TitleFinder interface {
 	DocMap() map[string]DocInfo
 }
 
-// mysqlTitleFinder holds stateful items needed for title search in database.
-type mysqlTitleFinder struct {
-	database             *sql.DB
-	colMap               map[string]string
-	docMap               map[string]DocInfo
-	countColStmt         *sql.Stmt
-	findColStmt          *sql.Stmt
-	findDocStmt          *sql.Stmt
-	findAllColTitlesStmt *sql.Stmt
-	findAllTitlesStmt    *sql.Stmt
-	findDocInColStmt     *sql.Stmt
-}
-
-func NewMysqlTitleFinder(ctx context.Context, database *sql.DB, colMap map[string]string, docMap map[string]DocInfo) (TitleFinder, error) {
-	df := mysqlTitleFinder{
-		database: database,
-		colMap:   colMap,
-		docMap:   docMap,
-	}
-	if database != nil {
-		err := df.initMysqlTitleFinder(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("NewDocFinder, Error: %v", err)
-		}
-	}
-	log.Printf("NewMysqlTitleFinder initialized with %d colMap entries and %d doc entries", len(colMap), len(docMap))
-	return &df, nil
-}
-
-func (m mysqlTitleFinder) ColMap() map[string]string {
-	return m.colMap
-}
-
-func (m mysqlTitleFinder) DocMap() map[string]DocInfo {
-	return m.docMap
-}
-
 // convert2DocSim converts a BM25Score struct to a Document for term similarity
 func convert4Term(scores []BM25Score) []Document {
 	documents := []Document{}
@@ -215,18 +174,6 @@ func combineByWeight(doc Document, maxSimWords, maxSimBigram float64) Document {
 	return simDoc
 }
 
-func (tf mysqlTitleFinder) CountCollections(ctx context.Context, query string) (int, error) {
-	var count int
-	results, err := tf.countColStmt.QueryContext(ctx, "%"+query+"%")
-	if err != nil {
-		return 0, fmt.Errorf("CountCollections: query %s, error: %v", query, err)
-	}
-	results.Next()
-	results.Scan(&count)
-	results.Close()
-	return count, nil
-}
-
 // Bigrams constructs a slice of bigrams from pairs of terms
 func Bigrams(terms []string) []string {
 	b := []string{}
@@ -240,62 +187,6 @@ func Bigrams(terms []string) []string {
 		b = append(b, terms[i-1]+terms[i])
 	}
 	return b
-}
-
-func (df mysqlTitleFinder) FindCollections(ctx context.Context, query string) []Collection {
-	results, err := df.findColStmt.QueryContext(ctx, "%"+query+"%")
-	if err != nil {
-		log.Printf("FindCollections, Error for query %v: %v", query, err)
-		return nil
-	}
-	defer results.Close()
-	collections := []Collection{}
-	for results.Next() {
-		col := Collection{}
-		results.Scan(&col.Title, &col.GlossFile)
-		collections = append(collections, col)
-	}
-	return collections
-}
-
-// findDocsByTitle find documents based on a match in title
-func (df mysqlTitleFinder) FindDocsByTitle(ctx context.Context, query string) ([]Document, error) {
-	results, err := df.findDocStmt.QueryContext(ctx, "%"+query+"%")
-	if err != nil {
-		return nil, fmt.Errorf("findDocsByTitle, Error for query %v: %v", query, err)
-	}
-	defer results.Close()
-
-	documents := []Document{}
-	for results.Next() {
-		doc := Document{}
-		results.Scan(&doc.Title, &doc.GlossFile, &doc.CollectionFile,
-			&doc.CollectionTitle)
-		doc.SimTitle = 1.0
-		documents = append(documents, doc)
-	}
-	return documents, nil
-}
-
-// findDocsByTitleInCol find documents based on a match in title within a specific collection
-func (df mysqlTitleFinder) FindDocsByTitleInCol(ctx context.Context, query, col_gloss_file string) ([]Document, error) {
-	results, err := df.findDocInColStmt.QueryContext(ctx, "%"+query+"%",
-		col_gloss_file)
-	if err != nil {
-		return nil, fmt.Errorf("findDocsByTitleInCol, Error for query %v: %v", query, err)
-	}
-	defer results.Close()
-
-	documents := []Document{}
-	for results.Next() {
-		doc := Document{}
-		doc.CollectionFile = col_gloss_file
-		results.Scan(&doc.Title, &doc.GlossFile, &doc.CollectionTitle)
-		doc.SimTitle = 1.0
-		//log.Println("findDocsByTitleInCol, doc: ", doc)
-		documents = append(documents, doc)
-	}
-	return documents, nil
 }
 
 // findDocuments find documents by both title and contents, and merge the lists
@@ -481,79 +372,6 @@ func (df docFinder) FindDocumentsInCol(ctx context.Context, reverseIndex diction
 		Terms:          terms,
 		SimilarTerms:   nil,
 	}, err
-}
-
-// Open database connection and prepare statements. Allows for re-initialization
-// at most every minute
-func (df *mysqlTitleFinder) initMysqlTitleFinder(ctx context.Context) error {
-	log.Println("find.initMysqlTitleFinder Initializing MysqlTitleFinder")
-	err := df.initTitleStatements(ctx)
-	if err != nil {
-		conString := config.DBConfig()
-		return fmt.Errorf("find.initMysqlTitleFinder: got error with conString %s: \n%v", conString, err)
-	}
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (df *mysqlTitleFinder) initTitleStatements(ctx context.Context) error {
-	var err error
-	if df.database == nil {
-		return fmt.Errorf("initTitleStatements, database is nil")
-	}
-
-	df.countColStmt, err = df.database.PrepareContext(ctx,
-		"SELECT count(title) FROM collection WHERE title LIKE ?")
-	if err != nil {
-		return fmt.Errorf("find.initStatements() Error preparing cstmt: %v", err)
-	}
-
-	df.findColStmt, err = df.database.PrepareContext(ctx,
-		"SELECT title, gloss_file FROM collection WHERE title LIKE ? LIMIT 20")
-	if err != nil {
-		return fmt.Errorf("find.initStatements() Error preparing collection stmt: %v",
-			err)
-	}
-
-	// Search documents by title substring
-	df.findDocStmt, err = df.database.PrepareContext(ctx,
-		"SELECT title, gloss_file, col_gloss_file, col_title "+
-			"FROM document "+
-			"WHERE col_plus_doc_title LIKE ? LIMIT 20")
-	if err != nil {
-		return fmt.Errorf("find.initStatements() Error preparing dstmt: %v", err)
-	}
-
-	// Find the titles of all documents
-	df.findAllTitlesStmt, err = df.database.PrepareContext(ctx,
-		"SELECT gloss_file, title, col_gloss_file, col_title "+
-			"FROM document LIMIT 5000000")
-	if err != nil {
-		return fmt.Errorf("find.initStatements() Error for findAllTitlesStmt: %v", err)
-	}
-
-	// Find the titles of all documents
-	df.findAllColTitlesStmt, err = df.database.PrepareContext(ctx,
-		"SELECT gloss_file, title FROM collection LIMIT 500000")
-	if err != nil {
-		return fmt.Errorf("find.initStatements() Error for findAllColTitlesStmt: %v",
-			err)
-	}
-
-	// Search documents by title substring within a collection
-	df.findDocInColStmt, err = df.database.PrepareContext(ctx,
-		"SELECT title, gloss_file, col_title "+
-			"FROM document "+
-			"WHERE col_plus_doc_title LIKE ? "+
-			"AND col_gloss_file = ? "+
-			"LIMIT 500")
-	if err != nil {
-		return fmt.Errorf("find.initStatements() Error preparing dstmt: %v", err)
-	}
-
-	return nil
 }
 
 // mergeDocList merges a list of documents with map of similar docs, adding the similarity
