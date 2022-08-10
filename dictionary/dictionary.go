@@ -16,6 +16,7 @@ package dictionary
 
 import (
 	"context"
+	"log"
 	"strings"
 
 	"github.com/alexamies/chinesenotes-go/dicttypes"
@@ -137,23 +138,23 @@ func stripParen(t string) string {
 
 // Ngrams finds the set of all substrings in the array longer than minLen characters
 func Ngrams(chars []string, minLen int) []string {
-	// log.Printf("ngrams, chars %v", chars)
-	if len(chars) < 2 {
+	log.Printf("ngrams, chars %v", chars)
+	if len(chars) < minLen {
 		return []string{}
 	}
 	ss := []string{}
 	for i := range chars {
-		for j := len(chars); j > 1; j-- {
+		for j := len(chars); j >= minLen; j-- {
 			if i < j {
 				x := chars[i:j]
 				w := strings.Join(x, "")
 				if len(x) >= minLen {
-					// log.Printf("ngrams i=%d: j=%d, w=%s\n", i, j, w)
+					log.Printf("ngrams i=%d: j=%d, w=%s\n", i, j, w)
 					ss = append(ss, w)
 				}
 			}
 		}
 	}
-	// log.Printf("ngrams, ss %v\n", ss)
+	log.Printf("ngrams, ss %v\n", ss)
 	return ss
 }

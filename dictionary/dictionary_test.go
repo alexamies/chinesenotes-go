@@ -262,44 +262,57 @@ func TestStripParen(t *testing.T) {
 
 func TestNgrams(t *testing.T) {
 	tests := []struct {
-		name  string
-		input string
-		want  []string
+		name   string
+		input  string
+		minLen int
+		want   []string
 	}{
 		{
-			name:  "Empty",
-			input: "",
-			want:  []string{},
+			name:   "Empty",
+			input:  "",
+			minLen: 2,
+			want:   []string{},
 		},
 		{
-			name:  "One character",
-			input: "世",
-			want:  []string{},
+			name:   "One character",
+			input:  "世",
+			minLen: 2,
+			want:   []string{},
 		},
 		{
-			name:  "Two characters",
-			input: "世界",
-			want:  []string{"世界"},
+			name:   "Min length 1",
+			input:  "世",
+			minLen: 1,
+			want:   []string{"世"},
 		},
 		{
-			name:  "Three characters",
-			input: "看世界",
-			want:  []string{"看世界", "看世", "世界"},
+			name:   "Two characters",
+			input:  "世界",
+			minLen: 2,
+			want:   []string{"世界"},
 		},
 		{
-			name:  "Four characters",
-			input: "看看世界",
-			want:  []string{"看看世界", "看看世", "看看", "看世界", "看世", "世界"},
+			name:   "Three characters",
+			input:  "看世界",
+			minLen: 2,
+			want:   []string{"看世界", "看世", "世界"},
 		},
 		{
-			name:  "Five characters",
-			input: "看整個世界",
-			want:  []string{"看整個世界", "看整個世", "看整個", "看整", "整個世界", "整個世", "整個", "個世界", "個世", "世界"},
+			name:   "Four characters",
+			input:  "看看世界",
+			minLen: 2,
+			want:   []string{"看看世界", "看看世", "看看", "看世界", "看世", "世界"},
+		},
+		{
+			name:   "Five characters",
+			input:  "看整個世界",
+			minLen: 2,
+			want:   []string{"看整個世界", "看整個世", "看整個", "看整", "整個世界", "整個世", "整個", "個世界", "個世", "世界"},
 		},
 	}
 	for _, tc := range tests {
 		chars := strings.Split(tc.input, "")
-		got := Ngrams(chars, 2)
+		got := Ngrams(chars, tc.minLen)
 		if !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("%s, got %v\n but want %v", tc.name, got, tc.want)
 		}
