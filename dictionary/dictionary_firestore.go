@@ -92,6 +92,6 @@ func (f substringIndexFS) LookupSubstr(ctx context.Context, query, topic_en, sub
 		w := f.dict.HeadwordIds[int(d.HeadwordId)]
 		words = append(words, *w)
 	}
-	log.Printf("substringIndexFS.LookupSubstr, len(wmap): %d", len(words))
+	log.Printf("substringIndexFS.LookupSubstr, %d results returned", len(words))
 	return &Results{words}, nil
 }

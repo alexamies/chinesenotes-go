@@ -133,11 +133,15 @@ func initApp(ctx context.Context) (*backends, error) {
 		}
 	}
 	var substrIndex dictionary.SubstringIndex
-	if database != nil {
-		substrIndex, err = dictionary.NewSubstringIndexDB(ctx, database)
+	var fsClient *firestore.Client
+	projectID, ok := os.LookupEnv(projectIDKey)
+	if !ok {
+		log.Println("PROJECT_ID not set not set")
+	} else {
+		fsClient, err = firestore.NewClient(ctx, projectID)
 		if err != nil {
-			log.Printf("initApp, non-fatal error, unable to initialize substrIndex: %v", err)
-		}
+			log.Printf("Cannot instantiate Firestore client: %v", err)
+		} 
 	}
 	cnReaderHome := os.Getenv("CNREADER_HOME")
 	var dict *dictionary.Dictionary
@@ -161,10 +165,6 @@ func initApp(ctx context.Context) (*backends, error) {
 	var titleFinder find.TitleFinder
 	var colMap map[string]string
 	var docMap map[string]find.DocInfo
-	projectID, ok := os.LookupEnv(projectIDKey)
-	if !ok {
-		log.Println("PROJECT_ID not set not set")
-	}
 	titleFinder, err = initDocTitleFinder(ctx, appConfig, projectID)
 	if err != nil {
 		log.Printf("main.initApp() unable to load titleFinder: %v", err)
@@ -172,6 +172,12 @@ func initApp(ctx context.Context) (*backends, error) {
 		colMap = titleFinder.ColMap()
 		docMap = titleFinder.DocMap()
 		log.Printf("main.initApp() doc map loaded with %d cols and %d docs", len(colMap), len(docMap))
+	}
+	if fsClient != nil {
+		if err != nil {
+			log.Printf("initApp, non-fatal error, unable to initialize dictionary substrIndex: %v", err)
+		}
+		substrIndex, err = initDictSSIndexFS(fsClient, appConfig, dict)
 	}
 	if database != nil {
 		tms, err = transmemory.NewSearcher(ctx, database)
@@ -186,20 +192,15 @@ func initApp(ctx context.Context) (*backends, error) {
 	reverseIndex := dictionary.NewReverseIndex(dict, extractor)
 
 	var tfDocFinder find.TermFreqDocFinder
-	if len(projectID) > 0 {
-		log.Println("projectID set, configuring full text search")
-		client, err := firestore.NewClient(ctx, projectID)
-		if err != nil {
-			log.Printf("Cannot instantiate Firestore TermFreqDocFinder: %v", err)
+	if fsClient != nil {
+		log.Println("fsClient set, configuring full text search")
+		indexCorpus, ok := appConfig.IndexCorpus()
+		if !ok {
+			log.Print("Cannot find value for IndexCorpus")
 		} else {
-			indexCorpus, ok := appConfig.IndexCorpus()
-			if !ok {
-				log.Print("Cannot find value for IndexCorpus")
-			} else {
-				indexGen := appConfig.IndexGen()
-				addDirectory := webConfig.AddDirectoryToCol()
-				tfDocFinder = termfreq.NewFirestoreDocFinder(client, indexCorpus, indexGen, addDirectory, termfreq.QueryLimit)
-			}
+			indexGen := appConfig.IndexGen()
+			addDirectory := webConfig.AddDirectoryToCol()
+			tfDocFinder = termfreq.NewFirestoreDocFinder(fsClient, indexCorpus, indexGen, addDirectory, termfreq.QueryLimit)
 		}
 	}
 	bends := &backends{
@@ -274,6 +275,18 @@ func initDocTitleFinder(ctx context.Context, appConfig config.AppConfig, project
 		b.docTitleFinder = docTitleFinder
 	}
 	return docTitleFinder, nil
+}
+
+func initDictSSIndexFS(client *firestore.Client, c config.AppConfig, dict *dictionary.Dictionary) (dictionary.SubstringIndex, error) {
+	log.Println("initDictSSIndexFS: initializing dictionary substring index for Firestore")
+	if client == nil {
+		log.Printf("Firestore client not set, set project env variable to initiate it")
+	}
+	indexCorpus, ok := c.IndexCorpus()
+	if !ok {
+		log.Fatalf("IndexCorpus must be set in config.yaml")
+	}
+	return dictionary.NewSubstringIndexFS(client, indexCorpus, c.IndexGen(), dict)
 }
 
 // Starting point for the Administration Portal
