@@ -25,8 +25,8 @@ import (
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
 
-// fsClient defines Firestore interfaces needed
-type fsClient interface {
+// FsClient defines Firestore interfaces needed
+type FsClient interface {
 	Collection(path string) *firestore.CollectionRef
 }
 
@@ -41,14 +41,14 @@ type HeadwordSubstrings struct {
 
 // substringIndexFS looks up Chinese words using a substring index saved in Firestore.
 type substringIndexFS struct {
-	client fsClient
+	client FsClient
 	corpus     string
 	generation int
 	dict *Dictionary
 }
 
 // NewSubstringIndexDB initialize an implementation of SubstringIndex using the index saved in Firestore
-func NewSubstringIndexFS(client fsClient, corpus string, generation int, dict *Dictionary) (SubstringIndex, error) {
+func NewSubstringIndexFS(client FsClient, corpus string, generation int, dict *Dictionary) (SubstringIndex, error) {
 	if client == nil {
 		return nil, errors.New("NewSubstringIndexFS, Firestore client must be initialized")
 	}
