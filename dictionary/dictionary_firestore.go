@@ -90,6 +90,9 @@ func (f substringIndexFS) LookupSubstr(ctx context.Context, query, topic_en, sub
 			return nil, fmt.Errorf("substringIndexFS.LookupSubstr type conversion error: %v", err)
 		}
 		w := f.dict.HeadwordIds[int(d.HeadwordId)]
+		if w.Traditional == "\\N" {
+			w.Traditional = ""
+		}
 		words = append(words, *w)
 	}
 	log.Printf("substringIndexFS.LookupSubstr, %d results returned", len(words))
