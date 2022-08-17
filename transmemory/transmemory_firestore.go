@@ -12,8 +12,15 @@
 
 package transmemory
 
-// HeadwordSubstrings holds substrings of a headword
+// TMIndexUnigram holds characters for a term, used as an index for translation memory
 type TMIndexUnigram struct {
 	Ch  int64    `firestore:"ch"`
 	Word  string   `firestore:"word"`
+}
+
+// TMIndexUnigram holds characters for a term with the domain
+type TMIndexDomain struct {
+	Ch  int64    `firestore:"ch"`
+	Word  string   `firestore:"word"`
+	Domain  string   `firestore:"domain"`
 }
