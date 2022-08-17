@@ -14,13 +14,13 @@ package transmemory
 
 // TMIndexUnigram holds characters for a term, used as an index for translation memory
 type TMIndexUnigram struct {
-	Ch  int64    `firestore:"ch"`
+	Ch  string    `firestore:"ch"`
 	Word  string   `firestore:"word"`
 }
 
-// TMIndexUnigram holds characters for a term with the domain
+// TMIndexDomain holds characters for a term with domain
 type TMIndexDomain struct {
-	Ch  int64    `firestore:"ch"`
+	Ch  string    `firestore:"ch"`
 	Word  string   `firestore:"word"`
 	Domain  string   `firestore:"domain"`
 }
