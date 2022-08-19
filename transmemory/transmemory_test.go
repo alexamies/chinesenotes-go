@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/alexamies/chinesenotes-go/config"
+	"github.com/alexamies/chinesenotes-go/dictionary"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
 
@@ -34,7 +35,14 @@ func mockDict() map[string]*dicttypes.Word {
 		Traditional: "結實",
 		Pinyin: "jiēshi",
 		HeadwordId: 10778,
-		Senses: []dicttypes.WordSense{},
+		Senses: []dicttypes.WordSense{
+			{
+				Simplified: "结实",
+				Traditional: "結實",
+				Pinyin: "jiēshi",
+				HeadwordId: 10778,
+			},
+		},
 	}
 	w2 := dicttypes.Word{
 		Simplified: "结",
@@ -85,7 +93,34 @@ func mockDict() map[string]*dicttypes.Word {
 		HeadwordId: 2000599,
 		Senses: []dicttypes.WordSense{},
 	}
+	w9 := dicttypes.Word{
+		Simplified: "接",
+		Pinyin: "jiē",
+		HeadwordId: 2924,
+		Senses: []dicttypes.WordSense{
+			{
+				Simplified: "接",
+				Pinyin: "jiē",
+				HeadwordId: 2924,
+			},
+		},
+	}
+	w10 := dicttypes.Word{
+		Simplified: "识",
+		Traditional: "識",
+		Pinyin: "shì",
+		HeadwordId: 5057,
+		Senses: []dicttypes.WordSense{
+			{
+				Simplified: "识",
+				Traditional: "識",
+				Pinyin: "shì",
+				HeadwordId: 5057,
+			},
+		},
+	}
 	wdict := make(map[string]*dicttypes.Word)
+	wdict[w1.Simplified] = &w1
 	wdict[w1.Traditional] = &w1
 	wdict[w2.Traditional] = &w2
 	wdict[w3.Traditional] = &w3
@@ -96,7 +131,20 @@ func mockDict() map[string]*dicttypes.Word {
 	wdict[w7.Traditional] = &w7
 	wdict[w8.Simplified] = &w8
 	wdict[w8.Traditional] = &w8
+	wdict[w9.Simplified] = &w9
+	wdict[w10.Simplified] = &w10
+	wdict[w10.Traditional] = &w10
 	return wdict
+}
+
+type mockUnigramSearcher struct {}
+
+func newMockUnigramSearcher() unigramSearcher {
+	return mockUnigramSearcher{}
+}
+
+func (m mockUnigramSearcher) queryUnigram(ctx context.Context, chars []string, domain string) ([]tmResult, error) {
+	return []tmResult{}, nil
 }
 
 // Test combineResults function
@@ -534,26 +582,23 @@ func TestHamming(t *testing.T) {
 	}
 }
 
-// Test getChars function
 func TestSearch(t *testing.T) {
-	ctx := context.Background()
-	database, err := initDBCon()
+	wdict := mockDict()
+	dict := dictionary.NewDictionary(wdict)
+	extractor, err := dictionary.NewNotesExtractor("")
 	if err != nil {
-		t.Skipf("cannot connect to database: %v", err)
+		t.Errorf("TestSearch: could not create extractor: %v", err)
 	}
-	searcher, err := NewDBSearcher(ctx, database)
+	revIndex := dictionary.NewReverseIndex(dict, extractor)
+	ps, err := newMemPinyinSearcher(revIndex)
 	if err != nil {
-		t.Skipf("cannot create a searcher: %v", err)
+		t.Errorf("cannot create a pinyin searcher: %v", err)
 	}
-	w1 := dicttypes.Word{
-		Simplified: "结实",
-		Traditional: "結實",
-		Pinyin: "jiēshi",
-		HeadwordId: 10778,
-		Senses: []dicttypes.WordSense{},
+	us := newMockUnigramSearcher()
+	s, err := newSearcher(ps, us)
+	if err != nil {
+		t.Errorf("cannot create a searcher: %v", err)
 	}
-	wdict := make(map[string]*dicttypes.Word)
-	wdict[w1.Traditional] = &w1
 	type test struct {
 		name string
 		query string
@@ -564,34 +609,33 @@ func TestSearch(t *testing.T) {
   tests := []test{
 		{
 			name: "Happy path",
-			query: "結實", 
+			query: "結識", 
 			domain: "",
 			expectNo: 1,
 			expectTop: "結實",
 		},
 		{
 			name: "With domain",
-			query: "結實", 
-			domain: "Buddhism",
+			query: "結識", 
+			domain: "Idiom",
 			expectNo: 0,
-			expectTop: "結實",
+			expectTop: "",
 		},
   }
   for _, tc := range tests {
-		results, err := searcher.Search(ctx, tc.query, tc.domain, true, wdict)
+  	ctx := context.Background()
+		results, err := s.Search(ctx, tc.query, tc.domain, true, wdict)
 		if err != nil {
-			t.Fatalf("%s: error calling search: %v", tc.name, err)
+			t.Fatalf("TestSearch.%s: error calling search: %v", tc.name, err)
 		}
 		numRes := len(results.Words)
 		if tc.expectNo != numRes {
-			t.Errorf("%s: expect no results: %d, got: %d",
-				tc.name, tc.expectNo, numRes)
+			t.Errorf("TestSearch.%s: query %s, got: %d but want %d", tc.name, tc.query, numRes, tc.expectNo)
 		}
 		if numRes > 0 {
 			top := results.Words[0].Traditional
 			if tc.expectTop != top {
-				t.Errorf("%s: expect top result: %s, got: %s",
-					tc.name, tc.expectTop, top)
+				t.Errorf("TestSearch.%s: got %s but want: %s", tc.name, top, tc.expectTop)
 			}
 		}
 	}

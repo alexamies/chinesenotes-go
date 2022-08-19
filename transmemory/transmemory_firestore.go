@@ -110,7 +110,7 @@ func (s fsSearcher) queryUnigram(ctx context.Context, chars []string, domain str
 	for _, v := range results {
 		results = append(results, v)
 	}
-	log.Printf("fsSearcher.queryUnigram, %d results returned", len(results))
+	log.Printf("fsSearcher.queryUnigram, %d results found", len(results))
 	return results, nil
 }
 
@@ -153,6 +153,6 @@ func (s fsSearcher) queryUnigramDom(ctx context.Context, chars []string, domain 
 	for _, v := range results {
 		results = append(results, v)
 	}
-	log.Printf("fsSearcher.queryUnigramDom, %d results returned", len(results))
+	log.Printf("fsSearcher.queryUnigramDom, %d results found", len(results))
 	return results, nil
 }

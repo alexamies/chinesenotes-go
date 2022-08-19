@@ -138,17 +138,22 @@ func (s memPinyinSearcher) queryPinyin(ctx context.Context, query, domain string
 	}
 	revMap := map[string]bool{}
 	for _, ws := range revResults {
+		if len(domain) > 0 && domain != ws.Domain {
+			continue
+		}
 		term := ws.Simplified
 		_, ok := revMap[term]
 		if !ok {
 			tmr := tmResult{
 					term: term,
 					hasPinyin: 1,
+					unigramCount: charsContained(query, ws.Simplified, ws.Traditional),
 			}
 			results = append(results, tmr)
 			revMap[term] = true
 		}
 	}
+	log.Printf("memPinyinSearcher.queryPinyin, %d results found, query: %s pinyin: %s", len(results), query, pinyin)
 	return results, nil
 }
 
@@ -327,7 +332,8 @@ func (searcher dbSearcher) queryUnigram(ctx context.Context, chars []string,
 //   wdict The full dictionary
 // Retuns
 //   A slice of approximate results
-func (s searcher) Search(ctx context.Context, query string, domain string, includeSubstrings bool, wdict map[string]*dicttypes.Word) (*Results, error) {
+func (s searcher) Search(ctx context.Context, query, domain string, includeSubstrings bool, wdict map[string]*dicttypes.Word) (*Results, error) {
+	log.Printf("searcher.Search, query: %s domain: %s", query, domain)
 	if s.ps == nil {
 		return nil, fmt.Errorf("searcher: ps is nil")
 	}
@@ -340,7 +346,9 @@ func (s searcher) Search(ctx context.Context, query string, domain string, inclu
 			return nil, fmt.Errorf("Search query error:\n%v", err)
 		}
 	}
+	log.Printf("searcher.Search, %d results found from queryUnigram", len(matches))
 	pinyinMatches, err := s.ps.queryPinyin(ctx, query, domain, wdict)
+	log.Printf("searcher.Search, %d results found from pinyinMatches", len(pinyinMatches))
 	if includeSubstrings {
 		words := combineResults(query, matches, pinyinMatches, wdict)
 		return &Results{
@@ -348,6 +356,7 @@ func (s searcher) Search(ctx context.Context, query string, domain string, inclu
 		}, nil
 	}
 	words := combineResultsNoSubstrings(query, matches, pinyinMatches, wdict)
+	log.Printf("searcher.Search, %d results found for query: %s", len(words), query)
 	return &Results{
 		Words: words,
 	}, nil
@@ -360,10 +369,9 @@ func absInt(x int) int {
 	return x
 }
 
-// Combines matches with dictionary defintions to send back to client
-func combineResults(query string,
-		matches, pinyinMatches []tmResult,
-		wdict map[string]*dicttypes.Word) []dicttypes.Word {
+// combineResults combines matches with dictionary defintions to send back to client
+func combineResults(query string, matches, pinyinMatches []tmResult, wdict map[string]*dicttypes.Word) []dicttypes.Word {
+	log.Printf("combineResults query: %s, uni matches: %d, pinyin matches: %d", query, len(matches), len(pinyinMatches))
 	relevantMap := map[string]tmResult{}
 	for _, m := range matches {
 		m.hamming = hammingDist(query, m.term)
@@ -506,6 +514,7 @@ func predictRelevanceNorm(query string, m tmResult) int {
 	if m.isSubstring == 1 || m.inNotes == 1 {
 		return 1
 	}
+	// log.Printf("predictRelevanceNorm, query: %s, term: %s, unigramCount: %d, hasPinyin: %d", query, m.term, m.unigramCount, m.hasPinyin)
 	if m.unigramCount >= 1 && m.hasPinyin == 1 {
 		return 1
 	}
@@ -517,12 +526,37 @@ func predictRelevanceNorm(query string, m tmResult) int {
   return 0
 }
 
+// charsContained computes the number of overlapping chars contained in the query and the term
+func charsContained(query, simplified, traditional string) int {
+	counted := map[string]bool{}
+	nChars := 0
+	sChars := strings.Split(simplified, "")
+	for _, c := range sChars {
+		if strings.Contains(query, c) && !counted[c] {
+			nChars++
+			counted[c] = true
+		}
+	}
+	tChars := strings.Split(traditional, "")
+	for _, c := range tChars {
+		if strings.Contains(query, c) && !counted[c] {
+			nChars++
+			counted[c] = true
+		}
+	}
+	return nChars
+}
+
 // Finds the pinyin for a given Chinese string
 func findPinyin(query string, wdict map[string]*dicttypes.Word) string {
 	pinyin := ""
-	for _, ch := range query {
-		if word, ok := wdict[string(ch)]; ok {
-			pinyin += word.Pinyin
+	chars := strings.Split(query, "")
+	for _, ch := range chars {
+		word, ok := wdict[ch]
+		if ok {
+			pinyin += dicttypes.NormalizePinyin(word.Pinyin)
+		} else {
+			log.Printf("findPinyin: query %s, char %s not found", query, ch)
 		}
 	}
 	return pinyin
