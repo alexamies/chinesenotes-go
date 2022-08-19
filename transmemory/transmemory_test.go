@@ -541,7 +541,7 @@ func TestSearch(t *testing.T) {
 	if err != nil {
 		t.Skipf("cannot connect to database: %v", err)
 	}
-	searcher, err := NewSearcher(ctx, database)
+	searcher, err := NewDBSearcher(ctx, database)
 	if err != nil {
 		t.Skipf("cannot create a searcher: %v", err)
 	}

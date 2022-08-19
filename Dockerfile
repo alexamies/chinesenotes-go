@@ -1,4 +1,4 @@
-FROM golang:1.18.2
+FROM 1.19.0-bullseye
 
 ENV GO111MODULE=on
 WORKDIR /app

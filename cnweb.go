@@ -180,7 +180,7 @@ func initApp(ctx context.Context) (*backends, error) {
 		substrIndex, err = initDictSSIndexFS(fsClient, appConfig, dict)
 	}
 	if database != nil {
-		tms, err = transmemory.NewSearcher(ctx, database)
+		tms, err = transmemory.NewDBSearcher(ctx, database)
 		if err != nil {
 			return nil, fmt.Errorf("main.initApp() unable to create new TM searcher: %v", err)
 		}

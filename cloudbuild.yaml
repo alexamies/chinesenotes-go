@@ -1,7 +1,6 @@
 steps:
+  steps:
 - name: 'gcr.io/cloud-builders/docker'
-  args: [ 'build', '-t', 'gcr.io/$PROJECT_ID/cn-portal-image:$_IMAGE_TAG', '.']
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['push', 'gcr.io/$PROJECT_ID/cn-portal-image:$_IMAGE_TAG']
+  args: [ 'build', '-t', '${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/cnreader-cmd:$_IMAGE_TAG', '.' ]
 images:
-- 'gcr.io/$PROJECT_ID/cn-portal-image:$_IMAGE_TAG'
+- '${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/cnreader-cmd:$_IMAGE_TAG'

@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/alexamies/chinesenotes-go/dictionary"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 )
 
@@ -55,15 +56,103 @@ type tmResult struct {
 	relevant int
 }
 
+// Searcher finds similar phrases
 type Searcher interface {
-	Search(ctx context.Context,
-		query string,
-		domain string,
-		includeSubstrings bool,
-		wdict map[string]*dicttypes.Word) (*Results, error)
+
+	// Search for phrases similar to the given query, optionally with a particular domain
+	// Parameters
+	//   ctx Request context
+	//   query The search query
+	//   domain The domain to restrict the query to (optional)
+	//   wdict The full dictionary
+	// Retuns
+	//   A slice of approximate results
+	Search(ctx context.Context, query string, domain string, includeSubstrings bool, wdict map[string]*dicttypes.Word) (*Results, error)
 }
 
-// Encapsulates translation memory searcher
+// pinyinSearcher finds similar phrases with matching Pinyin
+type pinyinSearcher interface {
+
+	// Search for phrases similar to the given query, optionally with a particular domain
+	// Parameters
+	//   ctx Request context
+	//   query The search query
+	//   domain The domain to restrict the query to (optional)
+	//   wdict The full dictionary
+	// Retuns
+	//   A slice of approximate results
+	queryPinyin(ctx context.Context, query, domain string, wdict map[string]*dicttypes.Word) ([]tmResult, error)
+}
+
+// unigramSearcher finds similar phrases with several matching characters
+type unigramSearcher interface {
+
+	// queryUnigram searches for phrases similar to the given query, optionally with a particular domain
+	// Parameters
+	//   ctx Request context
+	//   query The search query
+	//   domain The domain to restrict the query to (optional)
+	//   wdict The full dictionary
+	// Retuns
+	//   A slice of approximate results
+	queryUnigram(ctx context.Context, chars []string, domain string) ([]tmResult, error)
+}
+
+// searcher implements the Searcher interface with pinyin and unigram translation memory searchers
+type searcher struct {
+	ps pinyinSearcher
+	us unigramSearcher
+}
+
+// newSearcher initializes an implementation of the Searcher interface
+func newSearcher(ps pinyinSearcher, us unigramSearcher) (Searcher, error) {
+	return searcher{
+		ps: ps,
+		us: us,
+	}, nil
+}
+
+
+// memPinyinSearcher is a translation memory Searcher implementation based on in memory queries for similar pinyin
+type memPinyinSearcher struct {
+	revIndex dictionary.ReverseIndex
+}
+
+// newMemPinyinSearcher initializes a pinyinSearcher implementation based on in-memory queries
+func newMemPinyinSearcher(revIndex dictionary.ReverseIndex) (pinyinSearcher, error) {
+	return memPinyinSearcher{
+		revIndex: revIndex,
+	}, nil
+}
+
+// queryPinyin searches for phrases with matching pinyin
+func (s memPinyinSearcher) queryPinyin(ctx context.Context, query, domain string, wdict map[string]*dicttypes.Word) ([]tmResult, error) {
+	pinyin := findPinyin(query, wdict)
+	if len(pinyin) == 0 {
+		return nil, fmt.Errorf("fsPinyinSearcher.queryPinyin, No pinyin for query,%s", query)
+	}
+	results := []tmResult{}
+	revResults, err := s.revIndex.Find(ctx, pinyin)
+	if err != nil {
+		return nil, fmt.Errorf("memPinyinSearcher.queryPinyin error from revIndex: %v", err)
+	}
+	revMap := map[string]bool{}
+	for _, ws := range revResults {
+		term := ws.Simplified
+		_, ok := revMap[term]
+		if !ok {
+			tmr := tmResult{
+					term: term,
+					hasPinyin: 1,
+			}
+			results = append(results, tmr)
+			revMap[term] = true
+		}
+	}
+	return results, nil
+}
+
+// dbSearcher encapsulates translation memory searcher using SQL queries
 type dbSearcher struct {
 	database *sql.DB
 	databaseInitialized bool
@@ -74,7 +163,7 @@ type dbSearcher struct {
 }
 
 // Initialize SQL statement
-func NewSearcher(ctx context.Context, database *sql.DB) (Searcher, error) {
+func NewDBSearcher(ctx context.Context, database *sql.DB) (Searcher, error) {
 	pinyinStmt, err := initPinyinStmt(ctx, database)
 	if err != nil {
 		return nil, fmt.Errorf("NewSearcher: unable to prepare pinyinStmt:\n%v", err)
@@ -91,14 +180,15 @@ func NewSearcher(ctx context.Context, database *sql.DB) (Searcher, error) {
 	if err != nil {
 		return nil, fmt.Errorf("NewSearcher: unable to prepare uniDomainStmt:\n%v", err)
 	}
-	return dbSearcher{
+	dbSearcher := dbSearcher{
 		database: database,
 		databaseInitialized: true,
 		pinyinStmt: pinyinStmt,
 		pinyinDomainStmt: pinyinDomainStmt,
 		unigramStmt: unigramStmt,
 		uniDomainStmt: uniDomainStmt,
-	}, nil
+	}
+	return newSearcher(dbSearcher, dbSearcher)
 }
 
 // Find words with similar pinyin or with notes conaining the query
@@ -237,23 +327,30 @@ func (searcher dbSearcher) queryUnigram(ctx context.Context, chars []string,
 //   wdict The full dictionary
 // Retuns
 //   A slice of approximate results
-func (searcher dbSearcher) Search(ctx context.Context,
-		query string,
-		domain string,
-		includeSubstrings bool,
-		wdict map[string]*dicttypes.Word) (*Results, error) {
-	chars := getChars(query)
-	matches, err := searcher.queryUnigram(ctx, chars, domain)
-	if err != nil {
-		return nil, fmt.Errorf("Search query error:\n%v", err)
+func (s searcher) Search(ctx context.Context, query string, domain string, includeSubstrings bool, wdict map[string]*dicttypes.Word) (*Results, error) {
+	if s.ps == nil {
+		return nil, fmt.Errorf("searcher: ps is nil")
 	}
-	pinyinMatches, err := searcher.queryPinyin(ctx, query, domain, wdict)
+	chars := getChars(query)
+	var matches []tmResult
+	var err error
+	if s.us != nil {
+		matches, err = s.us.queryUnigram(ctx, chars, domain)
+		if err != nil {
+			return nil, fmt.Errorf("Search query error:\n%v", err)
+		}
+	}
+	pinyinMatches, err := s.ps.queryPinyin(ctx, query, domain, wdict)
 	if includeSubstrings {
 		words := combineResults(query, matches, pinyinMatches, wdict)
-		return &Results{words}, nil
+		return &Results{
+			Words: words,
+		}, nil
 	}
 	words := combineResultsNoSubstrings(query, matches, pinyinMatches, wdict)
-	return &Results{words}, nil
+	return &Results{
+		Words: words,
+	}, nil
 }
 
 func absInt(x int) int {
