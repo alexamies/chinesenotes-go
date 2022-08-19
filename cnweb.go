@@ -136,11 +136,11 @@ func initApp(ctx context.Context) (*backends, error) {
 	var fsClient *firestore.Client
 	projectID, ok := os.LookupEnv(projectIDKey)
 	if !ok {
-		log.Println("PROJECT_ID not set not set")
+		log.Println("initApp: PROJECT_ID not set not set")
 	} else {
 		fsClient, err = firestore.NewClient(ctx, projectID)
 		if err != nil {
-			log.Printf("Cannot instantiate Firestore client: %v", err)
+			log.Printf("initApp: cannot instantiate Firestore client: %v", err)
 		} 
 	}
 	cnReaderHome := os.Getenv("CNREADER_HOME")
@@ -166,6 +166,11 @@ func initApp(ctx context.Context) (*backends, error) {
 	var colMap map[string]string
 	var docMap map[string]find.DocInfo
 	titleFinder, err = initDocTitleFinder(ctx, appConfig, projectID)
+	indexCorpus, ok := appConfig.IndexCorpus()
+	if !ok {
+		log.Printf("initApp: indexCorpus not set in config.yaml")
+	}
+	indexGen := appConfig.IndexGen()
 	if err != nil {
 		log.Printf("main.initApp() unable to load titleFinder: %v", err)
 	} else {
@@ -173,35 +178,27 @@ func initApp(ctx context.Context) (*backends, error) {
 		docMap = titleFinder.DocMap()
 		log.Printf("main.initApp() doc map loaded with %d cols and %d docs", len(colMap), len(docMap))
 	}
-	if fsClient != nil {
-		if err != nil {
-			log.Printf("initApp, non-fatal error, unable to initialize dictionary substrIndex: %v", err)
-		}
-		substrIndex, err = initDictSSIndexFS(fsClient, appConfig, dict)
-	}
-	if database != nil {
-		tms, err = transmemory.NewDBSearcher(ctx, database)
-		if err != nil {
-			return nil, fmt.Errorf("main.initApp() unable to create new TM searcher: %v", err)
-		}
-	}
 	extractor, err := dictionary.NewNotesExtractor(webConfig.NotesExtractorPattern())
 	if err != nil {
 		log.Printf("initApp, non-fatal error, unable to initialize NotesExtractor: %v", err)
 	}
 	reverseIndex := dictionary.NewReverseIndex(dict, extractor)
+	if fsClient != nil {
+		substrIndex, err = initDictSSIndexFS(fsClient, appConfig, dict)
+		if err != nil {
+			log.Printf("initApp, non-fatal error, unable to initialize dictionary substrIndex: %v", err)
+		}
+		tms, err = transmemory.NewFSSearcher(fsClient, indexCorpus, indexGen, reverseIndex)
+		if err != nil {
+			return nil, fmt.Errorf("main.initApp() unable to create new TM searcher: %v", err)
+		}
+	}
 
 	var tfDocFinder find.TermFreqDocFinder
 	if fsClient != nil {
 		log.Println("fsClient set, configuring full text search")
-		indexCorpus, ok := appConfig.IndexCorpus()
-		if !ok {
-			log.Print("Cannot find value for IndexCorpus")
-		} else {
-			indexGen := appConfig.IndexGen()
-			addDirectory := webConfig.AddDirectoryToCol()
-			tfDocFinder = termfreq.NewFirestoreDocFinder(fsClient, indexCorpus, indexGen, addDirectory, termfreq.QueryLimit)
-		}
+		addDirectory := webConfig.AddDirectoryToCol()
+		tfDocFinder = termfreq.NewFirestoreDocFinder(fsClient, indexCorpus, indexGen, addDirectory, termfreq.QueryLimit)
 	}
 	bends := &backends{
 		appConfig:    appConfig,

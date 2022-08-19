@@ -153,7 +153,7 @@ func (s memPinyinSearcher) queryPinyin(ctx context.Context, query, domain string
 			revMap[term] = true
 		}
 	}
-	log.Printf("memPinyinSearcher.queryPinyin, %d results found, query: %s pinyin: %s", len(results), query, pinyin)
+	// log.Printf("memPinyinSearcher.queryPinyin, %d results found, query: %s pinyin: %s", len(results), query, pinyin)
 	return results, nil
 }
 
@@ -333,11 +333,11 @@ func (searcher dbSearcher) queryUnigram(ctx context.Context, chars []string,
 // Retuns
 //   A slice of approximate results
 func (s searcher) Search(ctx context.Context, query, domain string, includeSubstrings bool, wdict map[string]*dicttypes.Word) (*Results, error) {
-	log.Printf("searcher.Search, query: %s domain: %s", query, domain)
+	// log.Printf("searcher.Search, query: %s domain: %s", query, domain)
 	if s.ps == nil {
 		return nil, fmt.Errorf("searcher: ps is nil")
 	}
-	chars := getChars(query)
+	chars := strings.Split(query, "")
 	var matches []tmResult
 	var err error
 	if s.us != nil {
@@ -346,9 +346,9 @@ func (s searcher) Search(ctx context.Context, query, domain string, includeSubst
 			return nil, fmt.Errorf("Search query error:\n%v", err)
 		}
 	}
-	log.Printf("searcher.Search, %d results found from queryUnigram", len(matches))
+	// log.Printf("searcher.Search, %d results found from queryUnigram", len(matches))
 	pinyinMatches, err := s.ps.queryPinyin(ctx, query, domain, wdict)
-	log.Printf("searcher.Search, %d results found from pinyinMatches", len(pinyinMatches))
+	// log.Printf("searcher.Search, %d results found from pinyinMatches", len(pinyinMatches))
 	if includeSubstrings {
 		words := combineResults(query, matches, pinyinMatches, wdict)
 		return &Results{
@@ -371,7 +371,7 @@ func absInt(x int) int {
 
 // combineResults combines matches with dictionary defintions to send back to client
 func combineResults(query string, matches, pinyinMatches []tmResult, wdict map[string]*dicttypes.Word) []dicttypes.Word {
-	log.Printf("combineResults query: %s, uni matches: %d, pinyin matches: %d", query, len(matches), len(pinyinMatches))
+	// log.Printf("combineResults query: %s, uni matches: %d, pinyin matches: %d", query, len(matches), len(pinyinMatches))
 	relevantMap := map[string]tmResult{}
 	for _, m := range matches {
 		m.hamming = hammingDist(query, m.term)
@@ -394,6 +394,7 @@ func combineResults(query string, matches, pinyinMatches []tmResult, wdict map[s
 	// Eliminate dups with a map since simplified and traditional may both match
 	uMap := map[int]tmResult{}
 	for _, m := range allMatches {
+		// log.Printf("combineResults query: %s, m.term = %s, m.relevant = %d", query, m.term, m.relevant)
 		if m.relevant == 1 && len(uMap) < maxResultsSubstrings {
 			if w, ok := wdict[m.term]; ok {
 				uMap[w.HeadwordId] = m
@@ -406,6 +407,7 @@ func combineResults(query string, matches, pinyinMatches []tmResult, wdict map[s
 	for _, m := range uMap {
 		relevantMatches = append(relevantMatches, m)
 	}
+	// log.Printf("combineResults query: %s, len(uMap) = %d, len(relevantMatches) = %d", query, len(uMap), len(relevantMatches))
 	sort.Slice(matches, func(i, j int) bool {
 		return matches[i].unigramCount > matches[j].unigramCount
 	})
@@ -417,8 +419,7 @@ func combineResults(query string, matches, pinyinMatches []tmResult, wdict map[s
 			words = append(words, *word)
 		}
 	}
-	log.Printf("transmemory.combineResults, query: %s, matchs (%d): ", query,
-			len(words))
+	// log.Printf("transmemory.combineResults, query: %s, matchs (%d): ", query, len(words))
 	return words
 }
 
@@ -478,8 +479,7 @@ func combineResultsNoSubstrings(query string,
 			words = append(words, *word)
 		}
 	}
-	log.Printf("transmemory.combineResultsNoSubstrings, query: %s, matchs (%d): ",
-			query, len(words))
+	//log.Printf("transmemory.combineResultsNoSubstrings, query: %s, matchs (%d): ", query, len(words))
 	return words
 }
 

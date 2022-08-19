@@ -73,7 +73,8 @@ func (s fsSearcher) queryUnigram(ctx context.Context, chars []string, domain str
 	if len(domain) > 0 {
 		return s.queryUnigramDom(ctx, chars, domain)
 	}
-	fsCol := fmt.Sprintf("%s_transmemory_%d", s.corpus, s.generation)
+	fsCol := fmt.Sprintf("%s_transmemory_uni_%d", s.corpus, s.generation)
+	// log.Printf("fsSearcher.queryUnigram, fsCol: %s", fsCol)
 	col := s.client.Collection(fsCol)
 	if col == nil {
 		return nil, errors.New("fsSearcher.queryUnigram collection is empty")
@@ -103,14 +104,18 @@ func (s fsSearcher) queryUnigram(ctx context.Context, chars []string, domain str
 			}
 			rMap[d.Word] = r
 		} else {
-			tmr.unigramCount++
+			r := tmResult{
+				term: d.Word,
+				unigramCount: tmr.unigramCount + 1,
+			}
+			rMap[d.Word] = r
 		}
 	}
 	results := []tmResult{}
-	for _, v := range results {
+	for _, v := range rMap {
 		results = append(results, v)
 	}
-	log.Printf("fsSearcher.queryUnigram, %d results found", len(results))
+	// log.Printf("fsSearcher.queryUnigram, %d results with query %v", len(results), chars)
 	return results, nil
 }
 
@@ -146,11 +151,15 @@ func (s fsSearcher) queryUnigramDom(ctx context.Context, chars []string, domain 
 			}
 			rMap[d.Word] = r
 		} else {
-			tmr.unigramCount++
+			r := tmResult{
+				term: d.Word,
+				unigramCount: tmr.unigramCount + 1,
+			}
+			rMap[d.Word] = r
 		}
 	}
 	results := []tmResult{}
-	for _, v := range results {
+	for _, v := range rMap {
 		results = append(results, v)
 	}
 	log.Printf("fsSearcher.queryUnigramDom, %d results found", len(results))
