@@ -15,11 +15,15 @@ package httphandling
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"text/template"
+
+	"cloud.google.com/go/storage"
 
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/identity"
@@ -44,10 +48,11 @@ func NewStaticHandler(enforcer SessionEnforcer) StaticHandler {
 	}
 }
 
-// ServeHTTP handles requests for static files
+// ServeHTTP handles requests for static files from the local file system.
 func (h staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
 	if config.PasswordProtected() {
-		sessionInfo := h.enforcer.EnforceValidSession(w, r)
+		sessionInfo := h.enforcer.EnforceValidSession(ctx, w, r)
 		if !sessionInfo.Valid {
 			return
 		}
@@ -56,6 +61,48 @@ func (h staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, fname)
 }
 
+// gcsStaticHandler implements the StaticHandler interface by reading from GCS
+type gcsHandler struct {
+	client *storage.Client
+	bucket string
+	enforcer SessionEnforcer
+}
+
+// NewStaticHandler creates an implementation of the StaticHandler interface
+func NewGcsHandler(client *storage.Client, bucket string, enforcer SessionEnforcer) StaticHandler {
+	return gcsHandler{
+		client: client,
+		bucket: bucket,
+		enforcer: enforcer,
+	}
+}
+
+// ServeHTTP handles requests for static files from GCS
+func (h gcsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+	if config.PasswordProtected() {
+		sessionInfo := h.enforcer.EnforceValidSession(ctx, w, r)
+		if !sessionInfo.Valid {
+			return
+		}
+	}
+	fname := r.URL.Path
+	rc, err := h.client.Bucket(h.bucket).Object(fname).NewReader(ctx)
+	if err != nil {
+		log.Printf("gcsHandler.ServeHTTP, error reading file %s, %v", fname, err)
+		http.Error(w, "Error processing request", http.StatusInternalServerError)
+		return
+	}
+	defer rc.Close()
+	body, err := io.ReadAll(rc)
+	if err != nil {
+		log.Printf("gcsHandler.ServeHTTP, error reading file %s, %v", fname, err)
+		http.Error(w, "Error processing request", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	fmt.Fprint(w, string(body))
+}
 
 func getStaticFileName(u url.URL) string {
 	log.Printf("getStaticFileName path: %s", u.Path)
@@ -66,7 +113,7 @@ func getStaticFileName(u url.URL) string {
 type SessionEnforcer interface {
 
 	// EnforceValidSession ensures that, if authentication is required, the client has done it
-	EnforceValidSession(w http.ResponseWriter, r *http.Request) identity.SessionInfo
+	EnforceValidSession(ctx context.Context, w http.ResponseWriter, r *http.Request) identity.SessionInfo
 }
 
 type sessionEnforcer struct {
@@ -81,8 +128,7 @@ func NewSessionEnforcer(authenticator *identity.Authenticator, pd PageDisplayer)
 	}
 }
 
-func (s sessionEnforcer) EnforceValidSession(w http.ResponseWriter, r *http.Request) identity.SessionInfo {
-	ctx := context.Background()
+func (s sessionEnforcer) EnforceValidSession(ctx context.Context, w http.ResponseWriter, r *http.Request) identity.SessionInfo {
 	if s.authenticator == nil {
 		var err error
 		s.authenticator, err = identity.NewAuthenticator(ctx)

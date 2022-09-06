@@ -13,6 +13,7 @@
 package httphandling
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -87,7 +88,8 @@ func TestEnforceValidSession(t *testing.T) {
 	for _, tc := range tests {
 		r := httptest.NewRequest(http.MethodGet, tc.u, nil)
 		w := httptest.NewRecorder()
-		sessionEnforcer.EnforceValidSession(w, r)
+		ctx := context.Background()
+		sessionEnforcer.EnforceValidSession(ctx, w, r)
 		result := w.Body.String()
 		if !strings.Contains(result, tc.expectContains) {
 			t.Errorf("TestEnforceValidSession %s: got %q but want contains %q",

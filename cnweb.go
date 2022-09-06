@@ -31,6 +31,9 @@ import (
 	"strings"
 	"text/template"
 
+	"cloud.google.com/go/storage"
+	"cloud.google.com/go/firestore"
+
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dictionary"
 	"github.com/alexamies/chinesenotes-go/dicttypes"
@@ -43,8 +46,6 @@ import (
 	"github.com/alexamies/chinesenotes-go/termfreq"
 	"github.com/alexamies/chinesenotes-go/transmemory"
 	"github.com/alexamies/chinesenotes-go/transtools"
-
-	"cloud.google.com/go/firestore"
 )
 
 const (
@@ -314,7 +315,7 @@ func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
-	sessionInfo := b.sessionEnforcer.EnforceValidSession(w, r)
+	sessionInfo := b.sessionEnforcer.EnforceValidSession(ctx, w, r)
 	if sessionInfo.Authenticated == 1 {
 		oldPassword := r.PostFormValue("OldPassword")
 		password := r.PostFormValue("Password")
@@ -343,7 +344,8 @@ func changePasswordFormHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not authorized", http.StatusForbidden)
 		return
 	}
-	sessionInfo := b.sessionEnforcer.EnforceValidSession(w, r)
+	ctx := context.Background()
+	sessionInfo := b.sessionEnforcer.EnforceValidSession(ctx, w, r)
 	if sessionInfo.Authenticated == 1 {
 		title := b.webConfig.GetVarWithDefault("Title", defTitle)
 		result := ChangePasswordHTML{
@@ -444,7 +446,7 @@ func findFullText(response http.ResponseWriter, request *http.Request) {
 func findDocs(ctx context.Context, response http.ResponseWriter, request *http.Request, b *backends, fullText bool) {
 
 	if config.PasswordProtected() {
-		sessionInfo := b.sessionEnforcer.EnforceValidSession(response, request)
+		sessionInfo := b.sessionEnforcer.EnforceValidSession(ctx, response, request)
 		if !sessionInfo.Valid {
 			return
 		}
@@ -738,7 +740,8 @@ func processTranslation(w http.ResponseWriter, r *http.Request) {
 	log.Printf("deepLChecked: %s, gcpChecked: %s, glossaryChecked: %s, processingChecked: %s, len(translated) = %d",
 		deepLChecked, gcpChecked, glossaryChecked, processingChecked, len(translated))
 	if config.PasswordProtected() {
-		sessionInfo := b.sessionEnforcer.EnforceValidSession(w, r)
+		ctx := context.Background()
+		sessionInfo := b.sessionEnforcer.EnforceValidSession(ctx, w, r)
 		if !sessionInfo.Valid {
 			return
 		}
@@ -1330,7 +1333,8 @@ func translate(b *backends, sourceText, platform string) (*string, error) {
 // Initialzie an empty translation page and display it.
 func translationHome(w http.ResponseWriter, r *http.Request) {
 	if config.PasswordProtected() {
-		sessionInfo := b.sessionEnforcer.EnforceValidSession(w, r)
+		ctx := context.Background()
+		sessionInfo := b.sessionEnforcer.EnforceValidSession(ctx, w, r)
 		if !sessionInfo.Valid {
 			return
 		}
@@ -1353,7 +1357,7 @@ func translationHome(w http.ResponseWriter, r *http.Request) {
 func translationMemory(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	if config.PasswordProtected() {
-		sessionInfo := b.sessionEnforcer.EnforceValidSession(w, r)
+		sessionInfo := b.sessionEnforcer.EnforceValidSession(ctx, w, r)
 		if !sessionInfo.Valid {
 			return
 		}
@@ -1438,7 +1442,8 @@ func getHeadwordId(path string) (int, error) {
 // wordDetail shows details for a single word entry, returns HTML
 func wordDetail(w http.ResponseWriter, r *http.Request) {
 	if config.PasswordProtected() {
-		sessionInfo := b.sessionEnforcer.EnforceValidSession(w, r)
+		ctx := context.Background()
+		sessionInfo := b.sessionEnforcer.EnforceValidSession(ctx, w, r)
 		if !sessionInfo.Valid {
 			return
 		}
@@ -1508,9 +1513,22 @@ func main() {
 	initTranslationClients(b)
 	http.HandleFunc("/translateprocess", processTranslation)
 	http.HandleFunc("/translate", translationHome)
-	sh := httphandling.NewStaticHandler(b.sessionEnforcer)
-	http.Handle("/web/", http.StripPrefix("/web/", sh))
 	http.HandleFunc("/words/", wordDetail)
+
+	// If serving static HTML content
+	staticBucket := b.appConfig.GetVar("StaticBucket")
+	if len(staticBucket) > 0 {
+		gcsClient, err := storage.NewClient(ctx)
+		if err != nil {
+			log.Printf("main error getting GCS client %v", err)
+		} else {
+			sh := httphandling.NewGcsHandler(gcsClient, staticBucket, b.sessionEnforcer)
+			http.Handle("/web/", http.StripPrefix("/web/", sh))
+		}
+	} else {
+		sh := httphandling.NewStaticHandler(b.sessionEnforcer)
+		http.Handle("/web/", http.StripPrefix("/web/", sh))
+	}
 
 	portStr := ":" + strconv.Itoa(config.GetPort())
 	log.Printf("cnweb.main Starting http server at http://localhost%s", portStr)
