@@ -16,6 +16,7 @@ import (
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/find"
 	"github.com/alexamies/chinesenotes-go/fulltext"
+	"github.com/alexamies/chinesenotes-go/httphandling"
 	"github.com/alexamies/chinesenotes-go/identity"
 	"github.com/alexamies/chinesenotes-go/templates"
 	"github.com/alexamies/chinesenotes-go/transmemory"
@@ -245,8 +246,11 @@ func TestInitApp(t *testing.T) {
 
 // TestDisplayHome tests the default HTTP handler.
 func TestDisplayHome(t *testing.T) {
+	templates := templates.NewTemplateMap(config.WebAppConfig{})
+	pageDisplayer := httphandling.NewPageDisplayer(templates)
 	b = &backends{
-		templates: templates.NewTemplateMap(config.WebAppConfig{}),
+		templates: templates,
+		pageDisplayer: pageDisplayer,
 	}
 	type test struct {
 		name           string
@@ -303,30 +307,6 @@ func TestInitDocTitleFinder(t *testing.T) {
 	}
 }
 
-func TestAdminHandler(t *testing.T) {
-	type test struct {
-		name           string
-		expectContains string
-	}
-	tests := []test{
-		{
-			name:           "Expect error, app not configed and user has no session",
-			expectContains: "Not authorized",
-		},
-	}
-	for _, tc := range tests {
-		u := "/loggedin/admin"
-		r := httptest.NewRequest(http.MethodGet, u, nil)
-		w := httptest.NewRecorder()
-		adminHandler(w, r)
-		result := w.Body.String()
-		if !strings.Contains(result, tc.expectContains) {
-			t.Errorf("TestAdminHandler %s: expectContains %q, got %q", tc.name,
-				tc.expectContains, result)
-		}
-	}
-}
-
 func TestChangePasswordHandler(t *testing.T) {
 	type test struct {
 		name           string
@@ -375,8 +355,11 @@ func TestChangePasswordFormHandler(t *testing.T) {
 }
 
 func TestCustom404(t *testing.T) {
+	templates := templates.NewTemplateMap(config.WebAppConfig{})
+	pageDisplayer := httphandling.NewPageDisplayer(templates)
 	b = &backends{
-		templates: templates.NewTemplateMap(config.WebAppConfig{}),
+		templates: templates,
+		pageDisplayer: pageDisplayer,
 	}
 	type test struct {
 		name           string
@@ -399,67 +382,6 @@ func TestCustom404(t *testing.T) {
 		}
 	}
 	b = nil
-}
-
-func TestDisplayPage(t *testing.T) {
-	b := &backends{
-		templates: templates.NewTemplateMap(config.WebAppConfig{}),
-	}
-	const query = "邃古"
-	tMContent := htmlContent{
-		Title: "XYZ",
-		Query: query,
-	}
-	type test struct {
-		name           string
-		u              string
-		template       string
-		content        interface{}
-		expectContains string
-	}
-	tests := []test{
-		{
-			name:           "Translation memory query results shows the query",
-			u:              "/findtm",
-			template:       "findtm.html",
-			content:        tMContent,
-			expectContains: query,
-		},
-	}
-	for _, tc := range tests {
-		w := httptest.NewRecorder()
-		displayPage(w, b, tc.template, tc.content)
-		result := w.Body.String()
-		if !strings.Contains(result, tc.expectContains) {
-			t.Errorf("TestDisplayPage %s: got %q, want contains %q, ", tc.name,
-				result, tc.expectContains)
-		}
-	}
-}
-
-func TestEnforceValidSession(t *testing.T) {
-	type test struct {
-		name           string
-		u              string
-		expectContains string
-	}
-	tests := []test{
-		{
-			name:           "Find something",
-			u:              "/find/",
-			expectContains: "Not authorized",
-		},
-	}
-	for _, tc := range tests {
-		r := httptest.NewRequest(http.MethodGet, tc.u, nil)
-		w := httptest.NewRecorder()
-		enforceValidSession(w, r)
-		result := w.Body.String()
-		if !strings.Contains(result, tc.expectContains) {
-			t.Errorf("TestEnforceValidSession %s: got %q but want contains %q",
-				tc.name, result, tc.expectContains)
-		}
-	}
 }
 
 type mockTitleFinder struct {
@@ -741,6 +663,8 @@ func TestFindFullText(t *testing.T) {
 			t.Fatalf("TestFindFullText %s: not able to create extractor: %v", tc.name, err)
 		}
 		reverseIndex := dictionary.NewReverseIndex(dict, extractor)
+		templates :=  templates.NewTemplateMap(config.WebAppConfig{})
+		pageDisplayer := httphandling.NewPageDisplayer(templates)
 		b = &backends{
 			reverseIndex: reverseIndex,
 			df: mockDocFinder{
@@ -749,7 +673,8 @@ func TestFindFullText(t *testing.T) {
 			tmSearcher: mockTMSearcher{},
 			dict:       dictionary.NewDictionary(wdict),
 			parser:     find.NewQueryParser(wdict),
-			templates:  templates.NewTemplateMap(config.WebAppConfig{}),
+			templates:  templates,
+			pageDisplayer: pageDisplayer,
 		}
 		r := httptest.NewRequest(http.MethodGet, u, nil)
 		r.Header.Add("Accept", tc.acceptHeader)
@@ -893,8 +818,11 @@ func TestHealthcheck(t *testing.T) {
 }
 
 func TestLibrary(t *testing.T) {
+	templates := templates.NewTemplateMap(config.WebAppConfig{})
+	pageDisplayer := httphandling.NewPageDisplayer(templates)
 	b = &backends{
-		templates: templates.NewTemplateMap(config.WebAppConfig{}),
+		templates: templates,
+		pageDisplayer: pageDisplayer,
 	}
 	type test struct {
 		name           string
@@ -921,8 +849,11 @@ func TestLibrary(t *testing.T) {
 }
 
 func TestLoginFormHandler(t *testing.T) {
+	templates := templates.NewTemplateMap(config.WebAppConfig{})
+	pageDisplayer := httphandling.NewPageDisplayer(templates)
 	b = &backends{
-		templates: templates.NewTemplateMap(config.WebAppConfig{}),
+		templates: templates,
+		pageDisplayer: pageDisplayer,
 	}
 	type test struct {
 		name           string
@@ -949,10 +880,14 @@ func TestLoginFormHandler(t *testing.T) {
 }
 
 func TestLoginHandler(t *testing.T) {
+	authenticator := &identity.Authenticator{}
+	templates := templates.NewTemplateMap(config.WebAppConfig{})
+	pageDisplayer := httphandling.NewPageDisplayer(templates)
 	b = &backends{
-		templates: templates.NewTemplateMap(config.WebAppConfig{}),
+		templates: templates,
+		authenticator: authenticator,
+		pageDisplayer: pageDisplayer,
 	}
-	authenticator = &identity.Authenticator{}
 	type test struct {
 		name           string
 		expectContains string
@@ -975,7 +910,6 @@ func TestLoginHandler(t *testing.T) {
 		}
 	}
 	b = nil
-	authenticator = nil
 }
 
 func TestShowQueryResults(t *testing.T) {
@@ -1012,32 +946,6 @@ func TestShowQueryResults(t *testing.T) {
 		if !strings.Contains(result, tc.expectContains) {
 			t.Errorf("TestShowQueryResults %s: got %q, want %q, ", tc.name, result,
 				tc.expectContains)
-		}
-	}
-}
-
-func TestGetStaticFileName(t *testing.T) {
-	tests := []struct {
-		name   string
-		u      string
-		expect string
-	}{
-		{
-			name:   "empty query",
-			u:      "app.js",
-			expect: "./web/app.js",
-		},
-	}
-	for _, tc := range tests {
-		u, err := url.Parse(tc.u)
-		if err != nil {
-			t.Fatalf("TestGetStaticFileName %s: cannot parse %s, error: %v", tc.name,
-				tc.u, err)
-		}
-		got := getStaticFileName(*u)
-		if got != tc.expect {
-			t.Errorf("TestGetStaticFileName %s: got %q, want %q: ", tc.name, got,
-				tc.expect)
 		}
 	}
 }
@@ -1192,14 +1100,17 @@ func TestTranslationHome(t *testing.T) {
 			return
 		}
 		reverseIndex := dictionary.NewReverseIndex(dict, extractor)
+		templates := templates.NewTemplateMap(webConfig)
+		pageDisplayer := httphandling.NewPageDisplayer(templates)
 		b = &backends{
 			reverseIndex: reverseIndex,
 			df:           mockDocFinder{},
 			tmSearcher:   mockTMSearcher{},
 			dict:         dictionary.NewDictionary(tc.wdict),
 			parser:       find.NewQueryParser(tc.wdict),
-			templates:    templates.NewTemplateMap(webConfig),
+			templates:    templates,
 			webConfig:    webConfig,
+			pageDisplayer: pageDisplayer,
 		}
 		r := httptest.NewRequest(http.MethodPost, "/translate", nil)
 		w := httptest.NewRecorder()
@@ -1239,15 +1150,18 @@ func TestProcessTranslation(t *testing.T) {
 			return
 		}
 		reverseIndex := dictionary.NewReverseIndex(dict, extractor)
+		templates := templates.NewTemplateMap(webConfig)
+		pageDisplayer := httphandling.NewPageDisplayer(templates)
 		b = &backends{
 			reverseIndex:      reverseIndex,
 			df:                mockDocFinder{},
 			tmSearcher:        mockTMSearcher{},
 			dict:              dictionary.NewDictionary(tc.wdict),
 			parser:            find.NewQueryParser(tc.wdict),
-			templates:         templates.NewTemplateMap(webConfig),
+			templates:         templates,
 			webConfig:         webConfig,
 			glossaryApiClient: mockApiClient{},
+			pageDisplayer: pageDisplayer,
 		}
 		r := &http.Request{
 			Method: "POST",
@@ -1323,14 +1237,17 @@ func TestWordDetail(t *testing.T) {
 			t.Fatalf("TestWordDetail %s: not able to create extractor: %v", tc.name, err)
 		}
 		reverseIndex := dictionary.NewReverseIndex(dict, extractor)
+		templates := templates.NewTemplateMap(webConfig)
+		pageDisplayer := httphandling.NewPageDisplayer(templates)
 		b = &backends{
 			reverseIndex: reverseIndex,
 			df:           mockDocFinder{},
 			tmSearcher:   mockTMSearcher{},
 			dict:         dictionary.NewDictionary(tc.wdict),
 			parser:       find.NewQueryParser(tc.wdict),
-			templates:    templates.NewTemplateMap(webConfig),
+			templates:    templates,
 			webConfig:    webConfig,
+			pageDisplayer: pageDisplayer,
 		}
 		r := httptest.NewRequest(http.MethodGet, u, nil)
 		w := httptest.NewRecorder()

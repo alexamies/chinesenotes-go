@@ -25,7 +25,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"regexp"
 	"strconv"
@@ -37,6 +36,7 @@ import (
 	"github.com/alexamies/chinesenotes-go/dicttypes"
 	"github.com/alexamies/chinesenotes-go/find"
 	"github.com/alexamies/chinesenotes-go/fulltext"
+	"github.com/alexamies/chinesenotes-go/httphandling"
 	"github.com/alexamies/chinesenotes-go/identity"
 	"github.com/alexamies/chinesenotes-go/media"
 	"github.com/alexamies/chinesenotes-go/templates"
@@ -59,7 +59,6 @@ const (
 
 var (
 	b             *backends
-	authenticator *identity.Authenticator
 	mediaSearcher *media.MediaSearcher
 )
 
@@ -79,6 +78,9 @@ type backends struct {
 	deepLApiClient, translateApiClient, glossaryApiClient transtools.ApiClient
 	translationProcessor                                  transtools.Processor
 	docTitleFinder                                        find.TitleFinder
+	authenticator 																				*identity.Authenticator
+	sessionEnforcer 																			httphandling.SessionEnforcer
+	pageDisplayer																					httphandling.PageDisplayer
 }
 
 // htmlContent holds content for HTML template
@@ -200,6 +202,18 @@ func initApp(ctx context.Context) (*backends, error) {
 		addDirectory := webConfig.AddDirectoryToCol()
 		tfDocFinder = termfreq.NewFirestoreDocFinder(fsClient, indexCorpus, indexGen, addDirectory, termfreq.QueryLimit)
 	}
+
+	var authenticator *identity.Authenticator
+	if config.PasswordProtected() {
+		authenticator, err = identity.NewAuthenticator(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("initApp authenticator not initialized, %v", err)
+		}
+	}
+	templates := templates.NewTemplateMap(webConfig)
+	pageDisplayer := httphandling.NewPageDisplayer(templates)
+	sessionEnforcer := httphandling.NewSessionEnforcer(authenticator, pageDisplayer)
+
 	bends := &backends{
 		appConfig:    appConfig,
 		database:     database,
@@ -209,15 +223,12 @@ func initApp(ctx context.Context) (*backends, error) {
 		parser:       parser,
 		reverseIndex: reverseIndex,
 		substrIndex:  substrIndex,
-		templates:    templates.NewTemplateMap(webConfig),
+		templates:    templates,
 		tmSearcher:   tms,
 		webConfig:    webConfig,
-	}
-	if config.PasswordProtected() {
-		authenticator, err = identity.NewAuthenticator(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("initApp authenticator not initialized, %v", err)
-		}
+		authenticator: authenticator,
+		sessionEnforcer: sessionEnforcer,
+		pageDisplayer: pageDisplayer,
 	}
 	return bends, nil
 }
@@ -286,51 +297,6 @@ func initDictSSIndexFS(client *firestore.Client, c config.AppConfig, dict *dicti
 	return dictionary.NewSubstringIndexFS(client, indexCorpus, c.IndexGen(), dict)
 }
 
-// Starting point for the Administration Portal
-func adminHandler(w http.ResponseWriter, r *http.Request) {
-	d := os.Getenv("DATABASE")
-	if len(d) == 0 {
-		log.Print("adminHandler database not initialized")
-		http.Error(w, "Not authorized", http.StatusForbidden)
-		return
-	}
-	ctx := context.Background()
-	if authenticator == nil {
-		var err error
-		authenticator, err = identity.NewAuthenticator(ctx)
-		if err != nil {
-			log.Printf("adminHandler authenticator not initialized, %v", err)
-			http.Error(w, "Not authorized", http.StatusForbidden)
-			return
-		}
-	}
-	sessionInfo := identity.InvalidSession()
-	cookie, err := r.Cookie("session")
-	if err == nil {
-		sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
-	}
-	if identity.IsAuthorized(sessionInfo.User, "admin_portal") {
-		vars := b.webConfig.GetAll()
-		tmpl, err := template.New("admin_portal.html").ParseFiles("templates/admin_portal.html")
-		if err != nil {
-			log.Printf("main.adminHandler: error parsing template %v", err)
-		}
-		if tmpl == nil {
-			log.Println("main.adminHandler: Template is nil")
-		}
-		if err != nil {
-			log.Printf("main.adminHandler: error parsing template %v", err)
-		}
-		err = tmpl.Execute(w, vars)
-		if err != nil {
-			log.Printf("main.adminHandler: error rendering template %v", err)
-		}
-	} else {
-		log.Printf("adminHandler, Not authorized: %v", sessionInfo.User)
-		http.Error(w, "Not authorized", http.StatusForbidden)
-	}
-}
-
 // Process a change password request
 func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
 	d := os.Getenv("DATABASE")
@@ -340,19 +306,19 @@ func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := context.Background()
-	if authenticator == nil {
+	if b.authenticator == nil {
 		var err error
-		authenticator, err = identity.NewAuthenticator(ctx)
+		b.authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
 			log.Printf("changePasswordHandler authenticator not initialized, %v", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
-	sessionInfo := enforceValidSession(w, r)
+	sessionInfo := b.sessionEnforcer.EnforceValidSession(w, r)
 	if sessionInfo.Authenticated == 1 {
 		oldPassword := r.PostFormValue("OldPassword")
 		password := r.PostFormValue("Password")
-		result := authenticator.ChangePassword(ctx, sessionInfo.User, oldPassword,
+		result := b.authenticator.ChangePassword(ctx, sessionInfo.User, oldPassword,
 			password)
 		if strings.Contains(r.Header.Get("Accept"), "application/json") {
 			sendJSON(w, result)
@@ -364,7 +330,7 @@ func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
 				ChangeSuccessful: result.ChangeSuccessful,
 				ShowNewForm:      result.ShowNewForm,
 			}
-			displayPage(w, b, "change_password_form.html", content)
+			b.pageDisplayer.DisplayPage(w, "change_password_form.html", content)
 		}
 	}
 }
@@ -377,7 +343,7 @@ func changePasswordFormHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not authorized", http.StatusForbidden)
 		return
 	}
-	sessionInfo := enforceValidSession(w, r)
+	sessionInfo := b.sessionEnforcer.EnforceValidSession(w, r)
 	if sessionInfo.Authenticated == 1 {
 		title := b.webConfig.GetVarWithDefault("Title", defTitle)
 		result := ChangePasswordHTML{
@@ -386,28 +352,14 @@ func changePasswordFormHandler(w http.ResponseWriter, r *http.Request) {
 			ChangeSuccessful: false,
 			ShowNewForm:      true,
 		}
-		displayPage(w, b, "change_password_form.html", result)
+		b.pageDisplayer.DisplayPage(w, "change_password_form.html", result)
 	}
 }
 
 // Custom 404 page handler
 func custom404(w http.ResponseWriter, r *http.Request, url string) {
 	log.Printf("custom404: sending 404 for %s", url)
-	displayPage(w, b, "404.html", nil)
-}
-
-func displayPage(w http.ResponseWriter, b *backends, templateName string, content interface{}) {
-	tmpl, ok := b.templates[templateName]
-	if !ok {
-		log.Printf("displayPage: template not found %s", templateName)
-		http.Error(w, "Server Error", http.StatusInternalServerError)
-		return
-	}
-	err := tmpl.Execute(w, content)
-	if err != nil {
-		log.Printf("displayPage: error rendering template %v", err)
-		http.Error(w, "Server Error", http.StatusInternalServerError)
-	}
+	b.pageDisplayer.DisplayPage(w, "404.html", nil)
 }
 
 // displayHome shows a simple page, for health checks and testing.
@@ -416,7 +368,7 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 	log.Printf("displayHome: url %s", r.URL.Path)
 
 	// Tell health check probes that we are alive
-	if !acceptHTML(r) {
+	if !httphandling.AcceptHTML(r) {
 		fmt.Fprintln(w, "OK")
 		return
 	}
@@ -427,9 +379,9 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 	}
 	if config.PasswordProtected() {
 		ctx := context.Background()
-		if authenticator == nil {
+		if b.authenticator == nil {
 			var err error
-			authenticator, err = identity.NewAuthenticator(ctx)
+			b.authenticator, err = identity.NewAuthenticator(ctx)
 			if err != nil {
 				log.Printf("displayHome: authenticator not initialized, %v", err)
 				http.Error(w, "Server error", http.StatusInternalServerError)
@@ -439,53 +391,22 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 		sessionInfo := identity.InvalidSession()
 		cookie, err := r.Cookie("session")
 		if err == nil {
-			sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
+			sessionInfo = b.authenticator.CheckSession(ctx, cookie.Value)
 		} else {
 			log.Printf("displayHome error getting cookie: %v", err)
-			displayPage(w, b, "login_form.html", content)
+			b.pageDisplayer.DisplayPage(w, "login_form.html", content)
 			return
 		}
 		if !sessionInfo.Valid {
-			displayPage(w, b, "login_form.html", content)
+			b.pageDisplayer.DisplayPage(w, "login_form.html", content)
 			return
 		} else {
-			displayPage(w, b, "index_auth.html", content)
+			b.pageDisplayer.DisplayPage(w, "index_auth.html", content)
 			return
 		}
 	}
 
-	displayPage(w, b, "index.html", content)
-}
-
-// Process a change password request
-func enforceValidSession(w http.ResponseWriter, r *http.Request) identity.SessionInfo {
-	ctx := context.Background()
-	if authenticator == nil {
-		var err error
-		authenticator, err = identity.NewAuthenticator(ctx)
-		if err != nil {
-			log.Printf("enforceValidSession authenticator not initialized, %v", err)
-			http.Error(w, "Not authorized", http.StatusForbidden)
-		}
-	}
-	sessionInfo := identity.InvalidSession()
-	cookie, err := r.Cookie("session")
-	if err == nil {
-		sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
-		if sessionInfo.Authenticated != 1 {
-			if acceptHTML(r) {
-				displayPage(w, b, "login_form.html", nil)
-			} else {
-				http.Error(w, "Not authorized", http.StatusForbidden)
-			}
-			return sessionInfo
-		}
-	} else {
-		log.Printf("enforceValidSession, Invalid session %v", sessionInfo.User)
-		http.Error(w, "Not authorized", http.StatusForbidden)
-		return identity.InvalidSession()
-	}
-	return sessionInfo
+	b.pageDisplayer.DisplayPage(w, "index.html", content)
 }
 
 // Finds documents matching the given query with search in text body
@@ -496,12 +417,12 @@ func findFullText(response http.ResponseWriter, request *http.Request) {
 		q = getSingleValue(request, "text")
 	}
 	if len(q) == 0 {
-		if acceptHTML(request) {
+		if httphandling.AcceptHTML(request) {
 			title := b.webConfig.GetVarWithDefault("Title", defTitle)
 			content := htmlContent{
 				Title: title,
 			}
-			displayPage(response, b, "full_text_search.html", content)
+			b.pageDisplayer.DisplayPage(response, "full_text_search.html", content)
 			return
 		}
 	}
@@ -523,7 +444,7 @@ func findFullText(response http.ResponseWriter, request *http.Request) {
 func findDocs(ctx context.Context, response http.ResponseWriter, request *http.Request, b *backends, fullText bool) {
 
 	if config.PasswordProtected() {
-		sessionInfo := enforceValidSession(response, request)
+		sessionInfo := b.sessionEnforcer.EnforceValidSession(response, request)
 		if !sessionInfo.Valid {
 			return
 		}
@@ -535,7 +456,7 @@ func findDocs(ctx context.Context, response http.ResponseWriter, request *http.R
 	}
 	// No query, eg someone nativated directly to the HTML page, redisplay it
 	var err error
-	if len(q) == 0 && acceptHTML(request) {
+	if len(q) == 0 && httphandling.AcceptHTML(request) {
 		log.Print("main.findDocs No query provided")
 		templateFile := "find_results.html"
 		if fullText {
@@ -614,7 +535,7 @@ func findDocs(ctx context.Context, response http.ResponseWriter, request *http.R
 	}
 
 	// Return HTML if method is post
-	if acceptHTML(request) {
+	if httphandling.AcceptHTML(request) {
 		templateFile := "find_results.html"
 		if len(findTitle) > 0 {
 			templateFile = "doc_results.html"
@@ -663,14 +584,6 @@ func findDocs(ctx context.Context, response http.ResponseWriter, request *http.R
 		response.Header().Set("Content-Type", "application/json; charset=utf-8")
 		fmt.Fprint(response, string(resultsJson))
 	}
-}
-
-func acceptHTML(r *http.Request) bool {
-	acceptEnc := r.Header.Get("Accept")
-	if len(acceptEnc) > 0 && strings.Contains(acceptEnc, "text/html") {
-		return true
-	}
-	return false
 }
 
 func getSingleValue(r *http.Request, key string) string {
@@ -825,7 +738,7 @@ func processTranslation(w http.ResponseWriter, r *http.Request) {
 	log.Printf("deepLChecked: %s, gcpChecked: %s, glossaryChecked: %s, processingChecked: %s, len(translated) = %d",
 		deepLChecked, gcpChecked, glossaryChecked, processingChecked, len(translated))
 	if config.PasswordProtected() {
-		sessionInfo := enforceValidSession(w, r)
+		sessionInfo := b.sessionEnforcer.EnforceValidSession(w, r)
 		if !sessionInfo.Valid {
 			return
 		}
@@ -909,7 +822,7 @@ func showQueryResults(w io.Writer, b *backends, results find.QueryResults, templ
 
 // Displays the translation page.
 func showTranslationPage(w http.ResponseWriter, b *backends, p *translationPage) {
-	displayPage(w, b, "translation.html", p)
+	b.pageDisplayer.DisplayPage(w, "translation.html", p)
 }
 
 // findHandler finds documents matching the given query.
@@ -986,9 +899,9 @@ func library(w http.ResponseWriter, r *http.Request) {
 	}
 	if config.PasswordProtected() {
 		ctx := context.Background()
-		if authenticator == nil {
+		if b.authenticator == nil {
 			var err error
-			authenticator, err = identity.NewAuthenticator(ctx)
+			b.authenticator, err = identity.NewAuthenticator(ctx)
 			if err != nil {
 				log.Printf("displayHome: authenticator not initialized, %v", err)
 				http.Error(w, "Server error", http.StatusInternalServerError)
@@ -998,35 +911,35 @@ func library(w http.ResponseWriter, r *http.Request) {
 		sessionInfo := identity.InvalidSession()
 		cookie, err := r.Cookie("session")
 		if err == nil {
-			sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
+			sessionInfo = b.authenticator.CheckSession(ctx, cookie.Value)
 		} else {
 			log.Printf("displayHome error getting cookie: %v", err)
-			displayPage(w, b, "login_form.html", content)
+			b.pageDisplayer.DisplayPage(w, "login_form.html", content)
 			return
 		}
 		if !sessionInfo.Valid {
-			displayPage(w, b, "login_form.html", content)
+			b.pageDisplayer.DisplayPage(w, "login_form.html", content)
 			return
 		} else {
-			displayPage(w, b, "library.html", content)
+			b.pageDisplayer.DisplayPage(w, "library.html", content)
 			return
 		}
 	}
 
-	displayPage(w, b, "library.html", content)
+	b.pageDisplayer.DisplayPage(w, "library.html", content)
 }
 
 // Display login form for the Translation Portal
 func loginFormHandler(w http.ResponseWriter, r *http.Request) {
-	displayPage(w, b, "login_form.html", nil)
+	b.pageDisplayer.DisplayPage(w, "login_form.html", nil)
 }
 
 // Process a login request
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
-	if authenticator == nil {
+	if b.authenticator == nil {
 		var err error
-		authenticator, err = identity.NewAuthenticator(ctx)
+		b.authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
 			log.Printf("loginHandler authenticator not initialized, %v", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
@@ -1042,7 +955,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	username := r.PostFormValue("UserName")
 	log.Printf("loginHandler: username = %s", username)
 	password := r.PostFormValue("Password")
-	users, err := authenticator.CheckLogin(ctx, username, password)
+	users, err := b.authenticator.CheckLogin(ctx, username, password)
 	if err != nil {
 		log.Printf("main.loginHandler checking login, %v", err)
 		http.Error(w, "Error checking login", http.StatusInternalServerError)
@@ -1054,7 +967,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("session")
 		if err == nil {
 			log.Printf("loginHandler: updating session: %s", cookie.Value)
-			sessionInfo = authenticator.UpdateSession(ctx, cookie.Value, users[0], 1)
+			sessionInfo = b.authenticator.UpdateSession(ctx, cookie.Value, users[0], 1)
 		}
 		if (err != nil) || !sessionInfo.Valid {
 			sessionid := identity.NewSessionId()
@@ -1069,7 +982,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 				MaxAge: 86400 * 30, // One month
 			}
 			http.SetCookie(w, cookie)
-			sessionInfo = authenticator.SaveSession(ctx, sessionid, users[0], 1)
+			sessionInfo = b.authenticator.SaveSession(ctx, sessionid, users[0], 1)
 		}
 	}
 	if strings.Contains(r.Header.Get("Accept"), "application/json") {
@@ -1080,7 +993,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			content := htmlContent{
 				Title: title,
 			}
-			displayPage(w, b, "index.html", content)
+			b.pageDisplayer.DisplayPage(w, "index.html", content)
 		} else {
 			loginFormHandler(w, r)
 		}
@@ -1094,16 +1007,16 @@ func logoutForm(w http.ResponseWriter, r *http.Request) {
 	content := htmlContent{
 		Title: title,
 	}
-	displayPage(w, b, "logout.html", content)
+	b.pageDisplayer.DisplayPage(w, "logout.html", content)
 }
 
 // logoutHandler logs the user out of their session
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	log.Print("logoutHandler: process form")
 	ctx := context.Background()
-	if authenticator == nil {
+	if b.authenticator == nil {
 		var err error
-		authenticator, err = identity.NewAuthenticator(ctx)
+		b.authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
 			log.Printf("loginHandler authenticator not initialized, %v", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
@@ -1114,18 +1027,18 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		// OK, just don't show the contents that require a login
 		log.Println("logoutHandler: no cookie")
 	} else {
-		authenticator.Logout(ctx, cookie.Value)
+		b.authenticator.Logout(ctx, cookie.Value)
 		cookie.MaxAge = -1
 		http.SetCookie(w, cookie)
 	}
 
 	// Return HTML if method is post
-	if acceptHTML(r) {
+	if httphandling.AcceptHTML(r) {
 		title := b.webConfig.GetVarWithDefault("Title", defTitle)
 		content := htmlContent{
 			Title: title,
 		}
-		displayPage(w, b, "logged_out.html", content)
+		b.pageDisplayer.DisplayPage(w, "logged_out.html", content)
 		return
 	}
 
@@ -1178,9 +1091,9 @@ func mediaDetailHandler(response http.ResponseWriter, request *http.Request) {
 // portalHandler is the starting point for the Translation Portal
 func portalHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
-	if authenticator == nil {
+	if b.authenticator == nil {
 		var err error
-		authenticator, err = identity.NewAuthenticator(ctx)
+		b.authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
 			log.Printf("portalHandler: authenticator not initialized, %v", err)
 			http.Error(w, "Server error", http.StatusInternalServerError)
@@ -1189,7 +1102,7 @@ func portalHandler(w http.ResponseWriter, r *http.Request) {
 	sessionInfo := identity.InvalidSession()
 	cookie, err := r.Cookie("session")
 	if err == nil {
-		sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
+		sessionInfo = b.authenticator.CheckSession(ctx, cookie.Value)
 	} else {
 		log.Printf("portalHandler error getting cookie: %v", err)
 		http.Error(w, "Server error", http.StatusInternalServerError)
@@ -1209,9 +1122,9 @@ func portalHandler(w http.ResponseWriter, r *http.Request) {
 func portalLibraryHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("portalLibraryHandler: url %s", r.URL.Path)
 	ctx := context.Background()
-	if authenticator == nil {
+	if b.authenticator == nil {
 		var err error
-		authenticator, err = identity.NewAuthenticator(ctx)
+		b.authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
 			log.Printf("portalLibraryHandler: authenticator not initialized, %v", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
@@ -1220,7 +1133,7 @@ func portalLibraryHandler(w http.ResponseWriter, r *http.Request) {
 	sessionInfo := identity.InvalidSession()
 	cookie, err := r.Cookie("session")
 	if err == nil {
-		sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
+		sessionInfo = b.authenticator.CheckSession(ctx, cookie.Value)
 	} else {
 		log.Printf("portalLibraryHandler error getting cookie: %v", err)
 		http.Error(w, "Server error", http.StatusInternalServerError)
@@ -1263,22 +1176,22 @@ func requestResetFormHandler(w http.ResponseWriter, r *http.Request) {
 		TMResults: nil,
 		Data:      data,
 	}
-	displayPage(w, b, "request_reset_form.html", content)
+	b.pageDisplayer.DisplayPage(w, "request_reset_form.html", content)
 }
 
 // requestResetHandler processes requests for password reset
 func requestResetHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
-	if authenticator == nil {
+	if b.authenticator == nil {
 		var err error
-		authenticator, err = identity.NewAuthenticator(ctx)
+		b.authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
 			log.Printf("requestResetHandler: authenticator not initialized: %v", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
 		}
 	}
 	email := r.PostFormValue("Email")
-	result := authenticator.RequestPasswordReset(ctx, email)
+	result := b.authenticator.RequestPasswordReset(ctx, email)
 	if result.RequestResetSuccess {
 		err := identity.SendPasswordReset(result.User, result.Token, b.webConfig)
 		if err != nil {
@@ -1296,7 +1209,7 @@ func requestResetHandler(w http.ResponseWriter, r *http.Request) {
 			TMResults: nil,
 			Data:      result,
 		}
-		displayPage(w, b, "request_reset_form.html", content)
+		b.pageDisplayer.DisplayPage(w, "request_reset_form.html", content)
 	}
 }
 
@@ -1309,15 +1222,15 @@ func resetPasswordFormHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		content["Token"] = ""
 	}
-	displayPage(w, b, "reset_password_form.html", content)
+	b.pageDisplayer.DisplayPage(w, "reset_password_form.html", content)
 }
 
 func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("resetPasswordHandler enter")
 	ctx := context.Background()
-	if authenticator == nil {
+	if b.authenticator == nil {
 		var err error
-		authenticator, err = identity.NewAuthenticator(ctx)
+		b.authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
 			log.Printf("resetPasswordHandler: authenticator not initialized, %v", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
@@ -1325,7 +1238,7 @@ func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	token := r.PostFormValue("Token")
 	newPassword := r.PostFormValue("NewPassword")
-	result := authenticator.ResetPassword(ctx, token, newPassword)
+	result := b.authenticator.ResetPassword(ctx, token, newPassword)
 	content := make(map[string]bool)
 	if result {
 		content["ResetPasswordSuccessful"] = true
@@ -1333,7 +1246,7 @@ func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(r.Header.Get("Accept"), "application/json") {
 		sendJSON(w, result)
 	} else {
-		displayPage(w, b, "reset_password_confirmation.html", content)
+		b.pageDisplayer.DisplayPage(w, "reset_password_confirmation.html", content)
 	}
 }
 
@@ -1352,9 +1265,9 @@ func sendJSON(w http.ResponseWriter, obj interface{}) {
 // It is used by a JavaScript client to maintain a session.
 func sessionHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
-	if authenticator == nil {
+	if b.authenticator == nil {
 		var err error
-		authenticator, err = identity.NewAuthenticator(ctx)
+		b.authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
 			log.Printf("sessionHandler: authenticator not initialized, %v", err)
 			http.Error(w, "Not authorized", http.StatusForbidden)
@@ -1363,7 +1276,7 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 	sessionInfo := identity.InvalidSession()
 	cookie, err := r.Cookie("session")
 	if err == nil {
-		sessionInfo = authenticator.CheckSession(ctx, cookie.Value)
+		sessionInfo = b.authenticator.CheckSession(ctx, cookie.Value)
 	}
 	if (err != nil) || (!sessionInfo.Valid) {
 		// OK, just don't show the contents that don't require a login
@@ -1384,7 +1297,7 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 			FullName: "",
 			Role:     "",
 		}
-		authenticator.SaveSession(ctx, sessionid, userInfo, 0)
+		b.authenticator.SaveSession(ctx, sessionid, userInfo, 0)
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	resultsJson, err := json.Marshal(sessionInfo)
@@ -1392,25 +1305,6 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("sessionHandler: error marshalling JSON, %v", err)
 	}
 	fmt.Fprint(w, string(resultsJson))
-}
-
-func getStaticFileName(u url.URL) string {
-	log.Printf("getStaticFileName path: %s", u.Path)
-	return "./web/" + u.Path
-}
-
-type StaticHandler struct{}
-
-// serveStatic handles requests for static files
-func (h StaticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if config.PasswordProtected() {
-		sessionInfo := enforceValidSession(w, r)
-		if !sessionInfo.Valid {
-			return
-		}
-	}
-	fname := getStaticFileName(*r.URL)
-	http.ServeFile(w, r, fname)
 }
 
 // Call the relevant API to translate text.
@@ -1436,7 +1330,7 @@ func translate(b *backends, sourceText, platform string) (*string, error) {
 // Initialzie an empty translation page and display it.
 func translationHome(w http.ResponseWriter, r *http.Request) {
 	if config.PasswordProtected() {
-		sessionInfo := enforceValidSession(w, r)
+		sessionInfo := b.sessionEnforcer.EnforceValidSession(w, r)
 		if !sessionInfo.Valid {
 			return
 		}
@@ -1457,8 +1351,9 @@ func translationHome(w http.ResponseWriter, r *http.Request) {
 
 // translationMemory handles requests for translation memory searches
 func translationMemory(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
 	if config.PasswordProtected() {
-		sessionInfo := enforceValidSession(w, r)
+		sessionInfo := b.sessionEnforcer.EnforceValidSession(w, r)
 		if !sessionInfo.Valid {
 			return
 		}
@@ -1467,7 +1362,7 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 	q := getSingleValue(r, "query")
 	title := b.webConfig.GetVarWithDefault("Title", defTitle)
 	if len(q) == 0 {
-		if acceptHTML(r) {
+		if httphandling.AcceptHTML(r) {
 			content := htmlContent{
 				Title: title,
 			}
@@ -1475,7 +1370,7 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 				log.Println("translationMemory database is needed for this feature")
 				content.ErrorMsg = "Translation memory not configured"
 			}
-			displayPage(w, b, "findtm.html", content)
+			b.pageDisplayer.DisplayPage(w, "findtm.html", content)
 			return
 		}
 		log.Println("translationMemory Search query string is empty")
@@ -1484,7 +1379,6 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 	}
 	d := getSingleValue(r, "domain")
 	log.Printf("main.translationMemory Query: %s, domain: %s", q, d)
-	ctx := context.Background()
 	if b == nil {
 		var err error
 		b, err = initApp(ctx)
@@ -1505,13 +1399,13 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Error", http.StatusInternalServerError)
 		return
 	}
-	if acceptHTML(r) {
+	if httphandling.AcceptHTML(r) {
 		content := htmlContent{
 			Title:     title,
 			Query:     q,
 			TMResults: results,
 		}
-		displayPage(w, b, "findtm.html", content)
+		b.pageDisplayer.DisplayPage(w, "findtm.html", content)
 		return
 	}
 	resultsJson, err := json.Marshal(results)
@@ -1544,7 +1438,7 @@ func getHeadwordId(path string) (int, error) {
 // wordDetail shows details for a single word entry, returns HTML
 func wordDetail(w http.ResponseWriter, r *http.Request) {
 	if config.PasswordProtected() {
-		sessionInfo := enforceValidSession(w, r)
+		sessionInfo := b.sessionEnforcer.EnforceValidSession(w, r)
 		if !sessionInfo.Valid {
 			return
 		}
@@ -1571,7 +1465,7 @@ func wordDetail(w http.ResponseWriter, r *http.Request) {
 				Word: word,
 			},
 		}
-		displayPage(w, b, "word_detail.html", content)
+		b.pageDisplayer.DisplayPage(w, "word_detail.html", content)
 		return
 	}
 
@@ -1597,7 +1491,6 @@ func main() {
 	http.HandleFunc("/findsubstring", findSubstring)
 	http.HandleFunc("/findtm", translationMemory)
 	http.HandleFunc("/healthcheck", healthcheck)
-	http.HandleFunc("/loggedin/admin", adminHandler)
 	http.HandleFunc("/loggedin/changepassword", changePasswordFormHandler)
 	http.HandleFunc("/library", library)
 	http.HandleFunc("/loggedin/login", loginHandler)
@@ -1615,7 +1508,8 @@ func main() {
 	initTranslationClients(b)
 	http.HandleFunc("/translateprocess", processTranslation)
 	http.HandleFunc("/translate", translationHome)
-	http.Handle("/web/", http.StripPrefix("/web/", StaticHandler{}))
+	sh := httphandling.NewStaticHandler(b.sessionEnforcer)
+	http.Handle("/web/", http.StripPrefix("/web/", sh))
 	http.HandleFunc("/words/", wordDetail)
 
 	portStr := ":" + strconv.Itoa(config.GetPort())
