@@ -1516,8 +1516,9 @@ func main() {
 	http.HandleFunc("/words/", wordDetail)
 
 	// If serving static HTML content
-	staticBucket := b.appConfig.GetVar("StaticBucket")
+	staticBucket := b.webConfig.GetVar("StaticBucket")
 	if len(staticBucket) > 0 {
+		log.Println("main: initializing GCS static content handler")
 		gcsClient, err := storage.NewClient(ctx)
 		if err != nil {
 			log.Printf("main error getting GCS client %v", err)
@@ -1526,6 +1527,7 @@ func main() {
 			http.Handle("/web/", http.StripPrefix("/web/", sh))
 		}
 	} else {
+		log.Println("main: initializing local file static content handler")
 		sh := httphandling.NewStaticHandler(b.sessionEnforcer)
 		http.Handle("/web/", http.StripPrefix("/web/", sh))
 	}

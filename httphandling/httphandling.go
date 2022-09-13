@@ -100,7 +100,15 @@ func (h gcsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error processing request", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if strings.HasSuffix(fname, ".html") {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	} else if strings.HasSuffix(fname, ".css") {
+		w.Header().Set("Content-Type", "text/css; charset=utf-8")
+	} else if strings.HasSuffix(fname, ".js") {
+		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	} else if strings.HasSuffix(fname, ".json") {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	} 
 	fmt.Fprint(w, string(body))
 }
 
