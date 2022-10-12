@@ -22,6 +22,48 @@ import (
 	"github.com/alexamies/chinesenotes-go/transmemory"
 )
 
+type AuthenticatorMock struct {}
+
+func makeAuthenticatorMock() identity.Authenticator {
+	return AuthenticatorMock{}
+}
+
+func (a AuthenticatorMock) 	ChangePassword(ctx context.Context, userInfo identity.UserInfo, oldPassword, password string) identity.ChangePasswordResult {
+	return identity.ChangePasswordResult{}	
+}
+
+func (a AuthenticatorMock) CheckLogin(ctx context.Context, username, password string) ([]identity.UserInfo, error) {
+	return []identity.UserInfo{}, nil
+}
+
+func (a AuthenticatorMock) 	CheckSession(ctx context.Context, sessionid string) identity.SessionInfo {
+	return identity.SessionInfo{}
+}
+
+func (a AuthenticatorMock) GetUser(ctx context.Context, username string) ([]identity.UserInfo, error) {
+	return []identity.UserInfo{}, nil
+}
+
+func (a AuthenticatorMock) Logout(ctx context.Context, sessionid string) {
+	// pass
+}
+
+func (a AuthenticatorMock) RequestPasswordReset(ctx context.Context, email string) identity.RequestResetResult {
+	return identity.RequestResetResult{}
+}
+
+func (a AuthenticatorMock) ResetPassword(ctx context.Context, token, password string) bool {
+	return false
+}
+
+func (a AuthenticatorMock) SaveSession(ctx context.Context, sessionid string, userInfo identity.UserInfo, authenticated int) identity.SessionInfo {
+	return identity.SessionInfo{}
+}
+
+func (a AuthenticatorMock) UpdateSession(ctx context.Context, sessionid string, userInfo identity.UserInfo, authenticated int) identity.SessionInfo {
+	return identity.SessionInfo{}
+}
+
 func mockSmallDict() map[string]*dicttypes.Word {
 	s1 := "繁体中文"
 	t1 := "繁體中文"
@@ -880,7 +922,7 @@ func TestLoginFormHandler(t *testing.T) {
 }
 
 func TestLoginHandler(t *testing.T) {
-	authenticator := &identity.Authenticator{}
+	authenticator := makeAuthenticatorMock()
 	templates := templates.NewTemplateMap(config.WebAppConfig{})
 	pageDisplayer := httphandling.NewPageDisplayer(templates)
 	b = &backends{

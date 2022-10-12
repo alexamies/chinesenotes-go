@@ -26,8 +26,20 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
+type Authenticator interface {
+	ChangePassword(ctx context.Context, userInfo UserInfo, oldPassword, password string) ChangePasswordResult
+	CheckLogin(ctx context.Context,	username, password string) ([]UserInfo, error)
+	CheckSession(ctx context.Context, sessionid string) SessionInfo
+	GetUser(ctx context.Context, username string) ([]UserInfo, error)
+	Logout(ctx context.Context, sessionid string)
+	RequestPasswordReset(ctx context.Context, email string) RequestResetResult
+	ResetPassword(ctx context.Context, token, password string) bool
+	SaveSession(ctx context.Context, sessionid string, userInfo UserInfo, authenticated int) SessionInfo
+	UpdateSession(ctx context.Context, sessionid string, userInfo UserInfo, authenticated int) SessionInfo
+}
+
 // Authenticator holds stateful items needed for user authentication.
-type Authenticator struct {
+type AuthenticatorDBImpl struct {
 	database *sql.DB
 	domain *string
 	changePasswordStmt *sql.Stmt
@@ -72,8 +84,8 @@ type UserInfo struct {
 //
 // Params:
 //   isProtected - set this to true if only the site is password protected
-func NewAuthenticator(ctx context.Context) (*Authenticator, error) {
-	a := Authenticator{}
+func NewAuthenticator(ctx context.Context) (Authenticator, error) {
+	a := AuthenticatorDBImpl{}
 	err := a.initStatements(ctx)
 	if err != nil {
 		return nil, err
@@ -83,7 +95,7 @@ func NewAuthenticator(ctx context.Context) (*Authenticator, error) {
 }
 
 // initStatements opens a database connection and prepares the statements.
-func (a *Authenticator) initStatements(ctx context.Context) error {
+func (a *AuthenticatorDBImpl) initStatements(ctx context.Context) error {
 	conString := config.DBConfig()
 	var err error
 	a.database, err = sql.Open("mysql", conString)
@@ -195,7 +207,7 @@ func (a *Authenticator) initStatements(ctx context.Context) error {
 }
 
 // ChangePassword enables the user to change passwords.
-func (a *Authenticator) ChangePassword(ctx context.Context, userInfo UserInfo,
+func (a *AuthenticatorDBImpl) ChangePassword(ctx context.Context, userInfo UserInfo,
 			oldPassword, password string) ChangePasswordResult {
 	users, err := a.CheckLogin(ctx, userInfo.UserName, oldPassword)
 	if err != nil {
@@ -221,7 +233,7 @@ func (a *Authenticator) ChangePassword(ctx context.Context, userInfo UserInfo,
 }
 
 // CheckLogin checks the password when the user logs in.
-func (a *Authenticator) CheckLogin(ctx context.Context,
+func (a *AuthenticatorDBImpl) CheckLogin(ctx context.Context,
 		username, password string) ([]UserInfo, error) {
 	if a.loginStmt == nil {
 		return []UserInfo{}, nil
@@ -255,7 +267,7 @@ func (a *Authenticator) CheckLogin(ctx context.Context,
 }
 
 // CheckSession checks the session when the user requests a page.
-func (a *Authenticator) CheckSession(ctx context.Context, sessionid string) SessionInfo {
+func (a *AuthenticatorDBImpl) CheckSession(ctx context.Context, sessionid string) SessionInfo {
 	sessions := a.checkSessionStore(ctx, sessionid)
 	if len(sessions) != 1 {
 		return InvalidSession()
@@ -265,7 +277,7 @@ func (a *Authenticator) CheckSession(ctx context.Context, sessionid string) Sess
 }
 
 // checkSessionStore checks the session when the user requests a page
-func (a *Authenticator) checkSessionStore(ctx context.Context,
+func (a *AuthenticatorDBImpl) checkSessionStore(ctx context.Context,
 		sessionid string) []SessionInfo {
 	log.Printf("checkSessionStore, sessionid: %s\n", sessionid)
 	if a.checkSessionStmt == nil {
@@ -295,7 +307,7 @@ func (a *Authenticator) checkSessionStore(ctx context.Context,
 }
 
 // GetUser gets the user information.
-func (a *Authenticator) GetUser(ctx context.Context,
+func (a *AuthenticatorDBImpl) GetUser(ctx context.Context,
 		username string) ([]UserInfo, error) {
 	log.Println("getUser, username:", username)
 	if a.getUserStmt == nil {
@@ -353,7 +365,7 @@ func IsAuthorized(user UserInfo, permission string) bool {
 }
 
 // Logout logs the user out of the current session.
-func (a *Authenticator) Logout(ctx context.Context, sessionid string) {
+func (a *AuthenticatorDBImpl) Logout(ctx context.Context, sessionid string) {
 	log.Printf("Logout, sessionid: %s\n", sessionid)
 	result, err := a.logoutStmt.ExecContext(ctx, sessionid)
 	if err != nil {
@@ -387,7 +399,7 @@ func OldPasswordDoesNotMatch() ChangePasswordResult {
 }
 
 // RequestPasswordReset requests a password reset, to be sent by email.
-func (a *Authenticator) RequestPasswordReset(ctx context.Context,
+func (a *AuthenticatorDBImpl) RequestPasswordReset(ctx context.Context,
 		email string) RequestResetResult {
 	log.Println("RequestPasswordReset, email:", email)
 	b := make([]byte, 32)
@@ -431,7 +443,7 @@ func (a *Authenticator) RequestPasswordReset(ctx context.Context,
 }
 
 // ResetPassword resets a password.
-func (a *Authenticator) ResetPassword(ctx context.Context, token, password string) bool {
+func (a *AuthenticatorDBImpl) ResetPassword(ctx context.Context, token, password string) bool {
 	log.Println("ResetPassword, token:", token)
 	results, err := a.getResetRequestStmt.QueryContext(ctx, token)
 	defer results.Close()
@@ -475,7 +487,7 @@ func (a *Authenticator) ResetPassword(ctx context.Context, token, password strin
 }
 
 // SaveSession saves an authenticated session to the database
-func (a *Authenticator) SaveSession(ctx context.Context,
+func (a *AuthenticatorDBImpl) SaveSession(ctx context.Context,
 		sessionid string, userInfo UserInfo, authenticated int) SessionInfo {
 	log.Printf("SaveSession, sessionid: %s\n", sessionid)
 	result, err := a.saveSessionStmt.ExecContext(ctx, sessionid, userInfo.UserID,
@@ -494,7 +506,7 @@ func (a *Authenticator) SaveSession(ctx context.Context,
 }
 
 // UpdateSession logs a user in when they already have an unauthenticated session.
-func (a *Authenticator) UpdateSession(ctx context.Context,
+func (a *AuthenticatorDBImpl) UpdateSession(ctx context.Context,
 		sessionid string, userInfo UserInfo, authenticated int) SessionInfo {
 	result, err := a.updateSessionStmt.ExecContext(ctx, authenticated,
 		userInfo.UserID, sessionid)

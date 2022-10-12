@@ -125,11 +125,11 @@ type SessionEnforcer interface {
 }
 
 type sessionEnforcer struct {
-	authenticator *identity.Authenticator
+	authenticator identity.Authenticator
 	pd PageDisplayer
 }
 
-func NewSessionEnforcer(authenticator *identity.Authenticator, pd PageDisplayer) SessionEnforcer {
+func NewSessionEnforcer(authenticator identity.Authenticator, pd PageDisplayer) SessionEnforcer {
 	return sessionEnforcer {
 		authenticator: authenticator,
 		pd: pd,

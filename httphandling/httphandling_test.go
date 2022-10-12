@@ -25,6 +25,47 @@ import (
 	"github.com/alexamies/chinesenotes-go/templates"
 )
 
+type AuthenticatorMock struct {}
+
+func makeAuthenticatorMock() identity.Authenticator {
+	return AuthenticatorMock{}
+}
+
+func (a AuthenticatorMock) 	ChangePassword(ctx context.Context, userInfo identity.UserInfo, oldPassword, password string) identity.ChangePasswordResult {
+	return identity.ChangePasswordResult{}	
+}
+
+func (a AuthenticatorMock) CheckLogin(ctx context.Context, username, password string) ([]identity.UserInfo, error) {
+	return []identity.UserInfo{}, nil
+}
+
+func (a AuthenticatorMock) 	CheckSession(ctx context.Context, sessionid string) identity.SessionInfo {
+	return identity.SessionInfo{}
+}
+
+func (a AuthenticatorMock) GetUser(ctx context.Context, username string) ([]identity.UserInfo, error) {
+	return []identity.UserInfo{}, nil
+}
+
+func (a AuthenticatorMock) Logout(ctx context.Context, sessionid string) {
+	// pass
+}
+
+func (a AuthenticatorMock) RequestPasswordReset(ctx context.Context, email string) identity.RequestResetResult {
+	return identity.RequestResetResult{}
+}
+
+func (a AuthenticatorMock) ResetPassword(ctx context.Context, token, password string) bool {
+	return false
+}
+
+func (a AuthenticatorMock) SaveSession(ctx context.Context, sessionid string, userInfo identity.UserInfo, authenticated int) identity.SessionInfo {
+	return identity.SessionInfo{}
+}
+
+func (a AuthenticatorMock) UpdateSession(ctx context.Context, sessionid string, userInfo identity.UserInfo, authenticated int) identity.SessionInfo {
+	return identity.SessionInfo{}
+}
 
 // htmlContent holds content for HTML template
 type htmlContent struct {
@@ -70,9 +111,9 @@ func TestDisplayPage(t *testing.T) {
 
 func TestEnforceValidSession(t *testing.T) {
 	templates := templates.NewTemplateMap(config.WebAppConfig{})
-	authenticator := identity.Authenticator{}
+	authenticator := makeAuthenticatorMock()
 	pageDisplayer := NewPageDisplayer(templates)
-	sessionEnforcer := NewSessionEnforcer(&authenticator, pageDisplayer)
+	sessionEnforcer := NewSessionEnforcer(authenticator, pageDisplayer)
 	type test struct {
 		name           string
 		u              string

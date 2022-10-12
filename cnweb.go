@@ -79,7 +79,7 @@ type backends struct {
 	deepLApiClient, translateApiClient, glossaryApiClient transtools.ApiClient
 	translationProcessor                                  transtools.Processor
 	docTitleFinder                                        find.TitleFinder
-	authenticator 																				*identity.Authenticator
+	authenticator 																				identity.Authenticator
 	sessionEnforcer 																			httphandling.SessionEnforcer
 	pageDisplayer																					httphandling.PageDisplayer
 }
@@ -204,7 +204,7 @@ func initApp(ctx context.Context) (*backends, error) {
 		tfDocFinder = termfreq.NewFirestoreDocFinder(fsClient, indexCorpus, indexGen, addDirectory, termfreq.QueryLimit)
 	}
 
-	var authenticator *identity.Authenticator
+	var authenticator identity.Authenticator
 	if config.PasswordProtected() {
 		authenticator, err = identity.NewAuthenticator(ctx)
 		if err != nil {
