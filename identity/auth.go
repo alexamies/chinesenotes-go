@@ -28,7 +28,7 @@ import (
 
 type Authenticator interface {
 	ChangePassword(ctx context.Context, userInfo UserInfo, oldPassword, password string) ChangePasswordResult
-	CheckLogin(ctx context.Context,	username, password string) ([]UserInfo, error)
+	CheckLogin(ctx context.Context, username, password string) ([]UserInfo, error)
 	CheckSession(ctx context.Context, sessionid string) SessionInfo
 	GetUser(ctx context.Context, username string) ([]UserInfo, error)
 	Logout(ctx context.Context, sessionid string)
@@ -40,44 +40,47 @@ type Authenticator interface {
 
 // Authenticator holds stateful items needed for user authentication.
 type AuthenticatorDBImpl struct {
-	database *sql.DB
-	domain *string
-	changePasswordStmt *sql.Stmt
-	checkSessionStmt *sql.Stmt
-	getResetRequestStmt *sql.Stmt
-	getUserStmt *sql.Stmt
-	getUserByEmailStmt *sql.Stmt
-	loginStmt *sql.Stmt
-	logoutStmt *sql.Stmt
-	requestResetStmt *sql.Stmt
-	saveSessionStmt *sql.Stmt
-	updateSessionStmt *sql.Stmt
+	database               *sql.DB
+	changePasswordStmt     *sql.Stmt
+	checkSessionStmt       *sql.Stmt
+	getResetRequestStmt    *sql.Stmt
+	getUserStmt            *sql.Stmt
+	getUserByEmailStmt     *sql.Stmt
+	loginStmt              *sql.Stmt
+	logoutStmt             *sql.Stmt
+	requestResetStmt       *sql.Stmt
+	saveSessionStmt        *sql.Stmt
+	updateSessionStmt      *sql.Stmt
 	updateResetRequestStmt *sql.Stmt
 }
 
 type ChangePasswordResult struct {
 	OldPasswordValid bool
 	ChangeSuccessful bool
-	ShowNewForm bool
+	ShowNewForm      bool
 }
 
 type RequestResetResult struct {
-	EmailValid bool
+	EmailValid          bool
 	RequestResetSuccess bool
-	ShowNewForm bool
-	User UserInfo
-	Token string
+	ShowNewForm         bool
+	User                UserInfo
+	Token               string
 }
 
 type SessionInfo struct {
 	Authenticated int
-	Valid bool
-	User UserInfo
+	Valid         bool
+	User          UserInfo
 }
 
 type UserInfo struct {
-	UserID int
-	UserName, Email, FullName, Role string
+	UserID   int    `firestore:"userid"`
+	UserName string `firestore:"username"`
+	Email    string `firestore:"email"`
+	FullName string `firestore:"full_name"`
+	Role     string `firestore:"role"`
+	Password string `firestore:"password"`
 }
 
 // NewAuthenticator creates but does not initialize an Authenticator object.
@@ -111,79 +114,79 @@ func (a *AuthenticatorDBImpl) initStatements(ctx context.Context) error {
 		AND user.UserID = passwd.UserID
 		AND Password = ?
 		LIMIT 1`)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
 	a.saveSessionStmt, err = a.database.PrepareContext(ctx,
 		`INSERT INTO
 		  session (SessionID, UserID, Authenticated)
 		VALUES (?, ?, ?)`)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
-    // Need to fix use of username in session table. Should be UserId
+	// Need to fix use of username in session table. Should be UserId
 	a.checkSessionStmt, err = a.database.PrepareContext(ctx,
 		`SELECT user.UserID, UserName, Email, FullName, Role, Authenticated
 		FROM user, session 
 		WHERE SessionID = ? 
 		AND user.UserID = session.UserID
 		LIMIT 1`)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
 	a.logoutStmt, err = a.database.PrepareContext(ctx,
 		`UPDATE session SET
 		Authenticated = 0
 		WHERE SessionID = ?`)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
 	a.updateSessionStmt, err = a.database.PrepareContext(ctx,
 		`UPDATE session SET
 		Authenticated = ?,
 		UserID = ?
 		WHERE SessionID = ?`)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
 	a.changePasswordStmt, err = a.database.PrepareContext(ctx,
 		`UPDATE passwd SET
 		Password = ?
 		WHERE UserID = ?`)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
 	a.getUserStmt, err = a.database.PrepareContext(ctx,
 		`SELECT user.UserID, UserName, Email, FullName, Role 
 		FROM user
 		WHERE UserName = ? 
 		LIMIT 1`)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
 	a.requestResetStmt, err = a.database.PrepareContext(ctx,
 		`INSERT INTO
 		passwdreset (Token, UserID)
 		VALUES (?, ?)`)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
 	a.getUserByEmailStmt, err = a.database.PrepareContext(ctx,
 		`SELECT user.UserID, UserName, Email, FullName, Role 
 		FROM user
 		WHERE Email = ? 
 		LIMIT 1`)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
 	a.getResetRequestStmt, err = a.database.PrepareContext(ctx,
 		`SELECT UserID
@@ -191,24 +194,24 @@ func (a *AuthenticatorDBImpl) initStatements(ctx context.Context) error {
 		WHERE Token = ?
 		AND Valid = 1
 		LIMIT 1`)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
 	a.updateResetRequestStmt, err = a.database.PrepareContext(ctx,
 		`UPDATE passwdreset SET
 		Valid = 0
 		WHERE Token = ?`)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
 // ChangePassword enables the user to change passwords.
 func (a *AuthenticatorDBImpl) ChangePassword(ctx context.Context, userInfo UserInfo,
-			oldPassword, password string) ChangePasswordResult {
+	oldPassword, password string) ChangePasswordResult {
 	users, err := a.CheckLogin(ctx, userInfo.UserName, oldPassword)
 	if err != nil {
 		log.Printf("ChangePassword checking login, %v", err)
@@ -226,7 +229,7 @@ func (a *AuthenticatorDBImpl) ChangePassword(ctx context.Context, userInfo UserI
 	if err != nil {
 		log.Printf("ChangePassword, Error: %v", err)
 		return ChangePasswordResult{true, false, false}
-	} 
+	}
 	rowsAffected, _ := result.RowsAffected()
 	log.Println("ChangePassword, rows updated:", rowsAffected)
 	return ChangePasswordResult{true, true, false}
@@ -234,7 +237,7 @@ func (a *AuthenticatorDBImpl) ChangePassword(ctx context.Context, userInfo UserI
 
 // CheckLogin checks the password when the user logs in.
 func (a *AuthenticatorDBImpl) CheckLogin(ctx context.Context,
-		username, password string) ([]UserInfo, error) {
+	username, password string) ([]UserInfo, error) {
 	if a.loginStmt == nil {
 		return []UserInfo{}, nil
 	}
@@ -243,11 +246,11 @@ func (a *AuthenticatorDBImpl) CheckLogin(ctx context.Context,
 	hstr := fmt.Sprintf("%x", h.Sum(nil))
 	//log.Println("CheckLogin, username, hstr:", username, hstr)
 	results, err := a.loginStmt.QueryContext(ctx, username, hstr)
-	defer results.Close()
 	if err != nil {
 		log.Printf("CheckLogin, Error for username: %s, %v\n", username, err)
 		return []UserInfo{}, err
 	}
+	defer results.Close()
 
 	users := []UserInfo{}
 	for results.Next() {
@@ -278,7 +281,7 @@ func (a *AuthenticatorDBImpl) CheckSession(ctx context.Context, sessionid string
 
 // checkSessionStore checks the session when the user requests a page
 func (a *AuthenticatorDBImpl) checkSessionStore(ctx context.Context,
-		sessionid string) []SessionInfo {
+	sessionid string) []SessionInfo {
 	log.Printf("checkSessionStore, sessionid: %s\n", sessionid)
 	if a.checkSessionStmt == nil {
 		log.Println("checkSessionStore, checkSessionStmt == nil")
@@ -308,16 +311,16 @@ func (a *AuthenticatorDBImpl) checkSessionStore(ctx context.Context,
 
 // GetUser gets the user information.
 func (a *AuthenticatorDBImpl) GetUser(ctx context.Context,
-		username string) ([]UserInfo, error) {
+	username string) ([]UserInfo, error) {
 	log.Println("getUser, username:", username)
 	if a.getUserStmt == nil {
 		return []UserInfo{}, nil
 	}
 	results, err := a.getUserStmt.QueryContext(ctx, username)
-	defer results.Close()
 	if err != nil {
 		return nil, fmt.Errorf("getUser, Error for username %s: %v", username, err)
 	}
+	defer results.Close()
 
 	users := []UserInfo{}
 	for results.Next() {
@@ -332,34 +335,34 @@ func (a *AuthenticatorDBImpl) GetUser(ctx context.Context,
 // InvalidSession creates an empty session struct.
 func InvalidSession() SessionInfo {
 	userInfo := UserInfo{
-		UserID: 1,
+		UserID:   1,
 		UserName: "",
-		Email: "",
+		Email:    "",
 		FullName: "",
-		Role: "",
+		Role:     "",
 	}
 	return SessionInfo{
 		Authenticated: 0,
-		Valid: false,
-		User: userInfo,
+		Valid:         false,
+		User:          userInfo,
 	}
 }
 
 // Empty session struct for an unauthenticated session
 func InvalidUser() UserInfo {
 	return UserInfo{
-		UserID: 1,
+		UserID:   1,
 		UserName: "",
-		Email: "",
+		Email:    "",
 		FullName: "",
-		Role: "",
+		Role:     "",
 	}
 }
 
 // Generate a new session id after login
 func IsAuthorized(user UserInfo, permission string) bool {
 	if user.Role == "admin" || user.Role == "editor" || user.Role == "translator" {
-	  return true
+		return true
 	}
 	return false
 }
@@ -380,12 +383,12 @@ func (a *AuthenticatorDBImpl) Logout(ctx context.Context, sessionid string) {
 func NewSessionId() string {
 	value := "invalid"
 	b := make([]byte, 32)
-    _, err := rand.Read(b)
-    if err != nil {
-        log.Printf("NewSessionId, Error: %v", err)
-        return value
-    }
-    val, err := base64.URLEncoding.EncodeToString(b), err
+	_, err := rand.Read(b)
+	if err != nil {
+		log.Printf("NewSessionId, Error: %v", err)
+		return value
+	}
+	val, err := base64.URLEncoding.EncodeToString(b), err
 	if err != nil {
 		log.Println("NewSessionId, Error: ", err)
 		return value
@@ -400,25 +403,25 @@ func OldPasswordDoesNotMatch() ChangePasswordResult {
 
 // RequestPasswordReset requests a password reset, to be sent by email.
 func (a *AuthenticatorDBImpl) RequestPasswordReset(ctx context.Context,
-		email string) RequestResetResult {
+	email string) RequestResetResult {
 	log.Println("RequestPasswordReset, email:", email)
 	b := make([]byte, 32)
-    _, err := rand.Read(b)
-    if err != nil {
-        log.Printf("RequestPasswordReset, Error: %v", err)
-        return RequestResetResult{true, false, true, InvalidUser(), ""}
-    }
-    token, err := base64.URLEncoding.EncodeToString(b), err
+	_, err := rand.Read(b)
+	if err != nil {
+		log.Printf("RequestPasswordReset, Error: %v", err)
+		return RequestResetResult{true, false, true, InvalidUser(), ""}
+	}
+	token, err := base64.URLEncoding.EncodeToString(b), err
 	if err != nil {
 		log.Println("RequestPasswordReset, Error: ", err)
 		return RequestResetResult{true, false, true, InvalidUser(), ""}
 	}
 	results, err := a.getUserByEmailStmt.QueryContext(ctx, email)
-	defer results.Close()
 	if err != nil {
 		log.Printf("RequestPasswordReset, Error for email %s: %v", email, err)
 		return RequestResetResult{true, false, true, InvalidUser(), ""}
 	}
+	defer results.Close()
 	users := []UserInfo{}
 	for results.Next() {
 		user := UserInfo{}
@@ -446,11 +449,11 @@ func (a *AuthenticatorDBImpl) RequestPasswordReset(ctx context.Context,
 func (a *AuthenticatorDBImpl) ResetPassword(ctx context.Context, token, password string) bool {
 	log.Println("ResetPassword, token:", token)
 	results, err := a.getResetRequestStmt.QueryContext(ctx, token)
-	defer results.Close()
 	if err != nil {
 		log.Printf("ResetPassword, Error for token %s: %v", token, err)
 		return false
 	}
+	defer results.Close()
 	userIds := []string{}
 	for results.Next() {
 		userId := ""
@@ -471,7 +474,7 @@ func (a *AuthenticatorDBImpl) ResetPassword(ctx context.Context, token, password
 	if err != nil {
 		log.Printf("ResetPassword, Error setting password: %v", err)
 		return false
-	} 
+	}
 	rowsAffected, _ := result.RowsAffected()
 	log.Println("ResetPassword, rows updated for change pwd:", rowsAffected)
 
@@ -479,7 +482,7 @@ func (a *AuthenticatorDBImpl) ResetPassword(ctx context.Context, token, password
 	result, err = a.updateResetRequestStmt.ExecContext(ctx, token)
 	if err != nil {
 		log.Printf("ResetPassword, Error updating reset token: %v", err)
-	} 
+	}
 	rowsAffected, _ = result.RowsAffected()
 	log.Println("ResetPassword, rows updated for token:", rowsAffected)
 
@@ -488,7 +491,7 @@ func (a *AuthenticatorDBImpl) ResetPassword(ctx context.Context, token, password
 
 // SaveSession saves an authenticated session to the database
 func (a *AuthenticatorDBImpl) SaveSession(ctx context.Context,
-		sessionid string, userInfo UserInfo, authenticated int) SessionInfo {
+	sessionid string, userInfo UserInfo, authenticated int) SessionInfo {
 	log.Printf("SaveSession, sessionid: %s\n", sessionid)
 	result, err := a.saveSessionStmt.ExecContext(ctx, sessionid, userInfo.UserID,
 		authenticated)
@@ -500,24 +503,24 @@ func (a *AuthenticatorDBImpl) SaveSession(ctx context.Context,
 	log.Printf("SaveSession, rows updated: %d\n", rowsAffected)
 	return SessionInfo{
 		Authenticated: authenticated,
-		Valid: true,
-		User: userInfo,
+		Valid:         true,
+		User:          userInfo,
 	}
 }
 
 // UpdateSession logs a user in when they already have an unauthenticated session.
 func (a *AuthenticatorDBImpl) UpdateSession(ctx context.Context,
-		sessionid string, userInfo UserInfo, authenticated int) SessionInfo {
+	sessionid string, userInfo UserInfo, authenticated int) SessionInfo {
 	result, err := a.updateSessionStmt.ExecContext(ctx, authenticated,
 		userInfo.UserID, sessionid)
 	if err != nil {
 		log.Printf("UpdateSession, Error: %v", err)
 		return InvalidSession()
-	} 
+	}
 	rowsAffected, _ := result.RowsAffected()
 	log.Printf("UpdateSession, rows updated: %d", rowsAffected)
 	return SessionInfo{
 		Authenticated: authenticated,
-		User: userInfo,
+		User:          userInfo,
 	}
 }
