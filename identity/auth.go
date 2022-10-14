@@ -68,10 +68,23 @@ type RequestResetResult struct {
 	Token               string
 }
 
+type RequestResetRecord struct {
+	EmailValid          bool   `firestore:"email_valid"`
+	RequestResetSuccess bool   `firestore:"request_reset_success"`
+	Email               string `firestore:"email"`
+	Token               string `firestore:"token"`
+}
+
 type SessionInfo struct {
 	Authenticated int
 	Valid         bool
 	User          UserInfo
+}
+
+type SessionRecord struct {
+	Authenticated int    `firestore:"authenticated"`
+	Valid         bool   `firestore:"valid"`
+	UserName      string `firestore:"username"`
 }
 
 type UserInfo struct {
