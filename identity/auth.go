@@ -101,7 +101,7 @@ type UserInfo struct {
 //
 // Params:
 //   isProtected - set this to true if only the site is password protected
-func NewAuthenticator(ctx context.Context) (Authenticator, error) {
+func NewAuthenticatorDB(ctx context.Context) (Authenticator, error) {
 	a := AuthenticatorDBImpl{}
 	err := a.initStatements(ctx)
 	if err != nil {

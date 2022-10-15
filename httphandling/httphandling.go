@@ -16,8 +16,8 @@ package httphandling
 import (
 	"context"
 	"fmt"
-	"log"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -63,16 +63,16 @@ func (h staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // gcsStaticHandler implements the StaticHandler interface by reading from GCS
 type gcsHandler struct {
-	client *storage.Client
-	bucket string
+	client   *storage.Client
+	bucket   string
 	enforcer SessionEnforcer
 }
 
 // NewStaticHandler creates an implementation of the StaticHandler interface
 func NewGcsHandler(client *storage.Client, bucket string, enforcer SessionEnforcer) StaticHandler {
 	return gcsHandler{
-		client: client,
-		bucket: bucket,
+		client:   client,
+		bucket:   bucket,
 		enforcer: enforcer,
 	}
 }
@@ -108,7 +108,7 @@ func (h gcsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 	} else if strings.HasSuffix(fname, ".json") {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	} 
+	}
 	fmt.Fprint(w, string(body))
 }
 
@@ -126,25 +126,17 @@ type SessionEnforcer interface {
 
 type sessionEnforcer struct {
 	authenticator identity.Authenticator
-	pd PageDisplayer
+	pd            PageDisplayer
 }
 
 func NewSessionEnforcer(authenticator identity.Authenticator, pd PageDisplayer) SessionEnforcer {
-	return sessionEnforcer {
+	return sessionEnforcer{
 		authenticator: authenticator,
-		pd: pd,
+		pd:            pd,
 	}
 }
 
 func (s sessionEnforcer) EnforceValidSession(ctx context.Context, w http.ResponseWriter, r *http.Request) identity.SessionInfo {
-	if s.authenticator == nil {
-		var err error
-		s.authenticator, err = identity.NewAuthenticator(ctx)
-		if err != nil {
-			log.Printf("enforceValidSession authenticator not initialized, %v", err)
-			http.Error(w, "Not authorized", http.StatusForbidden)
-		}
-	}
 	sessionInfo := identity.InvalidSession()
 	cookie, err := r.Cookie("session")
 	if err == nil {
@@ -174,7 +166,7 @@ type pageDisplayer struct {
 }
 
 func NewPageDisplayer(templates map[string]*template.Template) PageDisplayer {
-	return pageDisplayer {
+	return pageDisplayer{
 		templates: templates,
 	}
 }

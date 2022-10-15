@@ -30,9 +30,10 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"time"
 
-	"cloud.google.com/go/storage"
 	"cloud.google.com/go/firestore"
+	"cloud.google.com/go/storage"
 
 	"github.com/alexamies/chinesenotes-go/config"
 	"github.com/alexamies/chinesenotes-go/dictionary"
@@ -79,9 +80,9 @@ type backends struct {
 	deepLApiClient, translateApiClient, glossaryApiClient transtools.ApiClient
 	translationProcessor                                  transtools.Processor
 	docTitleFinder                                        find.TitleFinder
-	authenticator 																				identity.Authenticator
-	sessionEnforcer 																			httphandling.SessionEnforcer
-	pageDisplayer																					httphandling.PageDisplayer
+	authenticator                                         identity.Authenticator
+	sessionEnforcer                                       httphandling.SessionEnforcer
+	pageDisplayer                                         httphandling.PageDisplayer
 }
 
 // htmlContent holds content for HTML template
@@ -144,7 +145,7 @@ func initApp(ctx context.Context) (*backends, error) {
 		fsClient, err = firestore.NewClient(ctx, projectID)
 		if err != nil {
 			log.Printf("initApp: cannot instantiate Firestore client: %v", err)
-		} 
+		}
 	}
 	cnReaderHome := os.Getenv("CNREADER_HOME")
 	var dict *dictionary.Dictionary
@@ -206,30 +207,27 @@ func initApp(ctx context.Context) (*backends, error) {
 
 	var authenticator identity.Authenticator
 	if config.PasswordProtected() {
-		authenticator, err = identity.NewAuthenticator(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("initApp authenticator not initialized, %v", err)
-		}
+		authenticator = identity.NewAuthenticator(fsClient, indexCorpus)
 	}
 	templates := templates.NewTemplateMap(webConfig)
 	pageDisplayer := httphandling.NewPageDisplayer(templates)
 	sessionEnforcer := httphandling.NewSessionEnforcer(authenticator, pageDisplayer)
 
 	bends := &backends{
-		appConfig:    appConfig,
-		database:     database,
-		docMap:       docMap,
-		df:           find.NewDocFinder(tfDocFinder, titleFinder),
-		dict:         dict,
-		parser:       parser,
-		reverseIndex: reverseIndex,
-		substrIndex:  substrIndex,
-		templates:    templates,
-		tmSearcher:   tms,
-		webConfig:    webConfig,
-		authenticator: authenticator,
+		appConfig:       appConfig,
+		database:        database,
+		docMap:          docMap,
+		df:              find.NewDocFinder(tfDocFinder, titleFinder),
+		dict:            dict,
+		parser:          parser,
+		reverseIndex:    reverseIndex,
+		substrIndex:     substrIndex,
+		templates:       templates,
+		tmSearcher:      tms,
+		webConfig:       webConfig,
+		authenticator:   authenticator,
 		sessionEnforcer: sessionEnforcer,
-		pageDisplayer: pageDisplayer,
+		pageDisplayer:   pageDisplayer,
 	}
 	return bends, nil
 }
@@ -300,19 +298,14 @@ func initDictSSIndexFS(client *firestore.Client, c config.AppConfig, dict *dicti
 
 // Process a change password request
 func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
-	d := os.Getenv("DATABASE")
-	if len(d) == 0 {
-		log.Print("changePasswordHandler database not initialized")
-		http.Error(w, "Not authorized", http.StatusForbidden)
-		return
-	}
 	ctx := context.Background()
 	if b.authenticator == nil {
 		var err error
-		b.authenticator, err = identity.NewAuthenticator(ctx)
+		b.authenticator, err = initAuth(ctx)
 		if err != nil {
-			log.Printf("changePasswordHandler authenticator not initialized, %v", err)
-			http.Error(w, "Not authorized", http.StatusForbidden)
+			log.Print("changePasswordHandler authenticator could not be initialized")
+			http.Error(w, "Server error", http.StatusInternalServerError)
+			return
 		}
 	}
 	sessionInfo := b.sessionEnforcer.EnforceValidSession(ctx, w, r)
@@ -364,6 +357,26 @@ func custom404(w http.ResponseWriter, r *http.Request, url string) {
 	b.pageDisplayer.DisplayPage(w, "404.html", nil)
 }
 
+func initAuth(ctx context.Context) (identity.Authenticator, error) {
+	var fsClient *firestore.Client
+	projectID, ok := os.LookupEnv(projectIDKey)
+	if !ok {
+		return nil, fmt.Errorf("changePasswordHandler: PROJECT_ID not set not set")
+	} else {
+		var err error
+		fsClient, err = firestore.NewClient(ctx, projectID)
+		if err != nil {
+			log.Printf("changePasswordHandler: cannot instantiate Firestore client: %v", err)
+			return nil, fmt.Errorf("changePasswordHandler: cannot instantiate Firestore client: %v", err)
+		}
+	}
+	indexCorpus, ok := b.appConfig.IndexCorpus()
+	if !ok {
+		return nil, fmt.Errorf("initApp: indexCorpus not set in config.yaml")
+	}
+	return identity.NewAuthenticator(fsClient, indexCorpus), nil
+}
+
 // displayHome shows a simple page, for health checks and testing.
 // End users may also to see this when accessing direct from the browser
 func displayHome(w http.ResponseWriter, r *http.Request) {
@@ -383,9 +396,9 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 		ctx := context.Background()
 		if b.authenticator == nil {
 			var err error
-			b.authenticator, err = identity.NewAuthenticator(ctx)
+			b.authenticator, err = initAuth(ctx)
 			if err != nil {
-				log.Printf("displayHome: authenticator not initialized, %v", err)
+				log.Print("displayHome authenticator could not be initialized")
 				http.Error(w, "Server error", http.StatusInternalServerError)
 				return
 			}
@@ -855,18 +868,16 @@ func findSubstring(response http.ResponseWriter, request *http.Request) {
 	if len(subtopic) > 0 {
 		st = subtopic[0]
 	}
-	d := os.Getenv("DATABASE")
-	if len(d) == 0 {
-		log.Print("findSubstring database not initialized")
-		http.Error(response, "Server not configured", http.StatusInternalServerError)
+	if b.substrIndex == nil {
+		log.Println("main.findSubstring index not configured")
+		http.Error(response, "Error, index not configured", http.StatusInternalServerError)
 		return
 	}
 	ctx := context.Background()
 	results, err := b.substrIndex.LookupSubstr(ctx, q, t, st)
 	if err != nil {
 		log.Printf("main.findSubstring Error looking up term, %v", err)
-		http.Error(response, "Error looking up term",
-			http.StatusInternalServerError)
+		http.Error(response, "Error looking up term", http.StatusInternalServerError)
 		return
 	}
 	resultsJson, err := json.Marshal(results)
@@ -904,9 +915,9 @@ func library(w http.ResponseWriter, r *http.Request) {
 		ctx := context.Background()
 		if b.authenticator == nil {
 			var err error
-			b.authenticator, err = identity.NewAuthenticator(ctx)
+			b.authenticator, err = initAuth(ctx)
 			if err != nil {
-				log.Printf("displayHome: authenticator not initialized, %v", err)
+				log.Print("library authenticator could not be initialized")
 				http.Error(w, "Server error", http.StatusInternalServerError)
 				return
 			}
@@ -942,10 +953,11 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	if b.authenticator == nil {
 		var err error
-		b.authenticator, err = identity.NewAuthenticator(ctx)
+		b.authenticator, err = initAuth(ctx)
 		if err != nil {
-			log.Printf("loginHandler authenticator not initialized, %v", err)
-			http.Error(w, "Not authorized", http.StatusForbidden)
+			log.Print("loginHandler authenticator could not be initialized")
+			http.Error(w, "Server error", http.StatusInternalServerError)
+			return
 		}
 	}
 	sessionInfo := identity.InvalidSession()
@@ -1019,10 +1031,11 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	if b.authenticator == nil {
 		var err error
-		b.authenticator, err = identity.NewAuthenticator(ctx)
+		b.authenticator, err = initAuth(ctx)
 		if err != nil {
-			log.Printf("loginHandler authenticator not initialized, %v", err)
-			http.Error(w, "Not authorized", http.StatusForbidden)
+			log.Print("logoutHandler authenticator could not be initialized")
+			http.Error(w, "Server error", http.StatusInternalServerError)
+			return
 		}
 	}
 	cookie, err := r.Cookie("session")
@@ -1096,10 +1109,11 @@ func portalHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	if b.authenticator == nil {
 		var err error
-		b.authenticator, err = identity.NewAuthenticator(ctx)
+		b.authenticator, err = initAuth(ctx)
 		if err != nil {
-			log.Printf("portalHandler: authenticator not initialized, %v", err)
+			log.Print("portalHandler authenticator could not be initialized")
 			http.Error(w, "Server error", http.StatusInternalServerError)
+			return
 		}
 	}
 	sessionInfo := identity.InvalidSession()
@@ -1127,10 +1141,11 @@ func portalLibraryHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	if b.authenticator == nil {
 		var err error
-		b.authenticator, err = identity.NewAuthenticator(ctx)
+		b.authenticator, err = initAuth(ctx)
 		if err != nil {
-			log.Printf("portalLibraryHandler: authenticator not initialized, %v", err)
-			http.Error(w, "Not authorized", http.StatusForbidden)
+			log.Print("portalLibraryHandler authenticator could not be initialized")
+			http.Error(w, "Server error", http.StatusInternalServerError)
+			return
 		}
 	}
 	sessionInfo := identity.InvalidSession()
@@ -1187,10 +1202,11 @@ func requestResetHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	if b.authenticator == nil {
 		var err error
-		b.authenticator, err = identity.NewAuthenticator(ctx)
+		b.authenticator, err = initAuth(ctx)
 		if err != nil {
-			log.Printf("requestResetHandler: authenticator not initialized: %v", err)
-			http.Error(w, "Not authorized", http.StatusForbidden)
+			log.Print("requestResetHandler authenticator could not be initialized")
+			http.Error(w, "Server error", http.StatusInternalServerError)
+			return
 		}
 	}
 	email := r.PostFormValue("Email")
@@ -1233,10 +1249,11 @@ func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	if b.authenticator == nil {
 		var err error
-		b.authenticator, err = identity.NewAuthenticator(ctx)
+		b.authenticator, err = initAuth(ctx)
 		if err != nil {
-			log.Printf("resetPasswordHandler: authenticator not initialized, %v", err)
-			http.Error(w, "Not authorized", http.StatusForbidden)
+			log.Print("resetPasswordHandler authenticator could not be initialized")
+			http.Error(w, "Server error", http.StatusInternalServerError)
+			return
 		}
 	}
 	token := r.PostFormValue("Token")
@@ -1270,10 +1287,11 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	if b.authenticator == nil {
 		var err error
-		b.authenticator, err = identity.NewAuthenticator(ctx)
+		b.authenticator, err = initAuth(ctx)
 		if err != nil {
-			log.Printf("sessionHandler: authenticator not initialized, %v", err)
-			http.Error(w, "Not authorized", http.StatusForbidden)
+			log.Print("sessionHandler authenticator could not be initialized")
+			http.Error(w, "Server error", http.StatusInternalServerError)
+			return
 		}
 	}
 	sessionInfo := identity.InvalidSession()
@@ -1480,6 +1498,7 @@ func wordDetail(w http.ResponseWriter, r *http.Request) {
 
 //Entry point for the web application
 func main() {
+	start := time.Now()
 	log.Println("cnweb.main Iniitalizing cnweb")
 	ctx := context.Background()
 	var err error
@@ -1533,7 +1552,8 @@ func main() {
 	}
 
 	portStr := ":" + strconv.Itoa(config.GetPort())
-	log.Printf("cnweb.main Starting http server at http://localhost%s", portStr)
+	startupTime := time.Since(start)
+	log.Printf("cnweb.main Started in %d millis, http server running at http://localhost%s", startupTime.Milliseconds(), portStr)
 	err = http.ListenAndServe(portStr, nil)
 	if err != nil {
 		log.Printf("main() error for starting server: %v", err)

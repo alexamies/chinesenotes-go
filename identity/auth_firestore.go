@@ -20,19 +20,19 @@ type fsClient interface {
 // Implements the Authenticator interface with a Firestore client
 type authenticatorFS struct {
 	client fsClient
-	path   string
+	corpus string
 }
 
 // Create a new Authenticator with a Firestore client
-func NewAuthenticatorFS(client fsClient, path string) Authenticator {
+func NewAuthenticator(client fsClient, corpus string) Authenticator {
 	return authenticatorFS{
 		client: client,
-		path:   path,
+		corpus: corpus,
 	}
 }
 
 func (a authenticatorFS) ChangePassword(ctx context.Context, userInfo UserInfo, oldPassword, password string) ChangePasswordResult {
-	uPath := a.path + "/users"
+	uPath := a.corpus + "_users"
 	colRef := a.client.Collection(uPath)
 	user := colRef.Doc(userInfo.UserName)
 	users, err := a.CheckLogin(ctx, userInfo.UserName, oldPassword)
@@ -74,7 +74,11 @@ func (a authenticatorFS) ChangePassword(ctx context.Context, userInfo UserInfo, 
 
 func (a authenticatorFS) CheckLogin(ctx context.Context, username, password string) ([]UserInfo, error) {
 	log.Printf("CheckLogin for username %s", username)
-	uPath := a.path + "/users"
+	uPath := a.corpus + "_users"
+	if a.client == nil {
+		log.Println("CheckLogin, Firestore client is nil")
+		return nil, fmt.Errorf("server not configured")
+	}
 	colRef := a.client.Collection(uPath)
 	docRef := colRef.Doc(username)
 	var user UserInfo
@@ -89,15 +93,15 @@ func (a authenticatorFS) CheckLogin(ctx context.Context, username, password stri
 	h.Write([]byte(password))
 	hstr := fmt.Sprintf("%x", h.Sum(nil))
 	if user.Password != hstr {
-		log.Printf("CheckLogin, username %s, hstr %s does not match", username, hstr)
-		return []UserInfo{}, nil
+		log.Printf("CheckLogin, username %s, password %s does not match", username, hstr)
+		return nil, fmt.Errorf("password does not match")
 	}
 	return []UserInfo{user}, nil
 }
 
 func (a authenticatorFS) CheckSession(ctx context.Context, sessionid string) SessionInfo {
 	log.Printf("CheckSession, sessionid: %s\n", sessionid)
-	uPath := a.path + "/sessions"
+	uPath := a.corpus + "_sessions"
 	colRef := a.client.Collection(uPath)
 	docRef := colRef.Doc(sessionid)
 	doc, err := docRef.Get(ctx)
@@ -119,7 +123,7 @@ func (a authenticatorFS) CheckSession(ctx context.Context, sessionid string) Ses
 
 func (a authenticatorFS) GetUser(ctx context.Context, username string) ([]UserInfo, error) {
 	log.Println("GetUser, username:", username)
-	uPath := a.path + "/users"
+	uPath := a.corpus + "_users"
 	colRef := a.client.Collection(uPath)
 	docRef := colRef.Doc(username)
 	var user UserInfo
@@ -135,7 +139,7 @@ func (a authenticatorFS) GetUser(ctx context.Context, username string) ([]UserIn
 
 func (a authenticatorFS) Logout(ctx context.Context, sessionid string) {
 	log.Printf("Logout, sessionid: %s\n", sessionid)
-	uPath := a.path + "/sessions"
+	uPath := a.corpus + "_sessions"
 	colRef := a.client.Collection(uPath)
 	docRef := colRef.Doc(sessionid)
 	_, err := docRef.Delete(ctx)
@@ -162,7 +166,7 @@ func (a authenticatorFS) RequestPasswordReset(ctx context.Context, email string)
 		log.Println("RequestPasswordReset, Error: ", err)
 		return RequestResetResult{true, false, true, InvalidUser(), ""}
 	}
-	rPath := a.path + "/resets"
+	rPath := a.corpus + "_resets"
 	colRef := a.client.Collection(rPath)
 	docRef := colRef.Doc(token)
 	_, err = docRef.Set(ctx, RequestResetRecord{
@@ -187,7 +191,7 @@ func (a authenticatorFS) RequestPasswordReset(ctx context.Context, email string)
 
 func (a authenticatorFS) ResetPassword(ctx context.Context, token, password string) bool {
 	log.Println("ResetPassword, token:", token)
-	rPath := a.path + "/resets"
+	rPath := a.corpus + "_resets"
 	colRef := a.client.Collection(rPath)
 	docRef := colRef.Doc(token)
 	doc, err := docRef.Get(ctx)
@@ -204,7 +208,7 @@ func (a authenticatorFS) ResetPassword(ctx context.Context, token, password stri
 		log.Printf("ResetPassword, Request record is not valid for %s\n", token)
 		return false
 	}
-	uPath := a.path + "/users"
+	uPath := a.corpus + "_users"
 	uColRef := a.client.Collection(uPath)
 	uDocRef := uColRef.Doc(rRecord.UserName)
 	uDoc, err := uDocRef.Get(ctx)
@@ -237,7 +241,7 @@ func (a authenticatorFS) ResetPassword(ctx context.Context, token, password stri
 
 func (a authenticatorFS) SaveSession(ctx context.Context, sessionid string, userInfo UserInfo, authenticated int) SessionInfo {
 	log.Printf("SaveSession, sessionid: %s\n", sessionid)
-	uPath := a.path + "/sessions"
+	uPath := a.corpus + "_sessions"
 	colRef := a.client.Collection(uPath)
 	docRef := colRef.Doc(sessionid)
 	_, err := docRef.Set(ctx, SessionRecord{
@@ -262,7 +266,7 @@ func (a authenticatorFS) UpdateSession(ctx context.Context, sessionid string, us
 
 func (a authenticatorFS) getUserByEmail(ctx context.Context, email string) (UserInfo, error) {
 	log.Printf("getUserByEmail, email: %s", email)
-	uPath := a.path + "/users"
+	uPath := a.corpus + "_users"
 	colRef := a.client.Collection(uPath)
 	q := colRef.Where("substrings", "array-contains", email).Limit(100)
 	iter := q.Documents(ctx)
