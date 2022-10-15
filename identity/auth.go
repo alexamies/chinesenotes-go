@@ -72,6 +72,7 @@ type RequestResetRecord struct {
 	EmailValid          bool   `firestore:"email_valid"`
 	RequestResetSuccess bool   `firestore:"request_reset_success"`
 	Email               string `firestore:"email"`
+	UserName            string `firestore:"username"`
 	Token               string `firestore:"token"`
 }
 

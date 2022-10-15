@@ -162,13 +162,14 @@ func (a authenticatorFS) RequestPasswordReset(ctx context.Context, email string)
 		log.Println("RequestPasswordReset, Error: ", err)
 		return RequestResetResult{true, false, true, InvalidUser(), ""}
 	}
-	uPath := a.path + "/resets"
-	colRef := a.client.Collection(uPath)
-	docRef := colRef.Doc(email)
+	rPath := a.path + "/resets"
+	colRef := a.client.Collection(rPath)
+	docRef := colRef.Doc(token)
 	_, err = docRef.Set(ctx, RequestResetRecord{
 		EmailValid:          true,
 		RequestResetSuccess: true,
 		Email:               email,
+		UserName:            user.UserName,
 		Token:               token,
 	})
 	if err != nil {
@@ -185,7 +186,53 @@ func (a authenticatorFS) RequestPasswordReset(ctx context.Context, email string)
 }
 
 func (a authenticatorFS) ResetPassword(ctx context.Context, token, password string) bool {
-	return false
+	log.Println("ResetPassword, token:", token)
+	rPath := a.path + "/resets"
+	colRef := a.client.Collection(rPath)
+	docRef := colRef.Doc(token)
+	doc, err := docRef.Get(ctx)
+	if err != nil {
+		log.Printf("ResetPassword, error looking up token %s\n", token)
+		return false
+	}
+	var rRecord RequestResetRecord
+	if err := doc.DataTo(&rRecord); err != nil {
+		log.Printf("ResetPassword, error reading request record for %s\n", token)
+		return false
+	}
+	if !rRecord.EmailValid {
+		log.Printf("ResetPassword, Request record is not valid for %s\n", token)
+		return false
+	}
+	uPath := a.path + "/users"
+	uColRef := a.client.Collection(uPath)
+	uDocRef := uColRef.Doc(rRecord.UserName)
+	uDoc, err := uDocRef.Get(ctx)
+	if err != nil {
+		log.Printf("ResetPassword error getting user record for %s:, %v", rRecord.UserName, err)
+		return false
+	}
+	var user UserInfo
+	if err := uDoc.DataTo(&user); err != nil {
+		log.Printf("ResetPassword, error reading user record for %s: %v\n", rRecord.UserName, err)
+		return false
+	}
+
+	h := sha256.New()
+	h.Write([]byte(password))
+	hstr := fmt.Sprintf("%x", h.Sum(nil))
+	_, err = uDocRef.Update(ctx, []firestore.Update{{Path: "Password", Value: hstr}})
+	if err != nil {
+		log.Printf("ResetPassword, error setting password for %s: %v\n", rRecord.UserName, err)
+		return false
+	}
+	_, err = docRef.Update(ctx, []firestore.Update{{Path: "EmailValid", Value: false}})
+	if err != nil {
+		log.Printf("ResetPassword, error updating EmailValid for %s: %v\n", rRecord.UserName, err)
+		return false
+	}
+	log.Println("ResetPassword, successful")
+	return true
 }
 
 func (a authenticatorFS) SaveSession(ctx context.Context, sessionid string, userInfo UserInfo, authenticated int) SessionInfo {
