@@ -92,7 +92,7 @@ type UserInfo struct {
 	UserID   int    `firestore:"userid"`
 	UserName string `firestore:"username"`
 	Email    string `firestore:"email"`
-	FullName string `firestore:"full_name"`
+	FullName string `firestore:"fullname"`
 	Role     string `firestore:"role"`
 	Password string `firestore:"password"`
 }

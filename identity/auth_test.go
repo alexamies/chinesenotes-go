@@ -15,22 +15,7 @@ package identity
 
 import (
 	"testing"
-
-	"cloud.google.com/go/firestore"
 )
-
-type mockFsClient struct {
-}
-
-func (m mockFsClient) Collection(path string) *firestore.CollectionRef {
-	if len(path) == 0 {
-		return nil
-	}
-	return &firestore.CollectionRef{
-		Path:  path,
-		Query: firestore.Query{},
-	}
-}
 
 func TestNewSessionId(t *testing.T) {
 	sessionid := NewSessionId()

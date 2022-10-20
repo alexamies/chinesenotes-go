@@ -73,13 +73,17 @@ func (a authenticatorFS) ChangePassword(ctx context.Context, userInfo UserInfo, 
 }
 
 func (a authenticatorFS) CheckLogin(ctx context.Context, username, password string) ([]UserInfo, error) {
-	log.Printf("CheckLogin for username %s", username)
+	log.Printf("CheckLogin for username %s in corpus %s", username, a.corpus)
 	uPath := a.corpus + "_users"
 	if a.client == nil {
 		log.Println("CheckLogin, Firestore client is nil")
 		return nil, fmt.Errorf("server not configured")
 	}
 	colRef := a.client.Collection(uPath)
+	if colRef == nil {
+		log.Println("CheckLogin, colRef is nil")
+		return nil, fmt.Errorf("server not configured")
+	}
 	docRef := colRef.Doc(username)
 	var user UserInfo
 	doc, err := docRef.Get(ctx)
@@ -94,7 +98,7 @@ func (a authenticatorFS) CheckLogin(ctx context.Context, username, password stri
 	hstr := fmt.Sprintf("%x", h.Sum(nil))
 	if user.Password != hstr {
 		log.Printf("CheckLogin, username %s, password %s does not match", username, hstr)
-		return nil, fmt.Errorf("password does not match")
+		return []UserInfo{}, nil
 	}
 	return []UserInfo{user}, nil
 }

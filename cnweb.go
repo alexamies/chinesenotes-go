@@ -977,7 +977,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(users) != 1 {
-		log.Println("loginHandler: user not found", username)
+		log.Printf("loginHandler: user %s not found or password does not match", username)
 	} else {
 		cookie, err := r.Cookie("session")
 		if err == nil {
