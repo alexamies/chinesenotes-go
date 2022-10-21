@@ -1388,10 +1388,6 @@ func translationMemory(w http.ResponseWriter, r *http.Request) {
 			content := htmlContent{
 				Title: title,
 			}
-			if !config.UseDatabase() {
-				log.Println("translationMemory database is needed for this feature")
-				content.ErrorMsg = "Translation memory not configured"
-			}
 			b.pageDisplayer.DisplayPage(w, "findtm.html", content)
 			return
 		}
