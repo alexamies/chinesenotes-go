@@ -331,12 +331,6 @@ func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
 
 // Display change password form
 func changePasswordFormHandler(w http.ResponseWriter, r *http.Request) {
-	d := os.Getenv("DATABASE")
-	if len(d) == 0 {
-		log.Print("changePasswordFormHandler database not initialized")
-		http.Error(w, "Not authorized", http.StatusForbidden)
-		return
-	}
 	ctx := context.Background()
 	sessionInfo := b.sessionEnforcer.EnforceValidSession(ctx, w, r)
 	if sessionInfo.Authenticated == 1 {
