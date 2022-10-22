@@ -32,12 +32,13 @@ func NewAuthenticator(client fsClient, corpus string) Authenticator {
 }
 
 func (a authenticatorFS) ChangePassword(ctx context.Context, userInfo UserInfo, oldPassword, password string) ChangePasswordResult {
+	log.Printf("ChangePassword for user, %s", userInfo.UserName)
 	uPath := a.corpus + "_users"
 	colRef := a.client.Collection(uPath)
 	user := colRef.Doc(userInfo.UserName)
 	users, err := a.CheckLogin(ctx, userInfo.UserName, oldPassword)
 	if err != nil {
-		log.Printf("ChangePassword checking login, %v", err)
+		log.Printf("ChangePassword error checking login for %s: %v", userInfo.UserName, err)
 		return ChangePasswordResult{
 			OldPasswordValid: true,
 			ChangeSuccessful: false,
@@ -45,7 +46,7 @@ func (a authenticatorFS) ChangePassword(ctx context.Context, userInfo UserInfo, 
 		}
 	}
 	if len(users) != 1 {
-		log.Printf("ChangePassword, user or password wrong: %s", userInfo.UserName)
+		log.Printf("ChangePassword, user or password wrong for %s", userInfo.UserName)
 		return ChangePasswordResult{
 			OldPasswordValid: false,
 			ChangeSuccessful: false,
@@ -57,14 +58,14 @@ func (a authenticatorFS) ChangePassword(ctx context.Context, userInfo UserInfo, 
 	hstr := fmt.Sprintf("%x", h.Sum(nil))
 	_, err = user.Update(ctx, []firestore.Update{{Path: "Password", Value: hstr}})
 	if err != nil {
-		log.Printf("ChangePassword, Error: %v", err)
+		log.Printf("ChangePassword, Error setting password for %s: %v", userInfo.UserName, err)
 		return ChangePasswordResult{
 			OldPasswordValid: true,
 			ChangeSuccessful: false,
 			ShowNewForm:      false,
 		}
 	}
-	log.Println("ChangePassword, successful")
+	log.Printf("ChangePassword, successful for %s", userInfo.UserName)
 	return ChangePasswordResult{
 		OldPasswordValid: true,
 		ChangeSuccessful: true,

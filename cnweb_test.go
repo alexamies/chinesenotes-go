@@ -381,6 +381,16 @@ func TestChangePasswordHandler(t *testing.T) {
 }
 
 func TestChangePasswordFormHandler(t *testing.T) {
+	authenticator := makeAuthenticatorMock()
+	templates := templates.NewTemplateMap(config.WebAppConfig{})
+	pageDisplayer := httphandling.NewPageDisplayer(templates)
+	sessionEnforcer := httphandling.NewSessionEnforcer(authenticator, pageDisplayer)
+	b = &backends{
+		templates:       templates,
+		authenticator:   authenticator,
+		pageDisplayer:   pageDisplayer,
+		sessionEnforcer: sessionEnforcer,
+	}
 	type test struct {
 		name           string
 		expectContains string
@@ -401,6 +411,7 @@ func TestChangePasswordFormHandler(t *testing.T) {
 				tc.name, tc.expectContains, result)
 		}
 	}
+	b = nil
 }
 
 func TestCustom404(t *testing.T) {
@@ -839,7 +850,6 @@ func TestGetSiteDomain(t *testing.T) {
 
 func TestHealthcheck(t *testing.T) {
 	os.Setenv("PROTECTED", "true")
-	os.Setenv("DATABASE", "abcd")
 	type test struct {
 		name           string
 		expectContains string
@@ -852,10 +862,6 @@ func TestHealthcheck(t *testing.T) {
 		{
 			name:           "Check password protected",
 			expectContains: "Password protected: true",
-		},
-		{
-			name:           "Check database set",
-			expectContains: "Using a database: true",
 		},
 	}
 	for _, tc := range tests {
@@ -870,7 +876,6 @@ func TestHealthcheck(t *testing.T) {
 		}
 	}
 	os.Unsetenv("PROTECTED")
-	os.Unsetenv("DATABASE")
 }
 
 func TestLibrary(t *testing.T) {

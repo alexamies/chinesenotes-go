@@ -92,44 +92,6 @@ func (c WebAppConfig) GetVarWithDefault(key, defaultVal string) string {
 	return val
 }
 
-// DBConfig gets the configuration string to connect to the database
-func DBConfig() string {
-	instanceConnectionName := os.Getenv("INSTANCE_CONNECTION_NAME")
-	dbUser := "app_user"
-	user := os.Getenv("DBUSER")
-	if user != "" {
-		dbUser = user
-	}
-	dbpass := os.Getenv("DBPASSWORD")
-	dbname := "corpus_index"
-	d := os.Getenv("DATABASE")
-	if d != "" {
-		dbname = d
-	}
-	// Connection via Unix socket
-	if len(instanceConnectionName) > 0 {
-		socketDir, isSet := os.LookupEnv("DB_SOCKET_DIR")
-		if !isSet {
-			socketDir = "/cloudsql"
-		}
-		return fmt.Sprintf("%s:%s@unix(/%s/%s)/%s?parseTime=true", dbUser, dbpass,
-			socketDir, instanceConnectionName, dbname)
-	}
-	// Connection via TCP
-	dbhost := "localhost"
-	host := os.Getenv("DBHOST")
-	if host != "" {
-		dbhost = host
-	}
-	dbport := "3306"
-	port := os.Getenv("DBPORT")
-	if port != "" {
-		dbport = port
-	}
-	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbpass, dbhost,
-		dbport, dbname)
-}
-
 // GetCnReaderHome gets the home directory of the Chinese Notes project
 func GetCnReaderHome() string {
 	cnReaderHome := os.Getenv("CNREADER_HOME")
@@ -218,10 +180,4 @@ func PasswordProtected() bool {
 		return strings.ToLower(protected) == "true"
 	}
 	return false
-}
-
-// PasswordProtected gets whether the web site is password projected.
-func UseDatabase() bool {
-	database := os.Getenv("DATABASE")
-	return len(database) > 0
 }

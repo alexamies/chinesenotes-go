@@ -19,7 +19,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -42,7 +41,6 @@ import (
 	"github.com/alexamies/chinesenotes-go/fulltext"
 	"github.com/alexamies/chinesenotes-go/httphandling"
 	"github.com/alexamies/chinesenotes-go/identity"
-	"github.com/alexamies/chinesenotes-go/media"
 	"github.com/alexamies/chinesenotes-go/templates"
 	"github.com/alexamies/chinesenotes-go/termfreq"
 	"github.com/alexamies/chinesenotes-go/transmemory"
@@ -60,14 +58,12 @@ const (
 )
 
 var (
-	b             *backends
-	mediaSearcher *media.MediaSearcher
+	b *backends
 )
 
 // backends holds dependencies that access remote resources
 type backends struct {
 	appConfig                                             config.AppConfig
-	database                                              *sql.DB
 	docMap                                                map[string]find.DocInfo
 	df                                                    find.DocFinder
 	dict                                                  *dictionary.Dictionary
@@ -127,14 +123,6 @@ func initApp(ctx context.Context) (*backends, error) {
 	} else {
 		defer configFile.Close()
 		webConfig = config.InitWeb(configFile)
-	}
-	var database *sql.DB
-	log.Printf("initApp UseDatabase %t", config.UseDatabase())
-	if config.UseDatabase() {
-		database, err = initDBCon()
-		if err != nil {
-			return nil, fmt.Errorf("initApp unable to connect to database: %v", err)
-		}
 	}
 	var substrIndex dictionary.SubstringIndex
 	var fsClient *firestore.Client
@@ -215,7 +203,6 @@ func initApp(ctx context.Context) (*backends, error) {
 
 	bends := &backends{
 		appConfig:       appConfig,
-		database:        database,
 		docMap:          docMap,
 		df:              find.NewDocFinder(tfDocFinder, titleFinder),
 		dict:            dict,
@@ -298,18 +285,23 @@ func initDictSSIndexFS(client *firestore.Client, c config.AppConfig, dict *dicti
 
 // Process a change password request
 func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
+	log.Print("changePasswordHandler enter")
 	ctx := context.Background()
 	if b.authenticator == nil {
 		var err error
 		b.authenticator, err = initAuth(ctx)
 		if err != nil {
-			log.Print("changePasswordHandler authenticator could not be initialized")
+			log.Printf("changePasswordHandler authenticator could not be initialized: %v", err)
 			http.Error(w, "Server error", http.StatusInternalServerError)
 			return
 		}
 	}
 	sessionInfo := b.sessionEnforcer.EnforceValidSession(ctx, w, r)
-	if sessionInfo.Authenticated == 1 {
+	if sessionInfo.Authenticated != 1 {
+		log.Printf("changePasswordHandler not authenticated: %d", sessionInfo.Authenticated)
+		http.Error(w, "Not authenticated", http.StatusForbidden)
+		return
+	} else {
 		oldPassword := r.PostFormValue("OldPassword")
 		password := r.PostFormValue("Password")
 		result := b.authenticator.ChangePassword(ctx, sessionInfo.User, oldPassword,
@@ -333,7 +325,11 @@ func changePasswordHandler(w http.ResponseWriter, r *http.Request) {
 func changePasswordFormHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	sessionInfo := b.sessionEnforcer.EnforceValidSession(ctx, w, r)
-	if sessionInfo.Authenticated == 1 {
+	if sessionInfo.Authenticated != 1 {
+		log.Printf("changePasswordHandler not authenticated: %d", sessionInfo.Authenticated)
+		http.Error(w, "Not authenticated", http.StatusForbidden)
+		return
+	} else {
 		title := b.webConfig.GetVarWithDefault("Title", defTitle)
 		result := ChangePasswordHTML{
 			Title:            title,
@@ -888,13 +884,7 @@ func findSubstring(response http.ResponseWriter, request *http.Request) {
 // Health check for monitoring or load balancing system, checks reachability
 func healthcheck(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "OK")
-	fmt.Fprintf(w, "Using a database: %t", config.UseDatabase())
 	fmt.Fprintf(w, "Password protected: %t", config.PasswordProtected())
-}
-
-func initDBCon() (*sql.DB, error) {
-	conString := config.DBConfig()
-	return sql.Open("mysql", conString)
 }
 
 // Display library page for digital texts
@@ -1055,47 +1045,6 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	message := "Please come back again"
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	fmt.Fprintf(w, "{\"message\" :\"%s\"}", message)
-}
-
-// Retrieves detail about media objects
-func mediaDetailHandler(response http.ResponseWriter, request *http.Request) {
-	ctx := context.Background()
-	if mediaSearcher == nil {
-		mediaSearcher = media.NewMediaSearcher(b.database, ctx)
-		if !mediaSearcher.Initialized() {
-			log.Println("main.mediaDetailHandler initializing media searcher")
-			http.Error(response, "Error marshalling results",
-				http.StatusInternalServerError)
-			return
-		}
-	}
-	if !mediaSearcher.Initialized() {
-		mediaSearcher.InitQuery(ctx)
-	}
-	queryString := request.URL.Query()
-	query := queryString["mediumResolution"]
-	log.Printf("mediaDetailHandler: query: %s", query)
-	q := "No Query"
-	if len(query) > 0 {
-		q = query[0]
-	}
-	results, err := mediaSearcher.FindMedia(q, ctx)
-	if err != nil {
-		log.Println("main.mediaDetailHandler Error retrieving media detail, ",
-			err)
-		http.Error(response, "Error retrieving media detail",
-			http.StatusInternalServerError)
-		return
-	}
-	resultsJson, err := json.Marshal(results)
-	if err != nil {
-		log.Printf("main.mediaDetailHandler error marshalling JSON, %v", err)
-		http.Error(response, "Error marshalling results",
-			http.StatusInternalServerError)
-	} else {
-		response.Header().Set("Content-Type", "application/json; charset=utf-8")
-		fmt.Fprint(response, string(resultsJson))
-	}
 }
 
 // portalHandler is the starting point for the Translation Portal
@@ -1501,7 +1450,6 @@ func main() {
 	http.HandleFunc("/#", findHandler)
 	http.HandleFunc("/find/", findHandler)
 	http.HandleFunc("/findadvanced/", findFullText)
-	http.HandleFunc("/findmedia", mediaDetailHandler)
 	http.HandleFunc("/findsubstring", findSubstring)
 	http.HandleFunc("/findtm", translationMemory)
 	http.HandleFunc("/healthcheck", healthcheck)
