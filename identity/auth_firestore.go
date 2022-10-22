@@ -273,7 +273,7 @@ func (a authenticatorFS) getUserByEmail(ctx context.Context, email string) (User
 	log.Printf("getUserByEmail, email: %s", email)
 	uPath := a.corpus + "_users"
 	colRef := a.client.Collection(uPath)
-	q := colRef.Where("substrings", "array-contains", email).Limit(100)
+	q := colRef.Where("email", "==", email).Limit(100)
 	iter := q.Documents(ctx)
 	defer iter.Stop()
 	for {
