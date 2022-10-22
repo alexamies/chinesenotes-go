@@ -230,7 +230,7 @@ func (a authenticatorFS) ResetPassword(ctx context.Context, token, password stri
 	h := sha256.New()
 	h.Write([]byte(password))
 	hstr := fmt.Sprintf("%x", h.Sum(nil))
-	_, err = uDocRef.Update(ctx, []firestore.Update{{Path: "Password", Value: hstr}})
+	_, err = uDocRef.Update(ctx, []firestore.Update{{Path: "password", Value: hstr}})
 	if err != nil {
 		log.Printf("ResetPassword, error setting password for %s: %v\n", rRecord.UserName, err)
 		return false
