@@ -56,7 +56,7 @@ func (a authenticatorFS) ChangePassword(ctx context.Context, userInfo UserInfo, 
 	h := sha256.New()
 	h.Write([]byte(password))
 	hstr := fmt.Sprintf("%x", h.Sum(nil))
-	_, err = user.Update(ctx, []firestore.Update{{Path: "Password", Value: hstr}})
+	_, err = user.Update(ctx, []firestore.Update{{Path: "password", Value: hstr}})
 	if err != nil {
 		log.Printf("ChangePassword, Error setting password for %s: %v", userInfo.UserName, err)
 		return ChangePasswordResult{
