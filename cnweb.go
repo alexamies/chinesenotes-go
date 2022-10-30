@@ -1467,7 +1467,9 @@ func main() {
 	http.HandleFunc("/loggedin/reset_password", resetPasswordFormHandler)
 	http.HandleFunc("/loggedin/reset_password_submit", resetPasswordHandler)
 	http.HandleFunc("/loggedin/submitcpwd", changePasswordHandler)
-	initTranslationClients(b)
+	if b != nil {
+		initTranslationClients(b)
+	}
 	http.HandleFunc("/translateprocess", processTranslation)
 	http.HandleFunc("/translate", translationHome)
 	http.HandleFunc("/words/", wordDetail)
