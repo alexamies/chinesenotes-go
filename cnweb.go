@@ -652,6 +652,7 @@ func highlightMatches(r find.QueryResults) find.QueryResults {
 
 // initTranslationClients initializes translation API clients and processing utility.
 func initTranslationClients(b *backends) {
+	log.Println("cnweb.initTranslationClients enter")
 	deepLKey, ok := os.LookupEnv(deepLKeyName)
 	if !ok {
 		log.Printf("%s not set\n", deepLKeyName)
@@ -1469,6 +1470,8 @@ func main() {
 	http.HandleFunc("/loggedin/submitcpwd", changePasswordHandler)
 	if b != nil {
 		initTranslationClients(b)
+	} else {
+		log.Println("cnweb.man b == nil")
 	}
 	http.HandleFunc("/translateprocess", processTranslation)
 	http.HandleFunc("/translate", translationHome)
