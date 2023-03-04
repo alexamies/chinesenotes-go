@@ -8,7 +8,7 @@ require (
 	cloud.google.com/go/translate v1.2.0
 	github.com/google/go-cmp v0.5.8
 	github.com/sendgrid/sendgrid-go v3.5.0+incompatible
-	golang.org/x/text v0.3.8
+	golang.org/x/text v0.7.0
 	google.golang.org/api v0.80.0
 	google.golang.org/genproto v0.0.0-20220523171625-347a074981d8
 )
@@ -24,9 +24,9 @@ require (
 	github.com/googleapis/go-type-adapters v1.0.0 // indirect
 	github.com/sendgrid/rest v2.4.1+incompatible // indirect
 	go.opencensus.io v0.23.0 // indirect
-	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4 // indirect
+	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5 // indirect
-	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
+	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220517211312-f3a8303e98df // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/grpc v1.46.2 // indirect
