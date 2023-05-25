@@ -646,7 +646,6 @@ above. It may take time for the DNS record to propagate.
 At this point you should be able to access the site via the custom domain.
 
 ```shell
-SITEDOMAIN=[output from command above]
 curl http://${SITEDOMAIN}
 ```
 

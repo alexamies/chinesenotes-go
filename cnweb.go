@@ -406,6 +406,7 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 			b.pageDisplayer.DisplayPage(w, "login_form.html", content)
 			return
 		} else {
+			log.Printf("displayHome: displaying index_auth.html for url %s", r.URL.Path)
 			b.pageDisplayer.DisplayPage(w, "index_auth.html", content)
 			return
 		}
@@ -1486,7 +1487,13 @@ func main() {
 			log.Printf("main error getting GCS client %v", err)
 		} else {
 			sh := httphandling.NewGcsHandler(gcsClient, staticBucket, b.sessionEnforcer)
-			http.Handle("/web/", http.StripPrefix("/web/", sh))
+			urlPrefix := b.webConfig.GetVar("URLPrefix")
+			log.Printf("main: urlPrefix: %s", urlPrefix)
+			if len(urlPrefix) > 0 {
+				http.Handle(urlPrefix, sh)
+			} else {
+				http.Handle("/web/", http.StripPrefix("/web/", sh))
+			}
 		}
 	} else {
 		log.Println("main: initializing local file static content handler")
