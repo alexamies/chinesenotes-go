@@ -406,12 +406,12 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 			b.pageDisplayer.DisplayPage(w, "login_form.html", content)
 			return
 		} else {
-			log.Printf("displayHome: displaying index_auth.html for url %s", r.URL.Path)
-			b.pageDisplayer.DisplayPage(w, "index_auth.html", content)
+			log.Printf("displayHome: using index_auth_template.html for url %s", r.URL.Path)
+			b.pageDisplayer.DisplayPage(w, "index_auth_template.html", content)
 			return
 		}
 	}
-
+	log.Printf("displayHome: template index.html for url %s", r.URL.Path)
 	b.pageDisplayer.DisplayPage(w, "index.html", content)
 }
 
