@@ -731,8 +731,13 @@ func NewTemplateMap(webConfig config.WebAppConfig) map[string]*template.Template
 			if err != nil {
 				log.Printf("newTemplateMap: error parsing template, using default %s: %v",
 					tName, err)
-				t := fmt.Sprintf(defTmpl, head, header, nav, footer)
-				tmpl = template.Must(template.New(tName).Parse(t))
+        if tName != loginTmp {
+				  t := fmt.Sprintf(defTmpl, head, header, nav, footer)
+				  tmpl = template.Must(template.New(tName).Parse(t))
+        } else {
+          t := fmt.Sprintf(defTmpl, head, header, "", footer)
+          tmpl = template.Must(template.New(tName).Parse(t))
+        }
 			}
 			templateMap[tName] = tmpl
 		}
