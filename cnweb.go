@@ -994,7 +994,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			content := htmlContent{
 				Title: title,
 			}
-			b.pageDisplayer.DisplayPage(w, "index_auth.html", content)
+			b.pageDisplayer.DisplayPage(w, "index.html", content)
 		} else {
 			loginFormHandler(w, r)
 		}
