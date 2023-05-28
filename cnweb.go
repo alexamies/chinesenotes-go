@@ -1448,7 +1448,11 @@ func main() {
 		log.Printf("main() error for initApp, will retry on subsequent HTTP requests: %v", err)
 	}
 
-	http.HandleFunc("/", displayHome)
+	urlPrefix := b.webConfig.GetVar("URLPrefix")
+	log.Printf("main: urlPrefix: %s", urlPrefix)
+	if urlPrefix != "/" {
+		http.HandleFunc("/", displayHome)
+	}
 	http.HandleFunc("/#", findHandler)
 	http.HandleFunc("/find/", findHandler)
 	http.HandleFunc("/findadvanced/", findFullText)
@@ -1491,9 +1495,8 @@ func main() {
 			log.Printf("main: urlPrefix: %s", urlPrefix)
 			if len(urlPrefix) > 0 {
 				http.Handle(urlPrefix, sh)
-			} else {
-				http.Handle("/web/", http.StripPrefix("/web/", sh))
 			}
+			http.Handle("/web/", http.StripPrefix("/web/", sh))
 		}
 	} else {
 		log.Println("main: initializing local file static content handler")
