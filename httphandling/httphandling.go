@@ -86,7 +86,10 @@ func (h gcsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	fname := r.URL.Path
+	fname := strings.TrimPrefix(r.URL.Path, "/")
+	if len(fname) == 0 {
+		fname = "index.html"
+	}
 	rc, err := h.client.Bucket(h.bucket).Object(fname).NewReader(ctx)
 	if err != nil {
 		log.Printf("gcsHandler.ServeHTTP, error reading file %s, %v", fname, err)
