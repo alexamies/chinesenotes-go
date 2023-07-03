@@ -1,6 +1,7 @@
 .vscode/
 c.out
 chinesenotes-go
+chinesenotes-go.code-workspace
 coverage.html
 coverage.out
 glossary_test_output.csv
