@@ -80,16 +80,18 @@ func NewGcsHandler(client *storage.Client, bucket string, enforcer SessionEnforc
 // ServeHTTP handles requests for static files from GCS
 func (h gcsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
-	if config.PasswordProtected() {
-		sessionInfo := h.enforcer.EnforceValidSession(ctx, w, r)
-		if !sessionInfo.Valid {
-			return
-		}
-	}
 	fname := strings.TrimPrefix(r.URL.Path, "/")
 	if len(fname) == 0 {
 		fname = "index.html"
 	}
+	if config.PasswordProtected() {
+		sessionInfo := h.enforcer.EnforceValidSession(ctx, w, r)
+		if !sessionInfo.Valid {
+			// Forward to login page
+			fname = "login_form.html"
+		}
+	}
+	log.Printf("gcsHandler.ServeHTTP, fname = %s", fname)
 	rc, err := h.client.Bucket(h.bucket).Object(fname).NewReader(ctx)
 	if err != nil {
 		log.Printf("gcsHandler.ServeHTTP, error reading file %s, %v", fname, err)
