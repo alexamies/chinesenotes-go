@@ -155,8 +155,10 @@ func (s sessionEnforcer) EnforceValidSession(ctx context.Context, w http.Respons
 			return sessionInfo
 		}
 	} else {
-		log.Printf("EnforceValidSession, Invalid session %v, err: %v", sessionInfo.User, err)
-		http.Error(w, "Not authorized", http.StatusForbidden)
+		log.Printf("EnforceValidSession, Invalid session %v, err: %v, AcceptHTML(r): %t", sessionInfo.User, err, AcceptHTML(r))
+		if !AcceptHTML(r) {
+			http.Error(w, "Not authorized", http.StatusForbidden)
+		}
 		return identity.InvalidSession()
 	}
 	return sessionInfo
