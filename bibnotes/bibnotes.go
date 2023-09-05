@@ -32,8 +32,9 @@ type BibNotesClient interface {
 
 // TransRef holds information on references for English translations of texts
 type TransRef struct {
-	Kind string // full or partial
+	Kind string // full, partial, or parallel
 	Ref  string // Harvard style citation, may have markup
+	URL  string // May be a file name if type is parallel (bilingual)
 }
 
 // ParellelRef holds information on references for parallel versions of texts
@@ -140,6 +141,9 @@ func loadTransRef(f io.Reader) (*map[string][]TransRef, error) {
 		ref := TransRef{
 			Kind: row[1],
 			Ref:  row[2],
+		}
+		if len(row) > 3 {
+			ref.URL = row[3]
 		}
 		refs, ok := refNo2Trans[key]
 		if ok {
