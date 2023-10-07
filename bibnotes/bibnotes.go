@@ -82,12 +82,12 @@ func loadFile2Ref(f io.Reader) (*map[string]string, error) {
 	file2Ref := make(map[string]string)
 	for i, row := range rows {
 		if len(row) < 2 {
-			log.Printf("loadFile2Ref: row %d, expected 2 elements but got %d", i,
-				len(row))
+			log.Printf("loadFile2Ref: row %d, expected 2 elements but got %d", i, len(row))
 			continue
 		}
 		file2Ref[row[1]] = row[0]
 	}
+	log.Printf("loadFile2Ref: loaded %d, rows", len(file2Ref))
 	return &file2Ref, nil
 }
 
