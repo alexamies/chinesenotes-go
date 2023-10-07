@@ -102,8 +102,8 @@ func loadParallelRef(f io.Reader) (*map[string][]ParellelRef, error) {
 	refNo2Parallel := make(map[string][]ParellelRef)
 	for i, row := range rows {
 		if len(row) < 3 {
-			log.Printf("loadParallelRef: row %d, expected 3 elements but got %d", i,
-				len(row))
+			log.Printf("loadParallelRef: row %d, expected 3 elements but got %d, row: %v", i,
+				len(row), row)
 			continue
 		}
 		key := row[0]
