@@ -102,8 +102,7 @@ func loadParallelRef(f io.Reader) (*map[string][]ParellelRef, error) {
 	refNo2Parallel := make(map[string][]ParellelRef)
 	for i, row := range rows {
 		if len(row) < 3 {
-			log.Printf("loadParallelRef: row %d, expected 3 elements but got %d, row: %v", i,
-				len(row), row)
+			log.Printf("loadParallelRef: row %d, expected 3 elements but got %d, row: %v", i, len(row), row)
 			continue
 		}
 		key := row[0]
@@ -119,6 +118,7 @@ func loadParallelRef(f io.Reader) (*map[string][]ParellelRef, error) {
 		}
 		refNo2Parallel[key] = refs
 	}
+	log.Printf("loadParallelRef: loaded %d, rows", len(refNo2Parallel))
 	return &refNo2Parallel, nil
 }
 
@@ -133,8 +133,7 @@ func loadTransRef(f io.Reader) (*map[string][]TransRef, error) {
 	refNo2Trans := make(map[string][]TransRef)
 	for i, row := range rows {
 		if len(row) < 3 {
-			log.Printf("loadTransRef: row %d, expected 3 elements but got %d", i,
-				len(row))
+			log.Printf("loadTransRef: row %d, expected 3 elements but got %d", i, len(row))
 			continue
 		}
 		key := row[0]
@@ -153,6 +152,7 @@ func loadTransRef(f io.Reader) (*map[string][]TransRef, error) {
 		}
 		refNo2Trans[key] = refs
 	}
+	log.Printf("loadTransRef: loaded %d rows", len(refNo2Trans))
 	return &refNo2Trans, nil
 }
 
