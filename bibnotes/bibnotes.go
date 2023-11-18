@@ -171,12 +171,12 @@ func (client bibNotesClient) GetParallelRefs(fileName string) []ParellelRef {
 func (client bibNotesClient) GetTransRefs(fileName string) []TransRef {
 	refNo, ok := client.file2Ref[fileName]
 	if !ok {
-		log.Printf("GetTransRefs: no value for fileName = %s", fileName)
+		// log.Printf("GetTransRefs: no value for fileName = %s", fileName)
 		return []TransRef{}
 	}
 	transRefs, ok := client.refNo2Trans[refNo]
 	if !ok {
-		log.Printf("GetTransRefs: no value for refNo = %s", refNo)
+		// log.Printf("GetTransRefs: no value for refNo = %s", refNo)
 		return []TransRef{}
 	}
 	return transRefs
