@@ -32,8 +32,9 @@ type BibNotesClient interface {
 
 // TransRef holds information on references for English translations of texts
 type TransRef struct {
-	Kind string // full or partial
+	Kind string // full, partial, or parallel
 	Ref  string // Harvard style citation, may have markup
+	URL  string // May be a file name if type is parallel (bilingual)
 }
 
 // ParellelRef holds information on references for parallel versions of texts
@@ -81,12 +82,12 @@ func loadFile2Ref(f io.Reader) (*map[string]string, error) {
 	file2Ref := make(map[string]string)
 	for i, row := range rows {
 		if len(row) < 2 {
-			log.Printf("loadFile2Ref: row %d, expected 2 elements but got %d", i,
-				len(row))
+			log.Printf("loadFile2Ref: row %d, expected 2 elements but got %d", i, len(row))
 			continue
 		}
 		file2Ref[row[1]] = row[0]
 	}
+	log.Printf("loadFile2Ref: loaded %d, rows", len(file2Ref))
 	return &file2Ref, nil
 }
 
@@ -101,8 +102,7 @@ func loadParallelRef(f io.Reader) (*map[string][]ParellelRef, error) {
 	refNo2Parallel := make(map[string][]ParellelRef)
 	for i, row := range rows {
 		if len(row) < 3 {
-			log.Printf("loadParallelRef: row %d, expected 3 elements but got %d", i,
-				len(row))
+			log.Printf("loadParallelRef: row %d, expected 3 elements but got %d, row: %v", i, len(row), row)
 			continue
 		}
 		key := row[0]
@@ -118,6 +118,7 @@ func loadParallelRef(f io.Reader) (*map[string][]ParellelRef, error) {
 		}
 		refNo2Parallel[key] = refs
 	}
+	log.Printf("loadParallelRef: loaded %d, rows", len(refNo2Parallel))
 	return &refNo2Parallel, nil
 }
 
@@ -132,14 +133,16 @@ func loadTransRef(f io.Reader) (*map[string][]TransRef, error) {
 	refNo2Trans := make(map[string][]TransRef)
 	for i, row := range rows {
 		if len(row) < 3 {
-			log.Printf("loadTransRef: row %d, expected 3 elements but got %d", i,
-				len(row))
+			log.Printf("loadTransRef: row %d, expected 3 elements but got %d", i, len(row))
 			continue
 		}
 		key := row[0]
 		ref := TransRef{
 			Kind: row[1],
 			Ref:  row[2],
+		}
+		if len(row) > 3 {
+			ref.URL = row[3]
 		}
 		refs, ok := refNo2Trans[key]
 		if ok {
@@ -149,6 +152,7 @@ func loadTransRef(f io.Reader) (*map[string][]TransRef, error) {
 		}
 		refNo2Trans[key] = refs
 	}
+	log.Printf("loadTransRef: loaded %d rows", len(refNo2Trans))
 	return &refNo2Trans, nil
 }
 
@@ -167,10 +171,12 @@ func (client bibNotesClient) GetParallelRefs(fileName string) []ParellelRef {
 func (client bibNotesClient) GetTransRefs(fileName string) []TransRef {
 	refNo, ok := client.file2Ref[fileName]
 	if !ok {
+		// log.Printf("GetTransRefs: no value for fileName = %s", fileName)
 		return []TransRef{}
 	}
 	transRefs, ok := client.refNo2Trans[refNo]
 	if !ok {
+		// log.Printf("GetTransRefs: no value for refNo = %s", refNo)
 		return []TransRef{}
 	}
 	return transRefs
