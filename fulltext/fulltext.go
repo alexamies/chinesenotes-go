@@ -54,7 +54,8 @@ type TextLoader interface {
 // Implements the TextLoader interface, loads the text from a local file
 // mounted on the application server
 // Params:
-//   corpusDir - The top level directory for the plain text files
+//
+//	corpusDir - The top level directory for the plain text files
 type LocalTextLoader struct{ corpusDir string }
 
 // Gets the matching text from a local file and find the best match
@@ -71,7 +72,8 @@ func (loader LocalTextLoader) GetMatching(plainTextFile string,
 // Implements the TextLoader interface, loads the text from a Google Cloud
 // Storage.
 // Params:
-//   Bucket - The base URL for the location of the plain text files
+//
+//	Bucket - The base URL for the location of the plain text files
 type GCSLoader struct {
 	bucket string
 	client *storage.Client
@@ -171,12 +173,6 @@ func getMatch(txt string, queryTerms []string, snippetLen int) MatchingText {
 		}
 		start := 0
 		end := e
-		// degenerate cases
-		if start == 0 && len(txt) <= snippetLen {
-			end = len(txt)
-		} else if start == 0 && len(txt) > snippetLen {
-			end = snippetLen
-		}
 		// Make sure that snippet falls on a proper unicode boundary
 		for j, _ := range txt {
 			if (start == 0) && (s != 0) && (j > s) {
@@ -186,6 +182,10 @@ func getMatch(txt string, queryTerms []string, snippetLen int) MatchingText {
 				end = j
 				break
 			}
+		}
+		// degenerate cases
+		if start == 0 && len(txt) <= snippetLen {
+			end = len(txt)
 		}
 		snippet = txt[start:end]
 	}

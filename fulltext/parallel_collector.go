@@ -10,10 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//
 // Functions for retrieving text text matches in parallel from text that are
 // either the file or in a remote object store
-//
 package fulltext
 
 import (
@@ -86,7 +84,7 @@ DONE:
 	return matches
 }
 
-func getDoc(done chan struct{}, loader TextLoader, queryTerms []string, jobs <-chan Job) {
+func getDoc(done chan struct{}, loader TextLoader, key string, queryTerms []string, jobs <-chan Job) {
 	//log.Println("fulltext.getDoc:", key)
 	for job := range jobs {
 		job.Do(loader, queryTerms)
@@ -101,6 +99,8 @@ func GetMatches(keys []string, queryTerms []string) map[string]DocMatch {
 	results := make(chan Result, len(keys))
 	done := make(chan struct{}, len(keys))
 	addJobs(jobs, keys, results)
-	go getDoc(done, loader, queryTerms, jobs)
+	for _, key := range keys {
+		go getDoc(done, loader, key, queryTerms, jobs)
+	}
 	return collectDocs(done, results, keys)
 }
