@@ -25,6 +25,7 @@ func TestGetMatch(t *testing.T) {
 		name        string
 		txt         string
 		queryTerms  []string
+		snippetLen  int
 		wantLM      string
 		wantEM      bool
 		wantSnippet string
@@ -33,6 +34,7 @@ func TestGetMatch(t *testing.T) {
 			name:        "Happy path 1",
 			txt:         txt,
 			queryTerms:  []string{"曰", "風"},
+			snippetLen:  SNIPPET_LEN,
 			wantLM:      "曰風",
 			wantEM:      true,
 			wantSnippet: txt,
@@ -41,6 +43,7 @@ func TestGetMatch(t *testing.T) {
 			name:        "Happy path 2",
 			txt:         txt,
 			queryTerms:  []string{"一", "曰風"},
+			snippetLen:  SNIPPET_LEN,
 			wantLM:      "一曰風",
 			wantEM:      true,
 			wantSnippet: txt,
@@ -49,6 +52,7 @@ func TestGetMatch(t *testing.T) {
 			name:        "Happy path 3",
 			txt:         txt,
 			queryTerms:  []string{"故", "詩", "一"},
+			snippetLen:  SNIPPET_LEN,
 			wantLM:      "故詩",
 			wantEM:      false,
 			wantSnippet: txt,
@@ -57,6 +61,7 @@ func TestGetMatch(t *testing.T) {
 			name:        "Happy path 4",
 			txt:         txt,
 			queryTerms:  []string{"一", "詩", "有"},
+			snippetLen:  SNIPPET_LEN,
 			wantLM:      "詩有",
 			wantEM:      false,
 			wantSnippet: txt,
@@ -65,13 +70,32 @@ func TestGetMatch(t *testing.T) {
 			name:        "Snippet empty",
 			txt:         txt,
 			queryTerms:  []string{"美", "移", "故"},
+			snippetLen:  SNIPPET_LEN,
 			wantLM:      "故",
 			wantEM:      false,
 			wantSnippet: txt,
 		},
+		{
+			name:        "Limit snippet length",
+			txt:         txt,
+			queryTerms:  []string{"詩有六", "風"},
+			snippetLen:  5,
+			wantLM:      "詩有六",
+			wantEM:      true,
+			wantSnippet: "故詩有六義",
+		},
+		{
+			name:        "Longer snippet length",
+			txt:         txt,
+			queryTerms:  []string{"美教化，", "風"},
+			snippetLen:  12,
+			wantLM:      "美教化，",
+			wantEM:      true,
+			wantSnippet: "厚人倫，美教化，移風俗。",
+		},
 	}
 	for _, tc := range tests {
-		mt := getMatch(tc.txt, tc.queryTerms)
+		mt := getMatch(tc.txt, tc.queryTerms, tc.snippetLen)
 		if mt.LongestMatch != tc.wantLM {
 			t.Errorf("TestGetMatch.%s: got LM %s but want %s", tc.name, mt.LongestMatch, tc.wantLM)
 		}

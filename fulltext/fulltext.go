@@ -65,7 +65,7 @@ func (loader LocalTextLoader) GetMatching(plainTextFile string,
 	if err != nil {
 		return MatchingText{}, err
 	}
-	return getMatch(string(bs), queryTerms), nil
+	return getMatch(string(bs), queryTerms, SNIPPET_LEN), nil
 }
 
 // Implements the TextLoader interface, loads the text from a Google Cloud
@@ -92,7 +92,7 @@ func (loader GCSLoader) GetMatching(plainTextFile string, queryTerms []string) (
 		return MatchingText{}, fmt.Errorf("GCSLoader.GetMatching error reading for %s: %v", plainTextFile, err)
 	}
 	txt := string(bs)
-	match, err := getMatch(txt, queryTerms), nil
+	match, err := getMatch(txt, queryTerms, SNIPPET_LEN), nil
 	if err != nil {
 		return MatchingText{}, fmt.Errorf("GCSLoader.GetMatching error finding snippet for %s: %v", plainTextFile, err)
 	}
@@ -120,7 +120,7 @@ func getLoader() TextLoader {
 }
 
 // Given the already retrieved text body, find the best match
-func getMatch(txt string, queryTerms []string) MatchingText {
+func getMatch(txt string, queryTerms []string, snippetLen int) MatchingText {
 	// log.Printf("fulltext.getMatch, txt = %s, query: %v", txt, queryTerms)
 	if len(queryTerms) == 0 {
 		return MatchingText{}
@@ -161,16 +161,22 @@ func getMatch(txt string, queryTerms []string) MatchingText {
 		}
 	}
 	if i > -1 {
-		s := i - SNIPPET_LEN/2
+		s := i - snippetLen/2
 		if s < 0 {
 			s = 0
 		}
-		e := i + SNIPPET_LEN/2
+		e := i + snippetLen/2
 		if e > (len(txt) - 1) {
 			e = len(txt) - 1
 		}
 		start := 0
 		end := e
+		// degenerate cases
+		if start == 0 && len(txt) <= snippetLen {
+			end = len(txt)
+		} else if start == 0 && len(txt) > snippetLen {
+			end = snippetLen
+		}
 		// Make sure that snippet falls on a proper unicode boundary
 		for j, _ := range txt {
 			if (start == 0) && (s != 0) && (j > s) {
@@ -180,12 +186,6 @@ func getMatch(txt string, queryTerms []string) MatchingText {
 				end = j
 				break
 			}
-		}
-		// degenerate cases
-		if start == 0 && len(txt) <= SNIPPET_LEN {
-			end = len(txt)
-		} else if start == 0 && len(txt) > SNIPPET_LEN {
-			end = SNIPPET_LEN
 		}
 		snippet = txt[start:end]
 	}
