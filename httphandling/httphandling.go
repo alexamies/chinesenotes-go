@@ -84,7 +84,7 @@ func (h gcsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if len(fname) == 0 {
 		fname = "index.html"
 	}
-	if config.PasswordProtected() && !strings.HasSuffix(fname, ".css") && !strings.HasSuffix(fname, ".js") && strings.HasSuffix(fname, ".ico") && !strings.HasSuffix(fname, ".png") && strings.HasSuffix(fname, ".jps") {
+	if config.PasswordProtected() && !strings.HasSuffix(fname, ".css") && !strings.HasSuffix(fname, ".js") && !strings.HasSuffix(fname, ".ico") && !strings.HasSuffix(fname, ".png") && !strings.HasSuffix(fname, ".jpg") {
 		sessionInfo := h.enforcer.EnforceValidSession(ctx, w, r)
 		if !sessionInfo.Valid {
 			// Forward to login page
@@ -113,6 +113,10 @@ func (h gcsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 	} else if strings.HasSuffix(fname, ".json") {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	} else if strings.HasSuffix(fname, ".png") {
+		w.Header().Set("Content-Type", "image/png")
+	} else if strings.HasSuffix(fname, ".jpg") {
+		w.Header().Set("Content-Type", "image/jpeg")
 	}
 	fmt.Fprint(w, string(body))
 }
