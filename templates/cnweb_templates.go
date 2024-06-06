@@ -43,7 +43,7 @@ const nav = `
 const footer = `
     <footer>
       <p>
-        Copyright Fo Guang Shan 佛光山 2020.
+        Copyright Fo Guang Shan 佛光山 2020-2024.
         The Chinese-English dictionary is reproduced from the <a 
         href="http://ntireader.org/" target="_blank"
         > NTI Buddhist Text Reader</a> under the <a 
@@ -731,13 +731,13 @@ func NewTemplateMap(webConfig config.WebAppConfig) map[string]*template.Template
 			if err != nil {
 				log.Printf("newTemplateMap: error parsing template, using default %s: %v",
 					tName, err)
-        if tName == "login_form.html" {
-				  t := fmt.Sprintf(defTmpl, head, header, "", footer)
-				  tmpl = template.Must(template.New(tName).Parse(t))
-        } else {
-          t := fmt.Sprintf(defTmpl, head, header, nav, footer)
-          tmpl = template.Must(template.New(tName).Parse(t))
-        }
+				if tName == "login_form.html" {
+					t := fmt.Sprintf(defTmpl, head, header, "", footer)
+					tmpl = template.Must(template.New(tName).Parse(t))
+				} else {
+					t := fmt.Sprintf(defTmpl, head, header, nav, footer)
+					tmpl = template.Must(template.New(tName).Parse(t))
+				}
 			}
 			templateMap[tName] = tmpl
 		}

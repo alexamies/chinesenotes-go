@@ -84,7 +84,7 @@ func (h gcsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if len(fname) == 0 {
 		fname = "index.html"
 	}
-	if config.PasswordProtected() {
+	if config.PasswordProtected() && !strings.HasSuffix(fname, ".css") && !strings.HasSuffix(fname, ".js") && strings.HasSuffix(fname, ".ico") {
 		sessionInfo := h.enforcer.EnforceValidSession(ctx, w, r)
 		if !sessionInfo.Valid {
 			// Forward to login page
