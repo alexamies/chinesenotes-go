@@ -2,7 +2,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//    http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -403,11 +403,12 @@ func displayHome(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if !sessionInfo.Valid {
+			log.Printf("displayHome no session, URL: %v", r.URL.Path)
 			b.pageDisplayer.DisplayPage(w, "login_form.html", content)
 			return
 		} else {
-			log.Printf("displayHome: using index_auth_template.html for url %s", r.URL.Path)
-			b.pageDisplayer.DisplayPage(w, "index_auth_template.html", content)
+			log.Printf("displayHome: using index_auth.html for url %s", r.URL.Path)
+			b.pageDisplayer.DisplayPage(w, "index_auth.html", content)
 			return
 		}
 	}
@@ -1437,7 +1438,7 @@ func wordDetail(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, msg, http.StatusNotFound)
 }
 
-//Entry point for the web application
+// Entry point for the web application
 func main() {
 	start := time.Now()
 	log.Println("cnweb.main Iniitalizing cnweb")
