@@ -51,7 +51,7 @@ func makeHW2() Word {
 	}
 }
 
-// TestAddWordSense2Map does a query expecting empty list
+// TestCloneWord does a query expecting empty list
 func TestCloneWord(t *testing.T) {
 	w1 := Word{
 		Simplified:  "你好",
@@ -65,7 +65,7 @@ func TestCloneWord(t *testing.T) {
 	}
 }
 
-// TestAddWordSense2Map does a query expecting empty list
+// TestIsProperNoun does a query expecting empty list
 func TestIsProperNoun(t *testing.T) {
 	s := WordSense{
 		Simplified:  "王",
@@ -270,6 +270,43 @@ func TestIsQuote(t *testing.T) {
 		if got != tc.expect {
 			t.Errorf("TestIsQuote %s: got %t but expected %t ", tc.name,
 				got, tc.expect)
+		}
+	}
+}
+
+// TestIsCJKChar tests IsCJKChar
+func TestIsCJKChar(t *testing.T) {
+	type test struct {
+		name   string
+		input  string
+		expect bool
+	}
+	tests := []test{
+		{
+			name:   "Chinese",
+			input:  "中国",
+			expect: true,
+		},
+		{
+			name:   "English",
+			input:  "USA",
+			expect: false,
+		},
+		{
+			name:   "Hiragana",
+			input:  "あ",
+			expect: true,
+		},
+		{
+			name:   "Katakana",
+			input:  "ア",
+			expect: true,
+		},
+	}
+	for _, tc := range tests {
+		got := IsCJKChar(tc.input)
+		if got != tc.expect {
+			t.Errorf("%s: IsCJKChar(%s) got %t but expected %t ", tc.name, tc.input, got, tc.expect)
 		}
 	}
 }

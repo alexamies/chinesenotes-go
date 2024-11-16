@@ -2,7 +2,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//    http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -59,7 +59,7 @@ func CloneWord(w Word) Word {
 // Only looks at the first charater in the string
 func IsCJKChar(character string) bool {
 	r := []rune(character)
-	return unicode.Is(unicode.Han, r[0]) && !unicode.IsPunct(r[0])
+	return (unicode.Is(unicode.Han, r[0]) || unicode.Is(unicode.Hiragana, r[0]) || unicode.Is(unicode.Katakana, r[0])) && !unicode.IsPunct(r[0])
 }
 
 // Tests whether the word is a function word
