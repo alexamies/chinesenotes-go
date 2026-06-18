@@ -22,48 +22,61 @@ import (
 // A basic example of the function Segment
 func ExampleSegment() {
 	segments := Segment("你好 means hello")
-  fmt.Printf("Text: %s, Chinese: %t\n", segments[0].Text, segments[0].Chinese)
-  fmt.Printf("Text: %s, Chinese: %t\n", strings.TrimSpace(segments[1].Text), segments[1].Chinese)
-  // Output: Text: 你好, Chinese: true
-  // Text: means hello, Chinese: false
+	fmt.Printf("Text: %s, Chinese: %t\n", segments[0].Text, segments[0].Chinese)
+	fmt.Printf("Text: %s, Chinese: %t\n", strings.TrimSpace(segments[1].Text), segments[1].Chinese)
+	// Output: Text: 你好, Chinese: true
+	// Text: means hello, Chinese: false
 }
-
 
 // A basic example of the function Segment
 func TestSegment(t *testing.T) {
 	nihao := TextSegment{"你好", true}
 	helloIs := TextSegment{"Hello is ", false}
 	period := TextSegment{"。", false}
+	firstHiragana := TextSegment{"First Hiragana character ", false}
+	hiraganaA := TextSegment{"あ", true}
+	firstKatakana := TextSegment{"First Katakana consonant ", false}
+	katakanaK := TextSegment{"カ", true}
 	testCases := []struct {
 		name string
-		in  string
+		in   string
 		want []TextSegment
 	}{
 		{
 			name: "Empty",
-			in: "", 
+			in:   "",
 			want: []TextSegment{},
 		},
 		{
 			name: "One segment",
-			in: "你好", 
+			in:   "你好",
 			want: []TextSegment{nihao},
 		},
 		{
 			name: "Two segments",
-			in: "Hello is 你好", 
+			in:   "Hello is 你好",
 			want: []TextSegment{helloIs, nihao},
 		},
 		{
 			name: "Three segments",
-			in: "Hello is 你好。", 
+			in:   "Hello is 你好。",
 			want: []TextSegment{helloIs, nihao, period},
+		},
+		{
+			name: "Hiragana",
+			in:   "First Hiragana character あ",
+			want: []TextSegment{firstHiragana, hiraganaA},
+		},
+		{
+			name: "Katakana",
+			in:   "First Katakana consonant カ",
+			want: []TextSegment{firstKatakana, katakanaK},
 		},
 	}
 	for _, tc := range testCases {
 		got := Segment(tc.in)
-  	if !reflect.DeepEqual(tc.want, got)  {
-  		t.Errorf("%s, expected %v, got %v", tc.name, tc.want, got)
-  	}
-  }
+		if !reflect.DeepEqual(tc.want, got) {
+			t.Errorf("%s, expected %v, got %v", tc.name, tc.want, got)
+		}
+	}
 }

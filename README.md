@@ -178,6 +178,12 @@ of Chinese Notes.
 For the corpus structure see
 https://github.com/alexamies/chinesenotes.com/tree/master/data/corpus
 
+An example cURL request for full text search is
+
+```shell
+curl "http://localhost:8080/findadvanced/?query=《水滸傳》者，發憤之所作也。"
+```
+
 ### Integration with a rich JavaScript web client (optional)
 
 For web resources to give a higher quality user experience than the basic Go
